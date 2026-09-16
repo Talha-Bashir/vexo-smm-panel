@@ -1,0 +1,343 @@
+@import "tailwindcss";
+
+:root {
+  --background: #070d0d;
+  --foreground: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+  background: #070d0d;
+  color: #ffffff;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Eliminate tap delay and prevent iOS auto-zoom */
+button, a, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+input, select, textarea {
+  font-size: 1rem !important; /* 16px baseline prevents mobile iOS auto-zoom */
+}
+
+/* Fluid Typography Utilities using clamp() */
+.text-fluid-hero {
+  font-size: clamp(2rem, 4.5vw + 0.8rem, 4.25rem);
+  line-height: 1.08;
+}
+
+.text-fluid-h2 {
+  font-size: clamp(1.6rem, 3.2vw + 0.6rem, 3rem);
+  line-height: 1.15;
+}
+
+.text-fluid-h3 {
+  font-size: clamp(1.15rem, 1.8vw + 0.5rem, 1.75rem);
+  line-height: 1.25;
+}
+
+.text-fluid-body {
+  font-size: clamp(0.875rem, 0.8vw + 0.55rem, 1.125rem);
+  line-height: 1.6;
+}
+
+/* Fluid Grid Systems using CSS auto-fit and minmax */
+.grid-fluid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+  gap: clamp(1rem, 2.5vw, 2rem);
+}
+
+.grid-fluid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16.5rem), 1fr));
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+/* Seamless infinite marquee animation */
+@keyframes vexo-marquee-scroll {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.vexo-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: vexo-marquee-scroll 24s linear infinite;
+  will-change: transform;
+}
+
+.vexo-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes vexo-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes vexo-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -10px, 0); }
+}
+
+@keyframes vexo-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(186,255,0,0); }
+  50% { box-shadow: 0 0 28px rgba(186,255,0,0.08); }
+}
+
+@keyframes vexo-shimmer {
+  0% { transform: translateX(-140%); }
+  55%, 100% { transform: translateX(180%); }
+}
+
+.vexo-shell {
+  animation: vexo-glow 5s ease-in-out infinite;
+}
+
+.vexo-page-enter, .vexo-fade-up {
+  animation: vexo-fade-up 0.55s ease-out both;
+}
+
+.vexo-stagger-1 { animation-delay: 0.06s; }
+.vexo-stagger-2 { animation-delay: 0.12s; }
+.vexo-stagger-3 { animation-delay: 0.18s; }
+.vexo-stagger-4 { animation-delay: 0.24s; }
+
+.vexo-orb {
+  animation: vexo-float 6s ease-in-out infinite;
+}
+
+.vexo-orb-delay {
+  animation-delay: -2.5s;
+}
+
+.vexo-card {
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.vexo-card:hover {
+  box-shadow: 0 14px 45px rgba(0,0,0,0.18);
+}
+
+.vexo-login-card {
+  animation: vexo-fade-up 0.65s ease-out both, vexo-glow 5s ease-in-out 0.7s infinite;
+}
+
+.vexo-shimmer-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.vexo-shimmer-button::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -45%;
+  width: 30%;
+  transform: skewX(-18deg);
+  background: rgba(255,255,255,0.28);
+  animation: vexo-shimmer 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Offload offscreen elements to keep 60 FPS mobile rendering (modern-web-guidance) */
+.vexo-deferred-render {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
+/* Horizontal scrollable pills with hidden scrollbars for touch devices */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area padding for mobile home indicator */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* ------------------------------------------------------------- */
+/* CSS Variable Multi-Theme Engine                               */
+/* ------------------------------------------------------------- */
+
+:root,
+html[data-theme="cyber-lime"] {
+  --bg-main: #0a0b0e;
+  --bg-surface: #12151c;
+  --bg-surface-hover: #191e28;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent-primary: #c6ff00;
+  --accent-hover: #d8ff4d;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-accent: #07100f;
+  --accent-glow: rgba(198, 255, 0, 0.28);
+  --accent-glow-subtle: rgba(198, 255, 0, 0.08);
+}
+
+html[data-theme="midnight-blue"] {
+  --bg-main: #0b0f19;
+  --bg-surface: #111927;
+  --bg-surface-hover: #1a2538;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent-primary: #00e5ff;
+  --accent-hover: #33ebff;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-accent: #05131a;
+  --accent-glow: rgba(0, 229, 255, 0.28);
+  --accent-glow-subtle: rgba(0, 229, 255, 0.08);
+}
+
+html[data-theme="cyber-crimson"] {
+  --bg-main: #0d090a;
+  --bg-surface: #171012;
+  --bg-surface-hover: #23181b;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent-primary: #ff2a5f;
+  --accent-hover: #ff4d79;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-accent: #ffffff;
+  --accent-glow: rgba(255, 42, 95, 0.28);
+  --accent-glow-subtle: rgba(255, 42, 95, 0.08);
+}
+
+html[data-theme="royal-purple"] {
+  --bg-main: #0c0a14;
+  --bg-surface: #161324;
+  --bg-surface-hover: #221c37;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent-primary: #a855f7;
+  --accent-hover: #c084fc;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-accent: #ffffff;
+  --accent-glow: rgba(168, 85, 247, 0.28);
+  --accent-glow-subtle: rgba(168, 85, 247, 0.08);
+}
+
+html[data-theme="clean-slate"] {
+  --bg-main: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-surface-hover: #334155;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent-primary: #38bdf8;
+  --accent-hover: #60a5fa;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-accent: #0f172a;
+  --accent-glow: rgba(56, 189, 248, 0.28);
+  --accent-glow-subtle: rgba(56, 189, 248, 0.08);
+}
+
+/* Antigravity Design System Utilities linked to Theme Variables */
+.antigravity-space-bg {
+  background-color: var(--bg-main);
+  background-image: 
+    radial-gradient(circle at 50% 0%, var(--accent-glow-subtle) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, var(--accent-glow-subtle) 0%, transparent 40%);
+}
+
+.antigravity-card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-color);
+  box-shadow: 
+    0 20px 50px -10px rgba(0, 0, 0, 0.7),
+    0 10px 30px -10px var(--accent-glow-subtle),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.antigravity-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 26px 60px -12px rgba(0, 0, 0, 0.8),
+    0 12px 32px -8px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-primary);
+}
+
+.antigravity-dock {
+  background: var(--bg-surface);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--border-color);
+  box-shadow: 
+    0 25px 60px -15px rgba(0, 0, 0, 0.8),
+    0 0 40px -10px var(--accent-glow-subtle),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.antigravity-glow-neon {
+  box-shadow: 0 0 25px var(--accent-glow);
+}
+
+.antigravity-glow-neon-lg {
+  box-shadow: 0 8px 35px var(--accent-glow);
+}
+
+.antigravity-input-wrap {
+  position: relative;
+  background: var(--bg-surface);
+  border-bottom: 2px solid var(--border-color);
+  transition: all 0.25s ease;
+}
+
+.antigravity-input-wrap:focus-within {
+  background: var(--bg-surface-hover);
+  border-bottom-color: var(--accent-primary);
+  box-shadow: 0 8px 20px -6px var(--accent-glow);
+}
+
+/* Mobile Performance Optimizations: Stop continuous GPU blur & box-shadow repaints on mobile screens */
+@media (max-width: 768px) {
+  .vexo-shell {
+    animation: none !important;
+  }
+  .vexo-orb {
+    animation: none !important;
+    transform: none !important;
+  }
+  .vexo-login-card {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vexo-shell, .vexo-page-enter, .vexo-fade-up, .vexo-orb, .vexo-login-card, .vexo-shimmer-button::after {
+    animation: none !important;
+  }
+}
+
