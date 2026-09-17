@@ -166,6 +166,12 @@ function Icon({
           <path d="M17 19c-1 1.3-2.6 2-5 2" />
         </svg>
       );
+    case "arrowRight":
+      return (
+        <svg {...common}>
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      );
     default:
       return (
         <svg {...common}>
@@ -303,13 +309,6 @@ export default function LandingPage() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<{ id: string; title: string; message: string; createdAt: string } | null>(null);
   const [topBannerDismissed, setTopBannerDismissed] = useState(false);
 
-  // Quick Login State
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState("");
-  const [loginHoneypot, setLoginHoneypot] = useState("");
 
   // Services Catalog Preview State
   const [services, setServices] = useState<Service[]>([]);
@@ -382,45 +381,6 @@ export default function LandingPage() {
     loadAnnouncements();
   }, []);
 
-  // Handle Quick Login Submit
-  async function handleQuickLogin(e: FormEvent) {
-    e.preventDefault();
-    setLoginError("");
-
-    if (!loginEmail.trim() || !loginPassword) {
-      setLoginError("Please enter your email/username and password.");
-      return;
-    }
-
-    setLoginLoading(true);
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify({
-          email: loginEmail.trim(),
-          password: loginPassword,
-          honeypot: loginHoneypot,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setLoginError(data.error || "Invalid login credentials.");
-        return;
-      }
-
-      window.location.replace("/dashboard");
-    } catch {
-      setLoginError("Network connection error. Please try again.");
-    } finally {
-      setLoginLoading(false);
-    }
-  }
 
   // Filtered Services for Catalog Section
   const filteredCatalogServices = useMemo(() => {
@@ -753,105 +713,103 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Right Column: Integrated Quick-Login Card */}
+              {/* Right Column: Antigravity Client Access Portal */}
               <div className="w-full max-w-[min(100%,30rem)] mx-auto lg:max-w-none">
                 <div className="rounded-3xl border border-white/10 bg-[#10191b]/95 p-[clamp(1.25rem,3vw,2rem)] shadow-2xl shadow-black/60 backdrop-blur-xl">
                   <div className="flex items-center justify-between border-b border-white/10 pb-4">
                     <div>
-                      <h2 className="text-xl font-black text-white">
-                        Sign In to VEXARO
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#baff00]/10 px-2.5 py-1 text-[11px] font-bold text-[#baff00]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
+                        Client Access Portal
+                      </span>
+                      <h2 className="mt-2 text-xl font-black text-white">
+                        {hasSession ? "Welcome Back to VEXARO" : "Instant Growth Access"}
                       </h2>
                       <p className="mt-0.5 text-xs text-slate-400">
-                        Access your panel, orders &amp; live wallet
+                        {hasSession ? "Manage active campaigns, balance & orders" : "Sign in or register to launch orders with automated delivery"}
                       </p>
                     </div>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
-                      <Icon name="bolt" size={20} />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#baff00]/10 text-[#baff00]">
+                      <Icon name="bolt" size={22} />
                     </div>
                   </div>
 
-                  {loginError && (
-                    <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
-                      {loginError}
-                    </div>
-                  )}
-
-                  <form onSubmit={handleQuickLogin} className="mt-5 space-y-4">
-                    {/* Hidden Honeypot trap */}
-                    <input
-                      type="text"
-                      name="_hp_trap"
-                      value={loginHoneypot}
-                      onChange={(e) => setLoginHoneypot(e.target.value)}
-                      tabIndex={-1}
-                      autoComplete="off"
-                      style={{ display: "none", opacity: 0, position: "absolute", left: "-9999px" }}
-                      aria-hidden="true"
-                    />
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Username / Email
-                      </label>
-                      <input
-                        type="text"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        placeholder="username or name@example.com"
-                        className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070d0d] px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-[#baff00]"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                          Password
-                        </label>
+                  <div className="mt-5 space-y-3">
+                    {hasSession ? (
+                      <>
                         <Link
-                          href="/forgot-password"
-                          className="text-xs font-semibold text-[#baff00] hover:underline"
+                          href="/dashboard"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-[1.02]"
                         >
-                          Password Lost?
+                          <span>Open Customer Dashboard</span>
+                          <Icon name="arrowRight" size={16} />
                         </Link>
-                      </div>
-                      <div className="relative mt-1.5">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full rounded-xl border border-white/10 bg-[#070d0d] px-4 py-3 pr-11 text-white placeholder-slate-500 outline-none transition focus:border-[#baff00]"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                          aria-label="Toggle password view"
+                        <Link
+                          href="/dashboard?tab=add-funds"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-xs font-bold text-white transition hover:bg-white/10"
                         >
-                          <Icon name={showPassword ? "eyeOff" : "eye"} size={18} />
-                        </button>
+                          <span>Quick Deposit (Easypaisa / JazzCash / SadaPay)</span>
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          href="/login"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-[1.02]"
+                        >
+                          <span>Sign In to Account</span>
+                          <Icon name="arrowRight" size={16} />
+                        </Link>
+                        <Link
+                          href="/signup"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-3 text-xs font-bold text-white transition hover:border-white/30 hover:bg-white/10"
+                        >
+                          <span>Create Free Account</span>
+                          <Icon name="check" size={14} />
+                        </Link>
+                      </>
+                    )}
+
+                    {/* Features list */}
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <div className="rounded-xl border border-white/5 bg-[#0b1315] p-2.5 text-left">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Security</p>
+                        <p className="mt-0.5 text-xs font-bold text-emerald-400">🛡️ Zero Passwords Needed</p>
+                      </div>
+                      <div className="rounded-xl border border-white/5 bg-[#0b1315] p-2.5 text-left">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Speed</p>
+                        <p className="mt-0.5 text-xs font-bold text-[#baff00]">⚡ 0 - 15m Automated</p>
                       </div>
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={loginLoading}
-                      className="mt-2 w-full rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.18)] transition hover:bg-[#d2ff5a] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {loginLoading ? "Signing in..." : "Sign In"}
-                    </button>
-
-                    <div className="pt-2 text-center text-xs text-slate-400">
-                      Do not have an account?{" "}
-                      <Link
-                        href="/signup"
-                        className="font-bold text-[#baff00] hover:underline"
-                      >
-                        Sign up
-                      </Link>
+                    <div className="rounded-xl border border-white/5 bg-[#0b1315] p-3 text-xs text-slate-400">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-300">Supported Payments</span>
+                        <span className="text-[10px] text-emerald-400 font-bold">100% Verified</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Easypaisa • JazzCash • SadaPay • Bank Transfer • Binance Pay
+                      </p>
                     </div>
-                  </form>
+
+                    <div className="pt-1 text-center text-xs text-slate-400 flex items-center justify-between">
+                      <Link
+                        href="/forgot-password"
+                        className="text-xs text-slate-400 hover:text-[#baff00] transition"
+                      >
+                        Forgot password?
+                      </Link>
+                      <a
+                        href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-bold text-[#25d366] hover:underline inline-flex items-center gap-1"
+                      >
+                        <Icon name="whatsapp" size={13} />
+                        <span>WhatsApp Channel</span>
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

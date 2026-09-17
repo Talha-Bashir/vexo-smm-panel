@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign In to VEXARO Account | VEXARO SMM Panel",
-  description: "Secure login for registered VEXARO SMM Panel account holders.",
+  title: "Reset Password | VEXARO SMM Panel",
+  description: "Reset your VEXARO SMM Panel account password securely.",
   robots: {
     index: false,
     follow: false,
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function LoginLayout({
+export default function ForgotPasswordLayout({
   children,
 }: {
   children: React.ReactNode;

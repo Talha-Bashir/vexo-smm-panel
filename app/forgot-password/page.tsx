@@ -142,12 +142,14 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleSubmit} method="POST" action="/api/auth/forgot-password" className="mt-6 space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
-                Registered Email Address
+              <label htmlFor="vexaro-reset-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                Registered VEXARO Account Email
               </label>
               <input
+                id="vexaro-reset-email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -159,10 +161,12 @@ export default function ForgotPasswordPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
-                Account Name / Full Name
+              <label htmlFor="vexaro-reset-accountname" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                Registered VEXARO Account Name
               </label>
               <input
+                id="vexaro-reset-accountname"
+                name="accountName"
                 type="text"
                 value={accountName}
                 onChange={(e) => setAccountName(e.target.value)}
@@ -171,13 +175,13 @@ export default function ForgotPasswordPage() {
                 required
                 className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-3 text-base sm:text-sm text-white outline-none focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/10"
               />
-              <p className="mt-1 text-[11px] text-slate-500">Used to verify account ownership securely.</p>
+              <p className="mt-1 text-[11px] text-slate-500">Used to verify VEXARO panel account ownership securely.</p>
             </div>
 
             <div>
               <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  New Password
+                <label htmlFor="vexaro-reset-newpassword" className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  New VEXARO Account Password
                 </label>
                 <button
                   type="button"
@@ -189,6 +193,8 @@ export default function ForgotPasswordPage() {
               </div>
               <div className="relative">
                 <input
+                  id="vexaro-reset-newpassword"
+                  name="newPassword"
                   type={showPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -201,10 +207,12 @@ export default function ForgotPasswordPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
-                Confirm New Password
+              <label htmlFor="vexaro-reset-confirmpassword" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                Confirm New VEXARO Password
               </label>
               <input
+                id="vexaro-reset-confirmpassword"
+                name="confirmPassword"
                 type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

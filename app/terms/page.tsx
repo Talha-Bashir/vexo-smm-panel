@@ -112,8 +112,19 @@ export default function TermsPage() {
             <div className="rounded-xl border border-white/10 bg-[#0d1618] p-4 text-xs space-y-1 font-mono">
               <p>WhatsApp: <span className="text-[#25d366]">+92 317 6437013</span></p>
               <p>Telegram: <span className="text-[#229ed9]">@VexaroSMMAdmin</span></p>
+              <p>WhatsApp Channel: <a href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline font-bold">Follow VEXARO Updates</a></p>
               <p>Support Portal: In-app ticket system at /dashboard</p>
             </div>
+          </section>
+
+          <section className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5">
+            <h2 className="text-lg font-black text-emerald-400">7. Third-Party Trademarks &amp; Non-Affiliation Disclaimer</h2>
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              Instagram, TikTok, YouTube, Facebook, Telegram, WhatsApp, and Google are registered trademarks of their respective owners. VEXARO SMM is an independent service marketplace and is not endorsed by, associated with, or affiliated with any of these platform entities.
+            </p>
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              VEXARO maintains a strict <strong>Zero-Password Policy</strong>. We will never request or require your personal social media passwords, two-factor authentication codes, or Google account passwords. All fulfillment occurs exclusively using public links.
+            </p>
           </section>
         </div>
       </div>

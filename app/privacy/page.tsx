@@ -112,6 +112,16 @@ export default function PrivacyPage() {
               </a>.
             </p>
           </section>
+
+          <section className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5">
+            <h2 className="text-lg font-black text-emerald-400">7. Independent Platform &amp; Anti-Phishing Protection</h2>
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              VEXARO SMM is an independent service platform and is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Meta Platforms Inc., Instagram, TikTok, ByteDance, Google LLC, YouTube, Telegram FZ-LLC, or WhatsApp Inc.
+            </p>
+            <p className="text-xs sm:text-sm leading-relaxed text-slate-300">
+              <strong>Strict Zero-Password Policy:</strong> VEXARO will never ask for, collect, or store passwords for your personal social media accounts or your Google accounts. All marketing orders are processed strictly using public account links or public post URLs. Your VEXARO account credentials apply exclusively to our panel dashboard.
+            </p>
+          </section>
         </div>
       </div>
     </main>

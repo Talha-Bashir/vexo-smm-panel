@@ -121,34 +121,51 @@ export default function LoginPage() {
                 <p className="text-xs leading-5 text-slate-400">Sign in to manage your orders, wallet balance, and social media campaigns.</p>
               </div>
 
-              {/* Trust Badge Guarantee */}
-              <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs text-emerald-300 flex items-start gap-2.5">
+              {/* Anti-Phishing & Panel Account Security Notice */}
+              <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3.5 text-xs text-emerald-300 flex items-start gap-2.5">
                 <span className="mt-0.5 shrink-0 text-base">🛡️</span>
                 <div>
-                  <strong className="text-white block">Zero Password Guarantee</strong>
-                  We will never ask for your account password. Only public profile and post links are ever required.
+                  <strong className="text-white block">Official VEXARO Account Login</strong>
+                  This login is strictly for your <strong>VEXARO Panel Account</strong>. Never enter your Instagram, TikTok, YouTube, Facebook, Google, or banking passwords here. We only deliver services through public links and will never request your personal social media passwords.
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <form onSubmit={handleSubmit} method="POST" action="/api/auth/login" className="mt-6 space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">Email address</label>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" className="w-full rounded-xl border border-white/10 bg-[#0a1214] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10" />
+                  <label htmlFor="vexaro-login-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                    VEXARO Account Email
+                  </label>
+                  <input
+                    id="vexaro-login-email"
+                    name="email"
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="Enter your registered email"
+                    autoComplete="username"
+                    required
+                    className="w-full rounded-xl border border-white/10 bg-[#0a1214] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10"
+                  />
                 </div>
                 <div>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400 shrink-0">Password</label>
+                    <label htmlFor="vexaro-login-password" className="text-xs font-bold uppercase tracking-wider text-slate-400 shrink-0">
+                      VEXARO Panel Password
+                    </label>
                     <Link href="/forgot-password" className="text-xs font-semibold text-[#baff00] hover:underline text-right">
                       Forgot password?
                     </Link>
                   </div>
                   <div className="relative">
                     <input
+                      id="vexaro-login-password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      placeholder="Enter your password"
+                      placeholder="Enter your VEXARO account password"
                       autoComplete="current-password"
+                      required
                       className="w-full rounded-xl border border-white/10 bg-[#0a1214] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10"
                     />
                     <button

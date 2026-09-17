@@ -138,40 +138,58 @@ export default function SignupPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {/* Security Notice */}
+          <div className="mt-5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs text-emerald-300 flex items-start gap-2.5">
+            <span className="mt-0.5 shrink-0 text-base">🛡️</span>
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">Full Name</label>
+              <strong className="text-white block">VEXARO Account Security</strong>
+              Create a unique password exclusively for your VEXARO Panel. Do NOT reuse passwords from your Google, Instagram, TikTok, or email accounts.
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} method="POST" action="/api/auth/signup" className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="vexaro-signup-name" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">Full Name</label>
               <input
+                id="vexaro-signup-name"
+                name="name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Talha Khan"
                 autoComplete="name"
+                required
                 className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">Email Address</label>
+              <label htmlFor="vexaro-signup-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">VEXARO Account Email</label>
               <input
+                id="vexaro-signup-email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
+                required
                 className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">Password</label>
+              <label htmlFor="vexaro-signup-password" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">Create VEXARO Panel Password</label>
               <div className="relative">
                 <input
+                  id="vexaro-signup-password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
                   autoComplete="new-password"
+                  required
                   className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10"
                 />
                 <button
@@ -187,16 +205,19 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
-                Confirm Password
+              <label htmlFor="vexaro-signup-confirm-password" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                Confirm VEXARO Panel Password
               </label>
               <div className="relative">
                 <input
+                  id="vexaro-signup-confirm-password"
+                  name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repeat your password"
                   autoComplete="new-password"
+                  required
                   className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10"
                 />
                 <button

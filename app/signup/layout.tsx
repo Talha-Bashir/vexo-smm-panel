@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Create Free Account - ₨0 Minimum Deposit",
-  description:
-    "Register for your free VEXARO SMM account. Enjoy the cheapest rates for Instagram followers, TikTok likes, YouTube watch time, and earn 5% lifetime referral commissions with SadaPay & Easypaisa.",
-  alternates: {
-    canonical: "/signup",
+  title: "Create Account | VEXARO SMM Panel",
+  description: "Create your personal VEXARO SMM Panel account to manage orders and wallet balance.",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
   },
 };
 
