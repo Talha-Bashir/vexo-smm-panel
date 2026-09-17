@@ -514,26 +514,18 @@ export default function LandingPage() {
       {/* ---------------- 1. NAVBAR (HEADER) ---------------- */}
       <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#070d0d]/90 backdrop-blur-xl transition-all">
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-[clamp(1rem,3vw,2rem)]">
-          {/* Brand & Tech Badge */}
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3 group">
+          {/* Brand Logo */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
               <BrandMark />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg sm:text-2xl font-black tracking-tight text-white group-hover:text-[#baff00] transition">
-                    VEXARO SMM
-                  </span>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full border border-lime-400/20 bg-lime-400/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#baff00]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
-                  Global #1 SMM Provider
-                </span>
-              </div>
+              <span className="text-xl sm:text-2xl font-black tracking-tight text-white group-hover:text-[#baff00] transition whitespace-nowrap">
+                VEXARO <span className="text-[#baff00]">SMM</span>
+              </span>
             </Link>
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-300">
+          <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-semibold text-slate-300">
             <a href="#services" className="transition hover:text-[#baff00]">
               Services
             </a>
@@ -555,29 +547,18 @@ export default function LandingPage() {
           </nav>
 
           {/* Action Buttons */}
-          <div className="hidden sm:flex items-center gap-3">
-            <a
-              href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 rounded-xl border border-[#25d366]/40 bg-[#25d366]/10 px-3 py-2 text-xs font-bold text-[#25d366] transition hover:bg-[#25d366]/20"
-              title="Join Official WhatsApp Channel"
-            >
-              <Icon name="whatsapp" size={15} />
-              <span className="hidden xl:inline">WhatsApp Channel</span>
-              <span className="xl:hidden">Channel</span>
-            </a>
+          <div className="hidden sm:flex items-center gap-2.5 sm:gap-3 shrink-0">
             <Link
               href="/dashboard"
-              className="flex items-center gap-2 rounded-xl bg-[#baff00] px-4 py-2.5 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.3)] transition hover:bg-[#d2ff5a] hover:scale-105"
+              className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105 whitespace-nowrap shrink-0"
             >
-              <span>⚡ Antigravity Panel</span>
-              <Icon name="bolt" size={16} />
+              <Icon name="bolt" size={15} />
+              <span>Open Panel</span>
             </Link>
             {hasSession ? (
               <Link
                 href="/dashboard"
-                className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-white/20"
+                className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs sm:text-sm font-bold text-white transition hover:bg-white/20 whitespace-nowrap shrink-0"
               >
                 <span>Dashboard</span>
               </Link>
@@ -585,13 +566,13 @@ export default function LandingPage() {
               <>
                 <Link
                   href="/login"
-                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/10"
+                  className="rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs sm:text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/10 whitespace-nowrap shrink-0"
                 >
                   Login
                 </Link>
                 <Link
                   href="/signup"
-                  className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs sm:text-sm font-bold text-white transition hover:bg-white/10"
+                  className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs sm:text-sm font-bold text-white transition hover:bg-white/10 whitespace-nowrap shrink-0"
                 >
                   <span>Sign Up</span>
                   <span className="text-[11px]">→</span>
