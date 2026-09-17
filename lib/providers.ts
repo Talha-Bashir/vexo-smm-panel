@@ -277,12 +277,17 @@ export async function submitProviderOrder(
 
 export async function fetchProviderOrderStatus(
   provider: ProviderConfig,
-  remoteOrderId: string
+  remoteOrderId: string,
+  timeoutMs = 15000
 ): Promise<Record<string, unknown>> {
-  const data = (await makeProviderRequest(provider, {
-    action: "status",
-    order: String(remoteOrderId),
-  })) as Record<string, unknown>;
+  const data = (await makeProviderRequest(
+    provider,
+    {
+      action: "status",
+      order: String(remoteOrderId),
+    },
+    timeoutMs
+  )) as Record<string, unknown>;
 
   return data;
 }

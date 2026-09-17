@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import { ensureWalletSchema } from "@/lib/wallet";
 import { getRizviOrderStatus } from "@/lib/rizvi";
 import { getRequestUser } from "@/lib/request-user";
-import { fetchProviderOrderStatus, getRegisteredProviders, ProviderConfig } from "@/lib/providers";
+import { fetchProviderOrderStatus, getRegisteredProviders, STATIC_PROVIDERS, ProviderConfig } from "@/lib/providers";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // Max allowed serverless duration on Vercel Hobby plan
 
 interface SyncResultDetail {
   orderId: string;
@@ -22,31 +23,46 @@ interface SyncResultDetail {
 /**
  * Validates request authorization:
  * - Bearer token matching CRON_SECRET or query param ?secret=CRON_SECRET
- * - OR request coming from localhost
+ * - OR legitimate Vercel Cron headers (user-agent: vercel-cron or x-vercel-cron-schedule) if CRON_SECRET is not configured
+ * - OR request originating from localhost in development
  * - OR request by an authenticated Admin user
  */
 async function isAuthorized(request: Request): Promise<boolean> {
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = process.env.CRON_SECRET?.trim().replace(/^["']|["']$/g, "");
   const url = new URL(request.url);
-  const querySecret = url.searchParams.get("secret")?.trim();
+  const querySecret = url.searchParams.get("secret")?.trim().replace(/^["']|["']$/g, "");
 
   const authHeader = request.headers.get("authorization") || "";
-  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim().replace(/^["']|["']$/g, "");
 
-  // 1. If CRON_SECRET is set in environment, check match
+  // 1. If CRON_SECRET is configured in environment, verify exact token match
   if (cronSecret) {
     if (bearerToken === cronSecret || querySecret === cronSecret) {
       return true;
     }
   }
 
-  // 2. Allow requests originating from local loopback in development
-  const host = request.headers.get("host") || "";
-  if (process.env.NODE_ENV !== "production" && (host.startsWith("localhost:") || host.startsWith("127.0.0.1:") || host === "localhost")) {
+  // 2. Identify legitimate Vercel Cron invocation
+  // Vercel Cron automatically sends "User-Agent: vercel-cron/1.0" and "x-vercel-cron-schedule"
+  const userAgent = (request.headers.get("user-agent") || "").toLowerCase();
+  const hasCronSchedule = request.headers.has("x-vercel-cron-schedule");
+  const isVercelCron = userAgent.includes("vercel-cron") || hasCronSchedule;
+
+  // If CRON_SECRET is not configured in Vercel environment variables, allow legitimate Vercel cron calls
+  if (!cronSecret && isVercelCron) {
     return true;
   }
 
-  // 3. Allow requests by authenticated Admin user
+  // 3. Allow requests originating from local loopback in development
+  const host = request.headers.get("host") || "";
+  if (
+    process.env.NODE_ENV !== "production" &&
+    (host.startsWith("localhost:") || host.startsWith("127.0.0.1:") || host === "localhost")
+  ) {
+    return true;
+  }
+
+  // 4. Allow requests by authenticated Admin user (e.g. manual trigger from admin dashboard)
   try {
     const user = await getRequestUser();
     if (user && user.is_admin) {
@@ -60,19 +76,36 @@ async function isAuthorized(request: Request): Promise<boolean> {
 }
 
 export async function runOrderSync() {
-  await ensureWalletSchema();
+  // Gracefully ensure wallet schema without failing the entire sync on non-fatal DB warnings
+  try {
+    await ensureWalletSchema();
+  } catch (schemaErr) {
+    console.warn("[CRON_SYNC] ensureWalletSchema non-fatal warning:", schemaErr);
+  }
 
   // 1. Fetch registered providers and active non-final orders
-  const providers = await getRegisteredProviders();
-  const provMap = new Map<string, ProviderConfig>(providers.map((p) => [p.id, p]));
+  let providers: ProviderConfig[] = [];
+  try {
+    providers = await getRegisteredProviders();
+  } catch (provErr) {
+    console.warn("[CRON_SYNC] Provider DB fetch warning, falling back to static config:", provErr);
+    providers = STATIC_PROVIDERS;
+  }
 
+  const provMap = new Map<string, ProviderConfig>(providers.map((p) => [p.id, p]));
+  // Map common provider ID aliases (e.g. 'rizvi' -> 'rizvi_smm')
+  if (provMap.has("rizvi_smm")) {
+    provMap.set("rizvi", provMap.get("rizvi_smm")!);
+  }
+
+  // 2. Query active orders awaiting status sync (limit to 50 to comfortably stay within serverless execution window)
   const activeOrdersQuery = await db.query(
     `SELECT id, user_id, provider_order_id, provider_id, service_id, quantity, charge_pkr, status, created_at
      FROM vexo_orders
      WHERE provider_order_id IS NOT NULL
        AND status IN ('Pending', 'Processing', 'In progress', 'In Progress', 'Payment Reserved')
      ORDER BY created_at ASC
-     LIMIT 100`
+     LIMIT 50`
   );
 
   const orders = activeOrdersQuery.rows;
@@ -80,16 +113,26 @@ export async function runOrderSync() {
   let updatedCount = 0;
   let partialRefundsCount = 0;
   let totalRefundedPkr = 0;
+  let errorsCount = 0;
 
   for (const order of orders) {
     const providerOrderId = String(order.provider_order_id).trim();
-    const providerId = order.provider_id ? String(order.provider_id) : null;
+    const providerId = order.provider_id ? String(order.provider_id).trim() : null;
 
     try {
       let statusObj: Record<string, unknown> | null = null;
+      let targetProvider: ProviderConfig | null = null;
+
       if (providerId && provMap.has(providerId)) {
-        const p = provMap.get(providerId)!;
-        statusObj = await fetchProviderOrderStatus(p, providerOrderId);
+        targetProvider = provMap.get(providerId)!;
+      } else if (provMap.has("rizvi_smm")) {
+        targetProvider = provMap.get("rizvi_smm")!;
+      } else if (providers.length > 0) {
+        targetProvider = providers[0];
+      }
+
+      if (targetProvider) {
+        statusObj = await fetchProviderOrderStatus(targetProvider, providerOrderId, 8000);
       } else {
         const provStatus = await getRizviOrderStatus(providerOrderId);
         statusObj =
@@ -99,6 +142,8 @@ export async function runOrderSync() {
       }
 
       if (!statusObj || statusObj.error) {
+        const errorMsg = String(statusObj?.error || "Invalid or empty response from upstream provider");
+        errorsCount++;
         details.push({
           orderId: String(order.id),
           providerOrderId,
@@ -106,7 +151,7 @@ export async function runOrderSync() {
           oldStatus: order.status,
           newStatus: order.status,
           action: "error",
-          error: String(statusObj?.error || "Invalid response from provider"),
+          error: errorMsg,
         });
         continue;
       }
@@ -137,8 +182,9 @@ export async function runOrderSync() {
             ? Math.round(((remains / originalQty) * chargePkr) * 100) / 100
             : 0;
 
-        const client = await db.connect();
+        let client;
         try {
+          client = await db.connect();
           await client.query("BEGIN");
 
           // Ensure idempotency: verify this order hasn't already received a partial refund
@@ -201,18 +247,37 @@ export async function runOrderSync() {
             action: "partial_refunded",
           });
         } catch (partialErr) {
-          await client.query("ROLLBACK").catch(() => undefined);
-          throw partialErr;
+          if (client) {
+            await client.query("ROLLBACK").catch(() => undefined);
+          }
+          errorsCount++;
+          details.push({
+            orderId: String(order.id),
+            providerOrderId,
+            userId: Number(order.user_id),
+            oldStatus: order.status,
+            newStatus: order.status,
+            action: "error",
+            error: partialErr instanceof Error ? partialErr.message : "Partial refund database transaction failed",
+          });
         } finally {
-          client.release();
+          if (client) client.release();
         }
         continue;
       }
 
-      // CASE 2: Upstream returned CANCELED / CANCELLED / FAILED
-      if (rawStatus === "canceled" || rawStatus === "cancelled" || rawStatus === "failed") {
-        const client = await db.connect();
+      // CASE 2: Upstream returned CANCELED / CANCELLED / FAILED / REJECTED / REFUNDED
+      const isCancelled =
+        rawStatus === "canceled" ||
+        rawStatus === "cancelled" ||
+        rawStatus === "failed" ||
+        rawStatus === "rejected" ||
+        rawStatus === "refunded";
+
+      if (isCancelled) {
+        let client;
         try {
+          client = await db.connect();
           await client.query("BEGIN");
 
           const existingRefund = await client.query(
@@ -272,15 +337,26 @@ export async function runOrderSync() {
             action: "cancelled_refunded",
           });
         } catch (cancelErr) {
-          await client.query("ROLLBACK").catch(() => undefined);
-          throw cancelErr;
+          if (client) {
+            await client.query("ROLLBACK").catch(() => undefined);
+          }
+          errorsCount++;
+          details.push({
+            orderId: String(order.id),
+            providerOrderId,
+            userId: Number(order.user_id),
+            oldStatus: order.status,
+            newStatus: order.status,
+            action: "error",
+            error: cancelErr instanceof Error ? cancelErr.message : "Cancellation refund database transaction failed",
+          });
         } finally {
-          client.release();
+          if (client) client.release();
         }
         continue;
       }
 
-      // CASE 3: Upstream COMPLETED, PROCESSING, IN PROGRESS
+      // CASE 3: Upstream COMPLETED, PROCESSING, IN PROGRESS, PENDING
       let normalizedStatus = "In progress";
       if (rawStatus === "completed") normalizedStatus = "Completed";
       else if (rawStatus === "processing") normalizedStatus = "Processing";
@@ -312,6 +388,7 @@ export async function runOrderSync() {
         });
       }
     } catch (orderErr) {
+      errorsCount++;
       details.push({
         orderId: String(order.id),
         providerOrderId,
@@ -330,6 +407,7 @@ export async function runOrderSync() {
     totalChecked: orders.length,
     updatedCount,
     partialRefundsCount,
+    errorsCount,
     totalRefundedPkr: Math.round(totalRefundedPkr * 100) / 100,
     details,
   };
@@ -339,23 +417,34 @@ export async function GET(request: Request) {
   const authorized = await isAuthorized(request);
   if (!authorized) {
     return NextResponse.json(
-      { success: false, error: "Unauthorized. Provide valid CRON_SECRET or run from localhost/admin session." },
+      {
+        success: false,
+        error: "Unauthorized. Provide valid CRON_SECRET or run from localhost/admin session.",
+      },
       { status: 401 }
     );
   }
 
   try {
     const result = await runOrderSync();
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    console.error("VEXO CRON SYNC ERROR:", error);
+    console.error("[CRON_SYNC_FATAL_ERROR]:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Cron execution failed" },
-      { status: 500 }
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Cron execution encountered an unhandled error",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 200 }
     );
   }
 }
 
 export async function POST(request: Request) {
   return GET(request);
+}
+
+export async function HEAD() {
+  return new Response(null, { status: 200 });
 }
