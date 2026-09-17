@@ -108,6 +108,46 @@ type CurrentUser = {
   is_admin: boolean;
 };
 
+type VexoAnnouncement = {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+};
+
+function renderAnnouncementMessage(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.split("\n").map((line, i) => {
+    const parts = line.split(urlRegex);
+    return (
+      <p key={i} className={line.trim() === "" ? "h-2" : "leading-relaxed"}>
+        {parts.map((part, j) => {
+          if (part.match(urlRegex)) {
+            return (
+              <a
+                key={j}
+                href={part}
+                target="_blank"
+                rel="noreferrer"
+                className="font-bold text-[#baff00] underline decoration-[#baff00]/50 hover:decoration-[#baff00] hover:text-[#d2ff5a] transition break-all inline-flex items-center gap-1"
+              >
+                <span>{part}</span>
+                <span className="text-[10px]">↗</span>
+              </a>
+            );
+          }
+          return <span key={j}>{part}</span>;
+        })}
+      </p>
+    );
+  });
+}
+
+function extractAnnouncementUrl(text: string): string | null {
+  const match = text.match(/(https?:\/\/[^\s]+)/);
+  return match ? match[0] : null;
+}
+
 
 function Icon({ name, size = 20, strokeWidth = 1.9, className = "" }: { name: string; size?: number; strokeWidth?: number; className?: string }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, className };
@@ -362,6 +402,37 @@ export default function Home() {
   const [currencyRates, setCurrencyRates] = useState<Record<string, number>>({});
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [announcements, setAnnouncements] = useState<VexoAnnouncement[]>([]);
+  const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Record<string, boolean>>({});
+  const [expandedMobileAnnouncement, setExpandedMobileAnnouncement] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadAnnouncements() {
+      try {
+        const response = await fetch("/api/announcements", { cache: "no-store" });
+        const data = await response.json().catch(() => null);
+        if (response.ok && data?.success && Array.isArray(data.announcements)) {
+          setAnnouncements(data.announcements);
+        }
+      } catch (error) {
+        console.error("VEXARO ANNOUNCEMENTS LOAD ERROR:", error);
+      }
+    }
+    loadAnnouncements();
+    try {
+      const stored = localStorage.getItem("vexo_dismissed_announcements");
+      if (stored) setDismissedAnnouncements(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  function dismissAnnouncement(id: string) {
+    const updated = { ...dismissedAnnouncements, [id]: true };
+    setDismissedAnnouncements(updated);
+    try {
+      localStorage.setItem("vexo_dismissed_announcements", JSON.stringify(updated));
+    } catch {}
+  }
 
 
   useEffect(() => {
@@ -726,11 +797,12 @@ export default function Home() {
       {/* Main */}
       <div className="min-w-0 w-full max-w-full overflow-x-hidden lg:ml-[284px] lg:w-[calc(100%-284px)] lg:pr-4 lg:py-4">
         {/* Header */}
-        <header className="sticky top-3 lg:top-4 z-30 mx-3 lg:mx-0 mb-4 lg:mb-6 flex h-16 sm:h-18 items-center justify-between rounded-2xl border border-white/10 bg-[#091215]/80 px-4 backdrop-blur-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(186,255,0,0.03)] sm:px-6">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+        <header className="sticky top-3 lg:top-4 z-30 mx-3 lg:mx-0 mb-4 lg:mb-6 flex h-16 sm:h-18 items-center justify-between rounded-2xl border border-white/10 bg-[#091215]/90 px-3 sm:px-6 backdrop-blur-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(186,255,0,0.03)]">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 mr-2">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="mr-1 rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 lg:hidden"
+              className="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 lg:hidden"
+              aria-label="Toggle navigation menu"
             >
               <Icon name="menu" size={20} />
             </button>
@@ -743,26 +815,26 @@ export default function Home() {
                 className="h-11 w-full rounded-xl border border-white/10 bg-[#172126] pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
               />
             </div>
-            <div className="md:hidden">
-              <p className="text-xs font-medium text-slate-500">VEXARO PANEL</p>
-              <h1 className="text-lg font-bold text-white">{activePage}</h1>
+            <div className="min-w-0 flex-1 md:hidden">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">VEXARO</p>
+              <h1 className="text-sm sm:text-base font-black text-white truncate leading-tight">{activePage}</h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="shrink-0 flex items-center gap-1.5 sm:gap-2.5">
             {/* Mobile Balance Pill */}
             <button
               onClick={() => navigate("Add Funds")}
-              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] sm:hidden"
+              className="flex items-center gap-1 rounded-xl border border-[#baff00]/25 bg-[#baff00]/10 px-2 py-1 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] sm:hidden shrink-0"
               title="Add Funds / View Wallet"
             >
-              <Icon name="wallet" size={14} />
-              <span>{formatWalletBalance(selectedCurrency, currencyRates, walletBalancePkr)}</span>
+              <Icon name="wallet" size={13} />
+              <span className="font-mono">{formatWalletBalance(selectedCurrency, currencyRates, walletBalancePkr)}</span>
             </button>
 
             <button
               onClick={() => navigate("Add Funds")}
-              className="hidden rounded-xl bg-white/5 px-4 py-2 text-right transition hover:bg-[#baff00] hover:text-[#07100f] sm:block"
+              className="hidden rounded-xl bg-white/5 px-4 py-2 text-right transition hover:bg-[#baff00] hover:text-[#07100f] sm:block shrink-0"
               title="Change wallet currency"
             >
               <p className="text-[10px] uppercase tracking-wide text-slate-500">
@@ -771,18 +843,86 @@ export default function Home() {
               <p className="font-bold">{formatWalletBalance(selectedCurrency, currencyRates, walletBalancePkr)}</p>
             </button>
 
-            <button className="relative rounded-xl border border-white/10 bg-white/5 p-2.5 sm:p-3 text-slate-200 transition hover:border-[#baff00]/30 hover:text-[#baff00]">
-              <Icon name="bell" size={18} />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#baff00] ring-2 ring-[#0b1418]" />
-            </button>
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setAnnouncementsOpen(!announcementsOpen)}
+                className="relative rounded-xl border border-white/10 bg-white/5 p-2 sm:p-2.5 text-slate-200 transition hover:border-[#baff00]/30 hover:text-[#baff00] shrink-0"
+                title="View Announcements & Updates"
+                aria-label="Announcements"
+              >
+                <Icon name="bell" size={17} />
+                {announcements.length > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#baff00] text-[9px] sm:text-[10px] font-black text-[#07100f] ring-2 ring-[#0b1418] animate-pulse">
+                    {announcements.length}
+                  </span>
+                )}
+              </button>
 
+              {announcementsOpen && (
+                <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-20 sm:top-full sm:mt-2 w-auto sm:w-[clamp(18rem,88vw,24rem)] z-50 rounded-2xl border border-white/15 bg-[#0f191b] p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📢</span>
+                      <h4 className="text-sm font-black text-white">Announcements</h4>
+                      {announcements.length > 0 && (
+                        <span className="rounded-full bg-[#baff00]/15 px-2 py-0.5 text-[10px] font-bold text-[#baff00]">
+                          {announcements.length} Total
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setAnnouncementsOpen(false)}
+                      className="text-xs text-slate-400 hover:text-white"
+                      aria-label="Close announcements"
+                    >
+                      <Icon name="x" size={16} />
+                    </button>
+                  </div>
 
+                  <div className="mt-3 max-h-[65vh] overflow-y-auto space-y-3 pr-1">
+                    {announcements.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">
+                        No active announcements right now.
+                      </div>
+                    ) : (
+                      announcements.map((a) => (
+                        <div
+                          key={a.id}
+                          className="rounded-xl border border-white/10 bg-white/[0.03] p-3.5 transition hover:border-lime-400/40"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <h5 className="font-bold text-sm text-white">{a.title}</h5>
+                            <span className="text-[10px] text-slate-500 shrink-0 font-mono">
+                              {new Date(a.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                            {renderAnnouncementMessage(a.message)}
+                          </div>
+                          {extractAnnouncementUrl(a.message) && (
+                            <a
+                              href={extractAnnouncementUrl(a.message)!}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#baff00] px-3 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                            >
+                              <span>Open Channel / Link</span>
+                              <span>↗</span>
+                            </a>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <a
               href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 rounded-xl border border-[#25d366]/40 bg-[#25d366]/10 px-2.5 sm:px-3 py-2 text-xs font-bold text-[#25d366] transition hover:bg-[#25d366]/20"
+              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-[#25d366]/40 bg-[#25d366]/10 px-2.5 sm:px-3 py-2 text-xs font-bold text-[#25d366] transition hover:bg-[#25d366]/20 shrink-0"
               title="Official WhatsApp Channel — Restocks & News"
             >
               <Icon name="whatsapp" size={15} />
@@ -793,7 +933,7 @@ export default function Home() {
               href="https://vexo-smm-panel-7sln.vercel.app/"
               target="_blank"
               rel="noreferrer"
-              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/40 hover:text-[#baff00]"
+              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/40 hover:text-[#baff00] shrink-0"
               title="Open Live Website (vexo-smm-panel-7sln.vercel.app)"
             >
               <Icon name="globe" size={14} className="text-[#baff00]" />
@@ -802,7 +942,7 @@ export default function Home() {
 
             <button
               onClick={() => navigate("Account")}
-              className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 transition hover:border-[#baff00]/40"
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-1 sm:px-3 sm:py-1.5 transition hover:border-[#baff00]/40 shrink-0"
               title="My Account"
             >
               <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[#baff00]/60 bg-[#baff00]/10 text-xs font-black text-[#baff00]">
@@ -822,6 +962,145 @@ export default function Home() {
           <h1 className="sr-only">
             VEXARO SMM Panel | Best &amp; Cheapest SMM Panel in Pakistan for Instagram, TikTok, YouTube &amp; Facebook with SadaPay, Easypaisa &amp; JazzCash
           </h1>
+
+          {/* Active Broadcast Announcements Banner */}
+          {announcements.filter((a) => !dismissedAnnouncements[a.id]).length > 0 && (
+            <div className="mb-4 sm:mb-6 space-y-3">
+              {announcements
+                .filter((a) => !dismissedAnnouncements[a.id])
+                .map((a) => {
+                  const isExpanded = expandedMobileAnnouncement === a.id;
+                  const url = extractAnnouncementUrl(a.message);
+                  return (
+                    <div
+                      key={a.id}
+                      className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-[#baff00]/40 bg-gradient-to-r from-[#0e241b] via-[#102220] to-[#0e241b] shadow-[0_0_25px_rgba(186,255,0,0.1)] animate-in fade-in slide-in-from-top-3 duration-300"
+                    >
+                      {/* Mobile compact non-intrusive bar (sm:hidden) */}
+                      <div className="sm:hidden p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#baff00] text-[#07100f] text-xs font-black">
+                              📢
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-white truncate">
+                                {a.title}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {url && (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-lg bg-[#baff00] px-2 py-1 text-[10px] font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                              >
+                                Link ↗
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setExpandedMobileAnnouncement(isExpanded ? null : a.id)}
+                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 hover:text-white"
+                            >
+                              {isExpanded ? "Less ▲" : "View ▼"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => dismissAnnouncement(a.id)}
+                              className="rounded-lg p-1 text-slate-400 hover:text-white"
+                              title="Dismiss announcement"
+                              aria-label="Dismiss Announcement"
+                            >
+                              <Icon name="x" size={15} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Collapsible details on mobile */}
+                        {isExpanded && (
+                          <div className="mt-2.5 pt-2.5 border-t border-white/10 text-xs text-slate-200 leading-relaxed whitespace-pre-wrap animate-in fade-in duration-200">
+                            {renderAnnouncementMessage(a.message)}
+                            <div className="mt-3 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {new Date(a.createdAt).toLocaleDateString()}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => dismissAnnouncement(a.id)}
+                                className="text-[10px] font-bold text-rose-400 hover:underline"
+                              >
+                                Dismiss Notice
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Desktop rich card view (hidden sm:block) */}
+                      <div className="hidden sm:block p-5 sm:p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3.5">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#baff00] text-[#07100f] shadow-[0_0_15px_rgba(186,255,0,0.35)]">
+                              <span className="text-xl">📢</span>
+                            </div>
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full border border-lime-400/30 bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#baff00]">
+                                  OFFICIAL ANNOUNCEMENT
+                                </span>
+                                <span className="text-[11px] text-slate-400 font-mono">
+                                  {new Date(a.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <h3 className="mt-1 text-lg sm:text-xl font-black text-white">
+                                {a.title}
+                              </h3>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => dismissAnnouncement(a.id)}
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition shrink-0"
+                            title="Dismiss announcement from banner"
+                            aria-label="Dismiss Announcement"
+                          >
+                            <Icon name="x" size={18} />
+                          </button>
+                        </div>
+
+                        <div className="mt-3 text-xs sm:text-sm text-slate-200 leading-relaxed max-w-4xl whitespace-pre-wrap">
+                          {renderAnnouncementMessage(a.message)}
+                        </div>
+
+                        {url && (
+                          <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 rounded-xl bg-[#baff00] px-5 py-2.5 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.3)] hover:bg-[#d2ff5a] transition"
+                            >
+                              <span>Open Channel / Link</span>
+                              <span>↗</span>
+                            </a>
+                            <button
+                              onClick={() => dismissAnnouncement(a.id)}
+                              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition"
+                            >
+                              Dismiss Notice
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
           {activePage === "Dashboard" && (
             <Dashboard
               navigate={navigate}
@@ -2551,27 +2830,6 @@ function NewOrder({
                 <span className="text-[11px] text-slate-400 font-medium">
                   {platformList.length} Networks
                 </span>
-                {/* Always-visible Navigation Controls */}
-                <div className="flex items-center gap-1.5 bg-white/[0.06] p-1 rounded-xl border border-white/10 shadow-inner">
-                  <button
-                    type="button"
-                    onClick={() => scrollPlatforms("left")}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-slate-200 hover:border-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] active:scale-95 transition-all cursor-pointer"
-                    title="Scroll Left"
-                    aria-label="Scroll Left"
-                  >
-                    <Icon name="chevronLeft" size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollPlatforms("right")}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-slate-200 hover:border-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] active:scale-95 transition-all cursor-pointer"
-                    title="Scroll Right"
-                    aria-label="Scroll Right"
-                  >
-                    <Icon name="chevronRight" size={14} />
-                  </button>
-                </div>
               </div>
             </div>
 

@@ -130,6 +130,12 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  verification: {
+    google: "googleb27b1614a9d4e487",
+    other: {
+      "google-site-verification": ["googleb27b1614a9d4e487.html", "googleb27b1614a9d4e487"],
+    },
+  },
   category: "technology",
 };
 
@@ -284,6 +290,8 @@ export default function RootLayout({
     >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="google-site-verification" content="googleb27b1614a9d4e487" />
+        <meta name="google-site-verification" content="googleb27b1614a9d4e487.html" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('vexo_platform_theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,

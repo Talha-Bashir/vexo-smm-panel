@@ -254,6 +254,39 @@ const FAQ_ITEMS = [
   },
 ];
 
+function renderFormattedAnnouncement(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.split("\n").map((line, i) => {
+    const parts = line.split(urlRegex);
+    return (
+      <p key={i} className={line.trim() === "" ? "h-2" : "leading-relaxed"}>
+        {parts.map((part, j) => {
+          if (part.match(urlRegex)) {
+            return (
+              <a
+                key={j}
+                href={part}
+                target="_blank"
+                rel="noreferrer"
+                className="font-bold text-[#baff00] underline hover:text-[#d2ff5a] transition break-all inline-flex items-center gap-1"
+              >
+                <span>{part}</span>
+                <span className="text-[10px]">↗</span>
+              </a>
+            );
+          }
+          return <span key={j}>{part}</span>;
+        })}
+      </p>
+    );
+  });
+}
+
+function extractFirstAnnouncementUrl(text: string): string | null {
+  const match = text.match(/(https?:\/\/[^\s]+)/);
+  return match ? match[0] : null;
+}
+
 /* ---------------- MAIN COMPONENT ---------------- */
 
 export default function LandingPage() {
@@ -263,6 +296,12 @@ export default function LandingPage() {
 
   // Floating Support Drawer
   const [supportDrawerOpen, setSupportDrawerOpen] = useState(false);
+
+  // System Announcements State
+  const [announcements, setAnnouncements] = useState<{ id: string; title: string; message: string; createdAt: string }[]>([]);
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<{ id: string; title: string; message: string; createdAt: string } | null>(null);
+  const [topBannerDismissed, setTopBannerDismissed] = useState(false);
 
   // Quick Login State
   const [loginEmail, setLoginEmail] = useState("");
@@ -290,10 +329,23 @@ export default function LandingPage() {
           setHasSession(true);
         }
       }
+      if (typeof window !== "undefined") {
+        const dismissed = sessionStorage.getItem("vexo_top_banner_dismissed");
+        if (dismissed === "1") setTopBannerDismissed(true);
+      }
     } catch {
       // ignore
     }
   }, []);
+
+  function handleDismissTopBanner() {
+    setTopBannerDismissed(true);
+    try {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("vexo_top_banner_dismissed", "1");
+      }
+    } catch {}
+  }
 
   // Fetch Services for preview catalog
   useEffect(() => {
@@ -312,6 +364,22 @@ export default function LandingPage() {
       }
     }
     loadPreviewServices();
+  }, []);
+
+  // Fetch Announcements
+  useEffect(() => {
+    async function loadAnnouncements() {
+      try {
+        const res = await fetch("/api/announcements", { cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.success && Array.isArray(data.announcements)) {
+          setAnnouncements(data.announcements);
+        }
+      } catch (err) {
+        console.error("Failed to load announcements:", err);
+      }
+    }
+    loadAnnouncements();
   }, []);
 
   // Handle Quick Login Submit
@@ -385,37 +453,63 @@ export default function LandingPage() {
       </div>
 
       {/* ---------------- 0. TOP ANNOUNCEMENT BAR (WHATSAPP CHANNEL & LIVE SITE) ---------------- */}
-      <div className="relative z-50 w-full border-b border-emerald-500/20 bg-[#071914] px-4 py-2 text-xs font-semibold text-emerald-300">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-bold text-white">📢 Official Updates:</span>
-            <span>Join our official WhatsApp Channel for daily discounts &amp; live platform status</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-black text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-black transition"
-            >
-              <Icon name="whatsapp" size={13} />
-              <span>Join WhatsApp Channel</span>
-            </a>
-            <span className="text-slate-600 hidden md:inline">•</span>
-            <a
-              href="https://vexo-smm-panel-7sln.vercel.app/"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden md:inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition font-mono text-[11px]"
-              title="Official Website Link"
-            >
-              <Icon name="globe" size={13} />
-              <span>vexo-smm-panel-7sln.vercel.app</span>
-            </a>
+      {!topBannerDismissed && (
+        <div className="relative z-50 w-full border-b border-emerald-500/20 bg-[#071914] px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-emerald-300 animate-in fade-in duration-200">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="font-bold text-white shrink-0 text-[11px] sm:text-xs">📢 Updates:</span>
+              {announcements.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAnnouncement(announcements[0]);
+                    setAnnouncementModalOpen(true);
+                  }}
+                  className="font-bold text-lime-400 hover:text-white hover:underline transition text-left cursor-pointer truncate text-[11px] sm:text-xs min-w-0"
+                >
+                  <span className="truncate">{announcements[0].title}</span>
+                  <span className="ml-1.5 hidden sm:inline-block rounded bg-lime-400/20 px-1.5 py-0.5 text-[9px] font-black text-[#baff00] uppercase">VIEW NOTICE</span>
+                </button>
+              ) : (
+                <span className="truncate text-[11px] sm:text-xs text-slate-300">Join our WhatsApp Channel for daily discounts &amp; live platform status</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] sm:text-xs font-black text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-black transition"
+              >
+                <Icon name="whatsapp" size={12} />
+                <span className="hidden sm:inline">Join WhatsApp Channel</span>
+                <span className="sm:hidden">WhatsApp</span>
+              </a>
+              <span className="text-slate-600 hidden md:inline">•</span>
+              <a
+                href="https://vexo-smm-panel-7sln.vercel.app/"
+                target="_blank"
+                rel="noreferrer"
+                className="hidden md:inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition font-mono text-[11px]"
+                title="Official Website Link"
+              >
+                <Icon name="globe" size={13} />
+                <span>vexo-smm-panel-7sln.vercel.app</span>
+              </a>
+              <button
+                type="button"
+                onClick={handleDismissTopBanner}
+                className="rounded p-1 text-slate-400 hover:text-white hover:bg-white/10 transition shrink-0 ml-1"
+                title="Dismiss announcement bar"
+                aria-label="Dismiss Announcement Bar"
+              >
+                <Icon name="x" size={14} />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ---------------- 1. NAVBAR (HEADER) ---------------- */}
       <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#070d0d]/90 backdrop-blur-xl transition-all">
@@ -1272,6 +1366,50 @@ export default function LandingPage() {
                 </div>
               </div>
 
+              {/* Broadcast Announcement If Available */}
+              {announcements.length > 0 && (
+                <div className="mt-6 rounded-2xl border border-lime-400/40 bg-gradient-to-r from-lime-400/10 via-[#10241b] to-transparent p-5 sm:p-6">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#baff00]">
+                      <span className="text-base">📢</span>
+                      <span>Official Network Broadcast</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {new Date(announcements[0].createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h4 className="mt-2 text-base sm:text-xl font-black text-white">
+                    {announcements[0].title}
+                  </h4>
+                  <div className="mt-2 text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-3">
+                    {announcements[0].message}
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setSelectedAnnouncement(announcements[0]);
+                        setAnnouncementModalOpen(true);
+                      }}
+                      className="rounded-xl bg-[#baff00] px-4 py-2.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                    >
+                      Read Full Announcement
+                    </button>
+                    {extractFirstAnnouncementUrl(announcements[0].message) && (
+                      <a
+                        href={extractFirstAnnouncementUrl(announcements[0].message)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-xl border border-[#25d366]/40 bg-[#25d366]/15 px-4 py-2.5 text-xs font-bold text-[#25d366] hover:bg-[#25d366] hover:text-[#07100f] transition inline-flex items-center gap-1.5"
+                      >
+                        <Icon name="whatsapp" size={14} />
+                        <span>Join Channel</span>
+                        <span>↗</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-6 grid-fluid-stats text-xs">
                 <div className="rounded-2xl border border-white/5 bg-[#0a1110] p-4">
                   <div className="flex items-center justify-between">
@@ -1617,6 +1755,63 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      {/* Dynamic Announcement Modal */}
+      {announcementModalOpen && selectedAnnouncement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl rounded-3xl border border-lime-400/40 bg-[#0e1819] p-6 sm:p-8 shadow-2xl shadow-black">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#baff00] text-lg font-black text-[#07100f] shadow-[0_0_15px_rgba(186,255,0,0.35)]">
+                  📢
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#baff00]">
+                    Official Announcement
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-black text-white">
+                    {selectedAnnouncement.title}
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setAnnouncementModalOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition"
+              >
+                <Icon name="x" size={20} />
+              </button>
+            </div>
+
+            <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1 text-xs sm:text-sm text-slate-200 leading-relaxed space-y-1">
+              {renderFormattedAnnouncement(selectedAnnouncement.message)}
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+              <span className="text-[11px] text-slate-500 font-mono">
+                Published: {new Date(selectedAnnouncement.createdAt).toLocaleDateString()}
+              </span>
+              <div className="flex gap-2.5">
+                {extractFirstAnnouncementUrl(selectedAnnouncement.message) && (
+                  <a
+                    href={extractFirstAnnouncementUrl(selectedAnnouncement.message)!}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                  >
+                    <span>Open Channel / Link</span>
+                    <span>↗</span>
+                  </a>
+                )}
+                <button
+                  onClick={() => setAnnouncementModalOpen(false)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10 transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
