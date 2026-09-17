@@ -12,11 +12,13 @@ function Mark() {
   );
 }
 
-function Icon({ name, size = 18 }: { name: "shield" | "bolt" | "support" | "check" | "eye" | "eyeOff"; size?: number }) {
+function Icon({ name, size = 18 }: { name: "shield" | "bolt" | "support" | "check" | "eye" | "eyeOff" | "whatsapp" | "globe"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (name === "shield") return <svg {...common}><path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg>;
   if (name === "bolt") return <svg {...common}><path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/></svg>;
   if (name === "support") return <svg {...common}><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14h3v5H5.5A1.5 1.5 0 0 1 4 17.5V14Z"/><path d="M20 14h-3v5h1.5a1.5 1.5 0 0 0 1.5-1.5V14Z"/><path d="M17 19c-1 1.3-2.6 2-5 2"/></svg>;
+  if (name === "whatsapp") return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="M8.4 7.8c.4-.4 1-.4 1.4.1l1 1.3c.3.4.3.8 0 1.2l-.5.6c.8 1.5 1.7 2.4 3.2 3.2l.6-.5c.4-.3.8-.3 1.2 0l1.3 1c.5.4.5 1 .1 1.4l-.6.6c-.5.5-1.3.7-2 .4-3.4-1.3-5.9-3.8-7.2-7.2-.3-.7-.1-1.5.4-2l.6-.6Z"/></svg>;
+  if (name === "globe") return <svg {...common}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>;
   if (name === "eye") return <svg {...common}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>;
   if (name === "eyeOff") return <svg {...common}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>;
   return <svg {...common}><path d="m5 12 4 4L19 6"/></svg>;
@@ -195,18 +197,29 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Direct WhatsApp verification link */}
-              <div className="mt-4 text-center">
+              {/* Direct WhatsApp channel and verification links */}
+              <div className="mt-4 flex flex-col items-center gap-2 text-center">
+                <a
+                  href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#25d366]/30 bg-[#25d366]/10 px-3.5 py-1 text-xs font-bold text-[#25d366] hover:bg-[#25d366]/20 transition"
+                >
+                  <Icon name="whatsapp" size={13} />
+                  <span>Join WhatsApp Channel for Alerts &amp; Codes</span>
+                  <span className="text-[10px]">↗</span>
+                </a>
+
                 <a
                   href="https://wa.me/923176437013"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex flex-wrap items-center justify-center gap-1 text-xs text-[#25d366] hover:underline"
+                  className="inline-flex flex-wrap items-center justify-center gap-1 text-xs text-slate-400 hover:text-[#25d366] transition"
                 >
                   <span className="inline-flex items-center gap-1">
-                    <Icon name="support" size={14} /> Questions before joining?
+                    <Icon name="support" size={13} /> Questions before joining?
                   </span>
-                  <span>WhatsApp Admin: <strong className="font-bold underline">+92 317 6437013</strong></span>
+                  <span>WhatsApp Admin: <strong className="text-white font-bold underline">+92 317 6437013</strong></span>
                 </a>
               </div>
 

@@ -384,6 +384,39 @@ export default function LandingPage() {
         <div className="absolute bottom-10 left-1/3 h-[clamp(14rem,25vw,28rem)] w-[clamp(14rem,25vw,28rem)] rounded-full bg-[#baff00]/4 blur-[130px]" />
       </div>
 
+      {/* ---------------- 0. TOP ANNOUNCEMENT BAR (WHATSAPP CHANNEL & LIVE SITE) ---------------- */}
+      <div className="relative z-50 w-full border-b border-emerald-500/20 bg-[#071914] px-4 py-2 text-xs font-semibold text-emerald-300">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-bold text-white">📢 Official Updates:</span>
+            <span>Join our official WhatsApp Channel for daily discounts &amp; live platform status</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-black text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-black transition"
+            >
+              <Icon name="whatsapp" size={13} />
+              <span>Join WhatsApp Channel</span>
+            </a>
+            <span className="text-slate-600 hidden md:inline">•</span>
+            <a
+              href="https://vexo-smm-panel-7sln.vercel.app/"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden md:inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition font-mono text-[11px]"
+              title="Official Website Link"
+            >
+              <Icon name="globe" size={13} />
+              <span>vexo-smm-panel-7sln.vercel.app</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* ---------------- 1. NAVBAR (HEADER) ---------------- */}
       <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#070d0d]/90 backdrop-blur-xl transition-all">
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-[clamp(1rem,3vw,2rem)]">
@@ -429,6 +462,17 @@ export default function LandingPage() {
 
           {/* Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
+            <a
+              href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-[#25d366]/40 bg-[#25d366]/10 px-3 py-2 text-xs font-bold text-[#25d366] transition hover:bg-[#25d366]/20"
+              title="Join Official WhatsApp Channel"
+            >
+              <Icon name="whatsapp" size={15} />
+              <span className="hidden xl:inline">WhatsApp Channel</span>
+              <span className="xl:hidden">Channel</span>
+            </a>
             <Link
               href="/dashboard"
               className="flex items-center gap-2 rounded-xl bg-[#baff00] px-4 py-2.5 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.3)] transition hover:bg-[#d2ff5a] hover:scale-105"
@@ -550,6 +594,27 @@ export default function LandingPage() {
                   </Link>
                 </>
               )}
+
+              {/* Official WhatsApp Channel & Live Link */}
+              <a
+                href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#25d366]/40 bg-[#25d366]/15 py-2.5 text-center text-xs font-bold text-[#25d366] transition hover:bg-[#25d366] hover:text-[#07100f]"
+              >
+                <Icon name="whatsapp" size={16} />
+                <span>Join Official WhatsApp Channel</span>
+              </a>
+
+              <a
+                href="https://vexo-smm-panel-7sln.vercel.app/"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2 text-center text-[11px] font-mono text-slate-300 transition hover:text-[#baff00]"
+              >
+                <Icon name="globe" size={13} className="text-[#baff00]" />
+                <span>vexo-smm-panel-7sln.vercel.app</span>
+              </a>
             </div>
           </div>
         )}
@@ -1260,10 +1325,19 @@ export default function LandingPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <a
+                    href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-xl border border-[#25d366] bg-[#25d366]/20 px-5 py-3.5 text-sm font-black text-[#25d366] shadow-[0_0_24px_rgba(37,211,102,0.25)] transition hover:bg-[#25d366] hover:text-[#07100f]"
+                  >
+                    <Icon name="whatsapp" size={18} />
+                    <span>WhatsApp Channel</span>
+                  </a>
+                  <a
                     href="https://wa.me/923176437013"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#25d366] px-6 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(37,211,102,0.3)] transition hover:bg-[#20ba5a]"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-[#25d366] px-5 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(37,211,102,0.3)] transition hover:bg-[#20ba5a]"
                   >
                     <Icon name="whatsapp" size={18} />
                     <span>Chat on WhatsApp (+92 317 6437013)</span>
@@ -1272,10 +1346,10 @@ export default function LandingPage() {
                     href="https://t.me/VexaroSMMAdmin"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#229ed9] px-6 py-3.5 text-sm font-black text-white shadow-[0_0_24px_rgba(34,158,217,0.3)] transition hover:bg-[#1f8ec4]"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-[#229ed9] px-5 py-3.5 text-sm font-black text-white shadow-[0_0_24px_rgba(34,158,217,0.3)] transition hover:bg-[#1f8ec4]"
                   >
                     <Icon name="telegram" size={18} />
-                    <span>Telegram Support</span>
+                    <span>Telegram</span>
                   </a>
                 </div>
               </div>
@@ -1308,6 +1382,15 @@ export default function LandingPage() {
               Need assistance with an order, balance top-up, or API key? Our team is online 24/7.
             </p>
             <div className="mt-4 flex flex-col gap-2.5">
+              <a
+                href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl border border-[#25d366]/40 bg-[#25d366]/15 py-2.5 text-xs font-black text-[#25d366] hover:bg-[#25d366] hover:text-[#07100f] transition"
+              >
+                <Icon name="whatsapp" size={16} />
+                <span>Join Official WhatsApp Channel</span>
+              </a>
               <a
                 href="https://wa.me/923176437013"
                 target="_blank"
@@ -1453,36 +1536,73 @@ export default function LandingPage() {
 
             <div>
               <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">
-                Support &amp; Contact
+                Support &amp; Updates
               </h4>
-              <p className="mt-3 leading-relaxed">
-                Admin: <strong className="text-slate-200">VEXARO SMM Admin</strong>
-                <br />
-                WhatsApp:{" "}
-                <a
-                  href="https://wa.me/923176437013"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[#25d366] hover:underline"
-                >
-                  +92 317 6437013
-                </a>
-                <br />
-                Telegram:{" "}
-                <a
-                  href="https://t.me/VexaroSMMAdmin"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[#229ed9] hover:underline"
-                >
-                  @VexaroSMMAdmin
-                </a>
-              </p>
+              <div className="mt-3 space-y-2 text-xs leading-relaxed">
+                <div>
+                  <span className="text-slate-400">WhatsApp Channel:</span>{" "}
+                  <a
+                    href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#25d366] font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    <Icon name="whatsapp" size={13} />
+                    <span>Follow for Updates</span>
+                  </a>
+                </div>
+                <div>
+                  <span className="text-slate-400">WhatsApp Admin:</span>{" "}
+                  <a
+                    href="https://wa.me/923176437013"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#25d366] font-bold hover:underline"
+                  >
+                    +92 317 6437013
+                  </a>
+                </div>
+                <div>
+                  <span className="text-slate-400">Telegram Admin:</span>{" "}
+                  <a
+                    href="https://t.me/VexaroSMMAdmin"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#229ed9] font-bold hover:underline"
+                  >
+                    @VexaroSMMAdmin
+                  </a>
+                </div>
+                <div>
+                  <span className="text-slate-400">Live Website:</span>{" "}
+                  <a
+                    href="https://vexo-smm-panel-7sln.vercel.app/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-lime-400 font-mono text-[11px] font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    <Icon name="globe" size={12} />
+                    <span>vexo-smm-panel-7sln.vercel.app</span>
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 pt-6 text-[11px]">
-            <p>© 2026 VEXARO SMM. All rights reserved.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p>© 2026 VEXARO SMM. All rights reserved.</p>
+              <span className="text-slate-600 hidden sm:inline">•</span>
+              <a
+                href="https://vexo-smm-panel-7sln.vercel.app/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-slate-400 hover:text-[#baff00] inline-flex items-center gap-1 font-mono text-[11px] transition"
+              >
+                <Icon name="globe" size={12} className="text-[#baff00]" />
+                <span>vexo-smm-panel-7sln.vercel.app</span>
+              </a>
+            </div>
             <div className="flex items-center gap-6">
               <Link href="/terms" className="hover:text-[#baff00] transition">
                 Terms of Service

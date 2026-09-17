@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexo-smm-panel-7sln.vercel.app";
 
 export const metadata: Metadata = {
   title: "TikTok SMM Panel – Instant TikTok Followers, Likes & FYP Views",
@@ -84,6 +84,14 @@ export default function ServiceLandingPage() {
             >
               Home
             </Link>
+            <a
+              href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-[#25d366]/40 bg-[#25d366]/10 px-3 py-2 text-xs font-bold text-[#25d366] hover:bg-[#25d366]/20 transition"
+            >
+              <span>WhatsApp Channel</span>
+            </a>
             <Link
               href="/login"
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-200 hover:bg-white/10 transition"
@@ -280,7 +288,9 @@ export default function ServiceLandingPage() {
       <footer className="border-t border-white/10 bg-[#050a0a] py-8 text-xs text-slate-400">
         <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-4 px-4 sm:px-6">
           <p>© 2026 VEXARO SMM. All rights reserved.</p>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <a href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline font-bold">WhatsApp Channel</a>
+            <a href="https://vexo-smm-panel-7sln.vercel.app/" target="_blank" rel="noreferrer" className="text-lime-400 hover:underline font-mono text-[11px]">vexo-smm-panel-7sln.vercel.app</a>
             <Link href="/" className="hover:text-[#baff00]">Home</Link>
             <Link href="/terms" className="hover:text-[#baff00]">Terms</Link>
             <Link href="/privacy" className="hover:text-[#baff00]">Privacy</Link>

@@ -148,6 +148,7 @@ function Icon({ name, size = 20, strokeWidth = 1.9, className = "" }: { name: st
     case "facebook": return <svg {...common} fill="currentColor" stroke="none"><circle cx="12" cy="12" r="9.5"/><path d="M13.5 20v-6h2l.4-2.4h-2.4V10c0-.8.2-1.4 1.5-1.4H16V6.4c-.5-.1-1.2-.2-2-.2-2 0-3.4 1.2-3.4 3.5v1.9H8.5V14h2.1v6h2.9Z" fill="#07100f"/></svg>;
     case "whatsapp": return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="M8.4 7.8c.4-.4 1-.4 1.4.1l1 1.3c.3.4.3.8 0 1.2l-.5.6c.8 1.5 1.7 2.4 3.2 3.2l.6-.5c.4-.3.8-.3 1.2 0l1.3 1c.5.4.5 1 .1 1.4l-.6.6c-.5.5-1.3.7-2 .4-3.4-1.3-5.9-3.8-7.2-7.2-.3-.7-.1-1.5.4-2l.6-.6Z"/></svg>;
     case "telegram": return <svg {...common} fill="currentColor" stroke="none"><path d="m21.5 4.5-3 14.2c-.2 1-1 1.3-1.8.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.9 8.9-8c.4-.3-.1-.5-.6-.2l-11 6.9-4.7-1.5c-1-.3-1-1 .2-1.5L20 3.2c.8-.3 1.7.2 1.5 1.3Z"/></svg>;
+    case "globe": return <svg {...common}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>;
     case "x-social": return <svg {...common} strokeWidth={2.1}><path d="M5 4h4.1l3.1 4.7L16.4 4H19l-5.6 6.3L19.5 20h-4.1l-3.6-5.4L7.2 20H4.5l6-6.9L5 4Z"/></svg>;
     default: return <svg {...common}><circle cx="12" cy="12" r="8"/></svg>;
   }
@@ -639,14 +640,36 @@ export default function Home() {
                 </button>
               );
             })}
-            {/* Link to Public Landing Page */}
-            <a
-              href="/"
-              className="mt-3 flex items-center gap-2.5 rounded-2xl border border-white/5 bg-white/[0.02] px-3.5 py-2.5 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/30 hover:bg-[#baff00]/5 hover:text-[#baff00]"
-            >
-              <Icon name="globe" size={16} />
-              <span>Public Landing Page</span>
-            </a>
+            {/* Link to Public Website & WhatsApp Channel */}
+            <div className="mt-3 flex flex-col gap-1.5">
+              <a
+                href="https://vexo-smm-panel-7sln.vercel.app/"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] px-3.5 py-2.5 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/30 hover:bg-[#baff00]/5 hover:text-[#baff00]"
+                title="Open Live Website: vexo-smm-panel-7sln.vercel.app"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon name="globe" size={16} className="text-[#baff00]" />
+                  <span>vexo-smm-panel...</span>
+                </div>
+                <span className="rounded bg-[#baff00]/10 border border-[#baff00]/20 px-1.5 py-0.5 text-[9px] font-black text-[#baff00]">LIVE</span>
+              </a>
+
+              <a
+                href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-2xl border border-[#25d366]/20 bg-[#25d366]/5 px-3.5 py-2.5 text-xs font-bold text-[#25d366] transition hover:border-[#25d366]/40 hover:bg-[#25d366]/15"
+                title="Follow WhatsApp Channel for service alerts"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon name="whatsapp" size={16} />
+                  <span>WhatsApp Channel</span>
+                </div>
+                <span className="text-[10px]">↗</span>
+              </a>
+            </div>
           </nav>
         </div>
 
@@ -756,12 +779,25 @@ export default function Home() {
 
 
             <a
-              href="/"
-              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/40 hover:text-[#baff00]"
-              title="View Public Landing Page"
+              href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-[#25d366]/40 bg-[#25d366]/10 px-2.5 sm:px-3 py-2 text-xs font-bold text-[#25d366] transition hover:bg-[#25d366]/20"
+              title="Official WhatsApp Channel — Restocks & News"
             >
-              <Icon name="globe" size={14} />
-              <span>Landing Page</span>
+              <Icon name="whatsapp" size={15} />
+              <span className="hidden md:inline">Channel</span>
+            </a>
+
+            <a
+              href="https://vexo-smm-panel-7sln.vercel.app/"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/40 hover:text-[#baff00]"
+              title="Open Live Website (vexo-smm-panel-7sln.vercel.app)"
+            >
+              <Icon name="globe" size={14} className="text-[#baff00]" />
+              <span>Live Site</span>
             </a>
 
             <button
@@ -1315,6 +1351,16 @@ function Dashboard({
             </p>
 
             <div className="mt-4 space-y-2">
+              <a
+                href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl border border-lime-400/40 bg-lime-400/10 py-2.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f]"
+              >
+                <Icon name="whatsapp" size={15} />
+                <span>WhatsApp Channel (News)</span>
+              </a>
+
               <a
                 href="https://wa.me/923176437013"
                 target="_blank"
@@ -6122,7 +6168,7 @@ function SupportPage({
       </div>
 
       {/* Fast Direct Connect Cards */}
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-3">
         {/* Telegram Card */}
         <div className="relative overflow-hidden rounded-3xl border border-[#2aa8e8]/30 bg-gradient-to-br from-[#0c1820] to-[#122633] p-7 transition duration-300 hover:border-[#2aa8e8]/60">
           <div className="flex items-start justify-between">
@@ -6157,7 +6203,7 @@ function SupportPage({
           </div>
         </div>
 
-        {/* WhatsApp Card */}
+        {/* WhatsApp Direct Card */}
         <div className="relative overflow-hidden rounded-3xl border border-[#25d366]/30 bg-gradient-to-br from-[#0c1c15] to-[#132d20] p-7 transition duration-300 hover:border-[#25d366]/60">
           <div className="flex items-start justify-between">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#25d366]/10 text-[#25d366] ring-1 ring-[#25d366]/30">
@@ -6188,6 +6234,41 @@ function SupportPage({
             >
               <Icon name="whatsapp" size={18} />
               <span>Chat on WhatsApp (+92 317 6437013)</span>
+            </a>
+          </div>
+        </div>
+
+        {/* WhatsApp Channel Card */}
+        <div className="relative overflow-hidden rounded-3xl border border-lime-400/30 bg-gradient-to-br from-[#0c1f15] to-[#122e1b] p-7 transition duration-300 hover:border-lime-400/60">
+          <div className="flex items-start justify-between">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-lime-400/10 text-[#baff00] ring-1 ring-lime-400/30">
+              <Icon name="whatsapp" size={30} />
+            </div>
+
+            <div className="flex items-center gap-2 rounded-full border border-lime-400/30 bg-lime-400/10 px-3 py-1 text-xs font-bold text-[#baff00]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#baff00]" />
+              <span>Broadcast • 24/7 Alerts</span>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Official Updates Channel</p>
+            <h3 className="mt-1 text-2xl font-black text-white">VEXARO Channel</h3>
+            <p className="text-xs text-[#baff00] font-medium mt-0.5">WhatsApp Official Broadcast</p>
+            <p className="mt-2 text-xs leading-relaxed text-slate-300">
+              Follow our WhatsApp Channel for instant service restock notices, price drop alerts, flash discount coupon codes, and live maintenance updates.
+            </p>
+          </div>
+
+          <div className="mt-6">
+            <a
+              href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-center text-sm font-black text-[#07100f] transition hover:bg-[#d2ff5a] shadow-[0_4px_20px_rgba(186,255,0,0.25)]"
+            >
+              <Icon name="whatsapp" size={18} />
+              <span>Follow WhatsApp Channel</span>
             </a>
           </div>
         </div>

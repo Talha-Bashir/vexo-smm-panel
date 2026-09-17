@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexo-smm-panel-7sln.vercel.app";
 
 export const viewport: Viewport = {
   themeColor: "#07100f",
@@ -154,8 +154,11 @@ const structuredData = {
         },
       ],
       sameAs: [
+        "https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q",
         "https://t.me/VexaroSMMAdmin",
-        "https://wa.me/message/VexaroSMMAdmin",
+        "https://wa.me/923176437013",
+        "https://vexo-smm-panel-7sln.vercel.app",
+        "https://vexarosmm.com",
       ],
     },
     {

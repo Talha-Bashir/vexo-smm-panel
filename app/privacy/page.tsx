@@ -106,6 +106,10 @@ export default function PrivacyPage() {
               <a href="https://wa.me/923176437013" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline">
                 +92 317 6437013
               </a>.
+              For service announcements and platform notices, you can also follow our official WhatsApp Channel at{" "}
+              <a href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline font-bold">
+                WhatsApp Channel (VEXARO SMM)
+              </a>.
             </p>
           </section>
         </div>
