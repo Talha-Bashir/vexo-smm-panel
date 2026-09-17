@@ -227,6 +227,22 @@ const structuredData = {
           },
         ],
       },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/#application`,
+      name: "VEXARO SMM Panel",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "All (Web Browser, Android, iOS, Windows, macOS)",
+      description: "Leading automated social media marketing panel providing cheapest and fastest social media growth services.",
+      author: {
+        "@id": `${SITE_URL}/#organization`,
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "PKR",
+      },
       aggregateRating: {
         "@type": "AggregateRating",
         ratingValue: "4.9",
