@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         {
           success: false,
           error:
-            "The account name provided does not match our records for this email. If you cannot remember your registered name, please chat with Vexo SMM Admin on WhatsApp (+92 317 6437013) to unlock your account.",
+            "The account name provided does not match our records for this email. If you cannot remember your registered name, please chat with VEXARO SMM Admin on WhatsApp (+92 317 6437013) to unlock your account.",
           code: "NAME_MISMATCH",
         },
         { status: 403, headers: corsHeaders }

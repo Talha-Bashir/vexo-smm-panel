@@ -89,7 +89,7 @@ export default function AdminDepositsPage() {
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#baff00]">VEXO Admin</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#baff00]">VEXARO Admin</p>
             <h1 className="mt-2 text-3xl font-black">Deposit Requests</h1>
             <p className="mt-2 text-sm text-slate-500">Review payments and approve verified deposits to credit user wallets.</p>
           </div>

@@ -708,7 +708,7 @@ export async function POST(req: Request) {
     const isBotProduct = catalogItem.isPartnerBot || Boolean(catalogItem.productSlug) || (config.apiKey && !catalogItem.id.includes("wa_") && !catalogItem.id.includes("tg_"));
 
     if (config.apiKey && isBotProduct) {
-      const externalOrderId = `VEXO-${crypto.randomBytes(4).toString("hex").toUpperCase()}-${Date.now().toString().slice(-6)}`;
+      const externalOrderId = `VEXARO-${crypto.randomBytes(4).toString("hex").toUpperCase()}-${Date.now().toString().slice(-6)}`;
       const targetSlug = catalogItem.productSlug || catalogItem.id;
 
       const botOrder = await createGGSomaOrder({
@@ -739,19 +739,19 @@ export async function POST(req: Request) {
         licenseKey = botOrder.delivery?.content || botOrder.orderCode || "Account Allocated";
         instructions = botOrder.delivery?.instructions || "Use the login credentials above to access your account.";
       } else {
-        licenseKey = botOrder.orderCode || `VEXO-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+        licenseKey = botOrder.orderCode || `VEXARO-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
         instructions = "Your subscription has been activated successfully via the partner network.";
       }
     } else {
       // Fallback license generation for standalone software/desktop tools
       const randomHex = crypto.randomBytes(4).toString("hex").toUpperCase();
-      licenseKey = `VEXO-${catalogItem.id.slice(0, 4).toUpperCase()}-${randomHex}-${Date.now().toString().slice(-4)}`;
+      licenseKey = `VEXARO-${catalogItem.id.slice(0, 4).toUpperCase()}-${randomHex}-${Date.now().toString().slice(-4)}`;
       instructions = "Your subscription has been activated successfully! Check your email / WhatsApp for credentials or use the license key below.";
 
       if (catalogItem.id === "canva_pro") {
         instructions = `An invitation link has been dispatched to ${deliveryContact}. Click the link to join the Canva Pro Team.`;
       } else if (catalogItem.id.includes("wa_") || catalogItem.id.includes("tg_")) {
-        instructions = `Software download link: https://vexosmm.com/downloads/${catalogItem.id}.zip — Use License Key: ${licenseKey} to activate.`;
+        instructions = `Software download link: https://vexarosmm.com/downloads/${catalogItem.id}.zip — Use License Key: ${licenseKey} to activate.`;
       } else if (catalogItem.id.includes("chatgpt") || catalogItem.id.includes("netflix") || catalogItem.id.includes("capcut") || catalogItem.id.includes("prime")) {
         instructions = `Credentials and private profile access code have been allocated to ${deliveryContact}. Access Key: ${licenseKey}`;
       } else if (catalogItem.id === "gemini_pro" || catalogItem.id === "youtube_premium") {

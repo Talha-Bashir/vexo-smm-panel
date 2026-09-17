@@ -77,7 +77,7 @@ export default function LoginPage() {
           <div className="vexo-orb absolute -left-32 top-1/4 h-80 w-80 rounded-full bg-[#baff00]/7 blur-3xl" />
           <div className="vexo-orb vexo-orb-delay absolute -right-20 bottom-10 h-72 w-72 rounded-full bg-[#baff00]/5 blur-3xl" />
           <div className="relative vexo-fade-up">
-            <div className="flex items-center gap-3"><Mark /><div><p className="text-xl font-black tracking-tight">VEXO</p><p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">SMM Panel</p></div></div>
+            <div className="flex items-center gap-3"><Mark /><div><p className="text-xl font-black tracking-tight">VEXARO</p><p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">SMM Panel</p></div></div>
             <div className="mt-24 max-w-xl">
               <p className="mb-4 inline-flex rounded-full border border-lime-300/15 bg-lime-300/5 px-3 py-1.5 text-xs font-bold text-[#baff00]">Fast &amp; Automated Social Media Growth</p>
               <h1 className="text-5xl font-black leading-[1.04] tracking-[-0.04em] xl:text-6xl">Grow smarter.<br /><span className="text-[#baff00]">Spend less.</span></h1>
@@ -211,7 +211,7 @@ export default function LoginPage() {
               </div>
 
               <p className="mt-6 text-center text-sm text-slate-400">
-                New to VEXO? <Link href="/signup" className="font-black text-[#baff00] hover:underline">Create an account</Link>
+                New to VEXARO? <Link href="/signup" className="font-black text-[#baff00] hover:underline">Create an account</Link>
               </p>
             </div>
 

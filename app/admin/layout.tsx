@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "VEXO Admin Control Center",
+  title: "VEXARO Admin Control Center",
   robots: {
     index: false,
     follow: false,

@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
   }
 
   const whatsappMessage = encodeURIComponent(
-    `Hello Vexo SMM Admin, I forgot my password for my account email: ${email.trim() || "[enter email]"}. Please help me reset my account.`
+    `Hello VEXARO SMM Admin, I forgot my password for my account email: ${email.trim() || "[enter email]"}. Please help me reset my account.`
   );
 
   return (
@@ -128,7 +128,7 @@ export default function ForgotPasswordPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-white">Need Instant Help?</p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-slate-300">
-                  Forgot your account name? Message Vexo SMM Admin directly on WhatsApp to unlock or reset your account in under 2 minutes.
+                  Forgot your account name? Message VEXARO SMM Admin directly on WhatsApp to unlock or reset your account in under 2 minutes.
                 </p>
                 <a
                   href={`https://wa.me/923176437013?text=${whatsappMessage}`}

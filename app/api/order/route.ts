@@ -215,7 +215,7 @@ export async function POST(request: Request) {
         console.error("VEXO ORDER FINALIZE ERROR:", databaseError);
         return NextResponse.json({
           success: false,
-          error: "Your order was accepted by the provider, but VEXO could not finalize the order record. Your wallet debit was kept safely and the order needs admin reconciliation.",
+          error: "Your order was accepted by the provider, but VEXARO could not finalize the order record. Your wallet debit was kept safely and the order needs admin reconciliation.",
           orderId: providerOrderId,
           vexoOrderId,
         }, { status: 500 });

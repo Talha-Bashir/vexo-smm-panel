@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | VEXO SMM Panel",
-  description: "Learn how VEXO SMM collects, uses, protects, and safeguards user data and payment information.",
+  title: "Privacy Policy | VEXARO SMM Panel",
+  description: "Learn how VEXARO SMM collects, uses, protects, and safeguards user data and payment information.",
 };
 
 export default function PrivacyPage() {
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#baff00] text-sm font-black text-[#07100f] shadow-[0_0_15px_rgba(186,255,0,0.35)]">
               V
             </div>
-            <span className="text-lg font-black tracking-tight text-white">VEXO SMM</span>
+            <span className="text-lg font-black tracking-tight text-white">VEXARO SMM</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link
@@ -99,8 +99,8 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-black text-white">6. Inquiries</h2>
             <p>
               If you have any questions regarding your data or wish to delete your account, reach out to our team at{" "}
-              <a href="https://t.me/VexoSMMAdmin" target="_blank" rel="noreferrer" className="text-[#229ed9] hover:underline">
-                @VexoSMMAdmin
+              <a href="https://t.me/VexaroSMMAdmin" target="_blank" rel="noreferrer" className="text-[#229ed9] hover:underline">
+                @VexaroSMMAdmin
               </a>{" "}
               or via WhatsApp at{" "}
               <a href="https://wa.me/923176437013" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline">

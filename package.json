@@ -13,6 +13,7 @@
     "sync-providers": "node scripts/sync-providers.js"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "cors": "^2.8.6",
     "next": "16.3.4",
     "pg": "^8.23.0",

@@ -154,7 +154,7 @@ export function BotShield({ onVerify, className = "" }: BotShieldProps) {
               {verifying ? "Verifying..." : verified ? "Human Verified" : "I am human (Verification)"}
             </p>
             <p className="text-[10px] text-slate-400">
-              {verified ? "VEXO Security Shield Active" : "Click to verify you are not a bot"}
+              {verified ? "VEXARO Security Shield Active" : "Click to verify you are not a bot"}
             </p>
           </div>
         </div>
@@ -164,7 +164,7 @@ export function BotShield({ onVerify, className = "" }: BotShieldProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-3Z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="m8.5 12 2.2 2.2 4.8-5" />
           </svg>
-          <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-slate-400">VEXO Guard</span>
+          <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-slate-400">VEXARO Guard</span>
         </div>
       </div>
     </div>

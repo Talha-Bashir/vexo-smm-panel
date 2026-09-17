@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "VEXO SMM - #1 Best & Cheapest SMM Panel in Pakistan";
+export const alt = "VEXARO SMM Panel – Affordable Social Media Marketing Services";
 export const size = {
   width: 1200,
   height: 630,
@@ -69,7 +69,7 @@ export default async function Image() {
             marginBottom: "14px",
           }}
         >
-          VEXO SMM PANEL
+          VEXARO SMM PANEL
         </div>
 
         {/* Subtitle */}
@@ -84,7 +84,7 @@ export default async function Image() {
             textTransform: "uppercase",
           }}
         >
-          #1 Cheapest &amp; Automated SMM Services in Pakistan
+          #1 Cheapest &amp; Automated SMM Services
         </div>
 
         {/* Feature Pills */}

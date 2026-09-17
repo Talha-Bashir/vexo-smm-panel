@@ -126,7 +126,7 @@ export default function SignupPage() {
               Create your account
             </h1>
             <p className="mt-2 text-xs leading-5 text-slate-400">
-              Join VEXO SMM Panel and start growing your social media instantly.
+              Join VEXARO SMM Panel and start growing your social media instantly.
             </p>
           </div>
 

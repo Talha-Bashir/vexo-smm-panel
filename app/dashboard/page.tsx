@@ -377,7 +377,7 @@ export default function Home() {
           setCurrentUser({
             id: 1,
             name: "Demo Account",
-            email: "demo@vexosmm.com",
+            email: "demo@vexarosmm.com",
             is_admin: false,
           });
         }
@@ -385,7 +385,7 @@ export default function Home() {
         setCurrentUser({
           id: 1,
           name: "Demo Account",
-          email: "demo@vexosmm.com",
+          email: "demo@vexarosmm.com",
           is_admin: false,
         });
       }
@@ -590,7 +590,7 @@ export default function Home() {
 
           <div className="ml-3">
             <div className="text-2xl font-black tracking-tight text-white flex items-center gap-1.5">
-              <span>VEXO</span>
+              <span>VEXARO</span>
               <span className="h-1.5 w-1.5 rounded-full bg-[#baff00] shadow-[0_0_8px_#baff00]" />
             </div>
             <div className="text-[9px] font-bold tracking-[0.25em] text-[#baff00]/80 uppercase">
@@ -721,7 +721,7 @@ export default function Home() {
               />
             </div>
             <div className="md:hidden">
-              <p className="text-xs font-medium text-slate-500">VEXO PANEL</p>
+              <p className="text-xs font-medium text-slate-500">VEXARO PANEL</p>
               <h1 className="text-lg font-bold text-white">{activePage}</h1>
             </div>
           </div>
@@ -784,7 +784,7 @@ export default function Home() {
         {/* Content */}
         <section className="vexo-page-enter p-4 sm:p-6 lg:p-7 pb-28 lg:pb-7">
           <h1 className="sr-only">
-            VEXO SMM Panel | Best &amp; Cheapest SMM Panel in Pakistan for Instagram, TikTok, YouTube &amp; Facebook with SadaPay, Easypaisa &amp; JazzCash
+            VEXARO SMM Panel | Best &amp; Cheapest SMM Panel in Pakistan for Instagram, TikTok, YouTube &amp; Facebook with SadaPay, Easypaisa &amp; JazzCash
           </h1>
           {activePage === "Dashboard" && (
             <Dashboard
@@ -1311,7 +1311,7 @@ function Dashboard({
             </div>
 
             <p className="mt-3 text-xs leading-relaxed text-slate-400">
-              Need immediate balance approval or have custom reseller orders? Chat directly with Vexo Admin:
+              Need immediate balance approval or have custom reseller orders? Chat directly with VEXARO Admin:
             </p>
 
             <div className="mt-4 space-y-2">
@@ -1326,13 +1326,13 @@ function Dashboard({
               </a>
 
               <a
-                href="https://t.me/VexoSMMAdmin"
+                href="https://t.me/VexaroSMMAdmin"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 rounded-xl border border-[#2aa8e8]/30 bg-[#2aa8e8]/10 py-2.5 text-xs font-bold text-[#2aa8e8] transition hover:bg-[#2aa8e8] hover:text-white"
               >
                 <Icon name="telegram" size={15} />
-                <span>Telegram (@VexoSMMAdmin)</span>
+                <span>Telegram (@VexaroSMMAdmin)</span>
               </a>
             </div>
           </div>
@@ -1405,9 +1405,9 @@ function Dashboard({
           <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#baff00] text-xs font-black text-[#07100f]">
             V
           </span>
-          <span className="font-bold tracking-wider text-white">VEXO SMM ANTIGRAVITY</span>
+          <span className="font-bold tracking-wider text-white">VEXARO SMM ANTIGRAVITY</span>
         </div>
-        <p className="text-[11px]">© 2026 VEXO SMM. All rights reserved.</p>
+        <p className="text-[11px]">© 2026 VEXARO SMM. All rights reserved.</p>
       </footer>
     </div>
   );
@@ -3785,7 +3785,7 @@ function OrdersPage({
                 Wallet Refund Ledger
               </p>
               <p className="mt-1 text-sm text-slate-300">
-                Whenever an order cannot be completed by providers or is cancelled, 100% of the charge is credited directly into your VEXO wallet.
+                Whenever an order cannot be completed by providers or is cancelled, 100% of the charge is credited directly into your VEXARO wallet.
               </p>
             </div>
             <div className="rounded-xl border border-purple-400/20 bg-[#070d0d] px-5 py-3 text-right">
@@ -3852,7 +3852,7 @@ function OrdersPage({
       )}
 
       <p className="mt-4 text-xs text-slate-500">
-        Orders, refills, and refund transactions are permanently saved and synchronized with your VEXO database.
+        Orders, refills, and refund transactions are permanently saved and synchronized with your VEXARO database.
       </p>
     </div>
   );
@@ -4429,7 +4429,7 @@ function AddFundsPage({
             {/* Direct WhatsApp Receipt Confirmation */}
             <a
               href={`https://wa.me/923176437013?text=${encodeURIComponent(
-                `Hello Saeed Bashir / Vexo SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via SadaPay. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
+                `Hello Saeed Bashir / VEXARO SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via SadaPay. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -4485,7 +4485,7 @@ function AddFundsPage({
           <div className="rounded-3xl border border-[#baff00]/20 bg-[#baff00]/5 p-6 sm:p-8">
             <p className="text-sm font-bold text-[#baff00] mb-2">💡 Fast Approval Guarantee</p>
             <p className="text-xs leading-5 text-slate-300">
-              Admin team reviews incoming deposits directly against bank receipts. Once approved, your wallet balance updates automatically. Need urgent top-up? Message our WhatsApp support at <strong className="text-[#baff00]">VexoSMMAdmin</strong>.
+              Admin team reviews incoming deposits directly against bank receipts. Once approved, your wallet balance updates automatically. Need urgent top-up? Message our WhatsApp support at <strong className="text-[#baff00]">VexaroSMMAdmin</strong>.
             </p>
           </div>
         </div>
@@ -4954,7 +4954,7 @@ function ReferAndEarnPage({
       return;
     }
 
-    if (withdrawMethod !== "VEXO Wallet") {
+    if (withdrawMethod !== "VEXARO Wallet") {
       if (!withdrawAccountNumber.trim() || withdrawAccountNumber.trim().length < 8) {
         setWithdrawError("Please enter a valid mobile or bank account number.");
         return;
@@ -5007,13 +5007,13 @@ function ReferAndEarnPage({
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#baff00]/30 bg-[#baff00]/10 px-3.5 py-1 text-xs font-bold text-[#baff00]">
             <span>🎁</span>
-            <span>VEXO Partner Program</span>
+            <span>VEXARO Partner Program</span>
           </div>
           <h2 className="mt-4 text-2xl font-black text-white sm:text-4xl">
             Invite Friends &amp; Earn 5% Cash Back
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:text-base">
-            Share your unique invitation link with friends, clients, or on social media. Whenever anyone signs up through your link and places an order, you instantly receive <span className="font-bold text-[#baff00]">5% commission</span>. Once you reach <span className="font-bold text-[#baff00]">$3.00 (₨834 PKR)</span>, you can withdraw directly to Easypaisa, JazzCash, your Bank, or your VEXO wallet!
+            Share your unique invitation link with friends, clients, or on social media. Whenever anyone signs up through your link and places an order, you instantly receive <span className="font-bold text-[#baff00]">5% commission</span>. Once you reach <span className="font-bold text-[#baff00]">$3.00 (₨834 PKR)</span>, you can withdraw directly to Easypaisa, JazzCash, your Bank, or your VEXARO wallet!
           </p>
         </div>
       </div>
@@ -5085,7 +5085,7 @@ function ReferAndEarnPage({
 
             <p className="mt-2 text-[11px] text-slate-500">
               {canWithdraw
-                ? "🎉 You have reached the $3.00 minimum threshold! You can now withdraw to Easypaisa, JazzCash, Bank, or transfer to your VEXO wallet."
+                ? "🎉 You have reached the $3.00 minimum threshold! You can now withdraw to Easypaisa, JazzCash, Bank, or transfer to your VEXARO wallet."
                 : `Accumulate ₨${(minWithdrawalPkr - availableBalancePkr > 0 ? minWithdrawalPkr - availableBalancePkr : 0).toFixed(2)} ($${(minWithdrawalUsd - availableBalanceUsd > 0 ? minWithdrawalUsd - availableBalanceUsd : 0).toFixed(2)}) more from friend orders to request a withdrawal.`}
             </p>
           </div>
@@ -5108,7 +5108,7 @@ function ReferAndEarnPage({
           <div className="col-span-2 rounded-3xl border border-white/10 bg-[#111a1d] p-5">
             <p className="text-xs font-semibold text-slate-400">Lifetime Commission Earned</p>
             <p className="mt-1 text-2xl font-black text-[#baff00]">₨{totalCommission.toFixed(2)}</p>
-            <p className="mt-1 text-[11px] text-slate-500">Total earned since joining VEXO</p>
+            <p className="mt-1 text-[11px] text-slate-500">Total earned since joining VEXARO</p>
           </div>
         </div>
       </div>
@@ -5173,7 +5173,7 @@ function ReferAndEarnPage({
           </span>
           <a
             href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-              `Join VEXO SMM Panel with my referral link for lightning-fast social media growth: ${referralLink}`
+              `Join VEXARO SMM Panel with my referral link for lightning-fast social media growth: ${referralLink}`
             )}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -5186,7 +5186,7 @@ function ReferAndEarnPage({
           <a
             href={`https://t.me/share/url?url=${encodeURIComponent(
               referralLink
-            )}&text=${encodeURIComponent("Join VEXO SMM Panel and grow your social media reach instantly!")}`}
+            )}&text=${encodeURIComponent("Join VEXARO SMM Panel and grow your social media reach instantly!")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 rounded-xl bg-[#2aa8e8]/10 border border-[#2aa8e8]/30 px-4 py-2.5 text-xs font-bold text-[#2aa8e8] transition hover:bg-[#2aa8e8] hover:text-white"
@@ -5229,7 +5229,7 @@ function ReferAndEarnPage({
             </div>
             <h4 className="mt-4 font-bold text-white">Cash Out at $3.00</h4>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              You earn 5% on every order. Once you have at least $3.00 (₨834), withdraw to Easypaisa, JazzCash, your Bank, or your VEXO wallet!
+              You earn 5% on every order. Once you have at least $3.00 (₨834), withdraw to Easypaisa, JazzCash, your Bank, or your VEXARO wallet!
             </p>
           </div>
         </div>
@@ -5409,7 +5409,7 @@ function ReferAndEarnPage({
                     <option value="Easypaisa">Easypaisa (Mobile Wallet)</option>
                     <option value="JazzCash">JazzCash (Mobile Wallet)</option>
                     <option value="Bank Transfer">Bank Transfer / Sadapay / Nayapay</option>
-                    <option value="VEXO Wallet">Transfer to VEXO Wallet (Instant)</option>
+                    <option value="VEXARO Wallet">Transfer to VEXARO Wallet (Instant)</option>
                   </select>
                 </div>
 
@@ -5437,7 +5437,7 @@ function ReferAndEarnPage({
                   </p>
                 </div>
 
-                {withdrawMethod !== "VEXO Wallet" ? (
+                {withdrawMethod !== "VEXARO Wallet" ? (
                   <>
                     <div>
                       <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
@@ -5467,7 +5467,7 @@ function ReferAndEarnPage({
                   </>
                 ) : (
                   <div className="rounded-2xl border border-lime-500/20 bg-lime-500/5 p-4 text-xs text-lime-300">
-                    💡 <strong className="text-white">Instant Credit:</strong> This will instantly transfer the funds to your main VEXO wallet balance so you can immediately place orders without any approval delay.
+                    💡 <strong className="text-white">Instant Credit:</strong> This will instantly transfer the funds to your main VEXARO wallet balance so you can immediately place orders without any approval delay.
                   </div>
                 )}
 
@@ -5804,7 +5804,7 @@ curl_close($ch);
       <div>
         <h2 className="text-3xl font-black text-white">API Documentation</h2>
         <p className="mt-2 text-sm text-slate-400">
-          Connect your SMM reseller panel, website, or custom scripts directly with VEXO via standard HTTP POST API.
+          Connect your SMM reseller panel, website, or custom scripts directly with VEXARO via standard HTTP POST API.
         </p>
       </div>
 
@@ -5925,7 +5925,7 @@ curl_close($ch);
               <p className="mt-1 text-slate-400">Returns list of all active services with rates, min/max limits, and refill eligibility.</p>
             )}
             {selectedAction === "balance" && (
-              <p className="mt-1 text-slate-400">Returns your current VEXO wallet balance in PKR.</p>
+              <p className="mt-1 text-slate-400">Returns your current VEXARO wallet balance in PKR.</p>
             )}
             {selectedAction === "add" && (
               <p className="mt-1 text-slate-400">
@@ -6103,11 +6103,11 @@ function SupportPage({
     },
     {
       q: "What happens if an order fails or gets cancelled?",
-      a: "VEXO features automatic wallet protection. Whenever an order cannot be completed or is cancelled by providers, 100% of the charge is automatically credited back to your VEXO wallet balance. You can review all refund details in the 'Refunds' sub-tab.",
+      a: "VEXARO features automatic wallet protection. Whenever an order cannot be completed or is cancelled by providers, 100% of the charge is automatically credited back to your VEXARO wallet balance. You can review all refund details in the 'Refunds' sub-tab.",
     },
     {
-      q: "Can I resell VEXO services through my own panel or bot?",
-      a: "Yes! VEXO provides a standard v2 SMM Reseller API. You can generate your personal API Key from the 'API' tab and integrate VEXO into your own website, script, or Telegram bot with full automation.",
+      q: "Can I resell VEXARO services through my own panel or bot?",
+      a: "Yes! VEXARO provides a standard v2 SMM Reseller API. You can generate your personal API Key from the 'API' tab and integrate VEXARO into your own website, script, or Telegram bot with full automation.",
     },
   ];
 
@@ -6138,7 +6138,7 @@ function SupportPage({
 
           <div className="mt-6">
             <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Telegram Direct Chat</p>
-            <h3 className="mt-1 text-2xl font-black text-white">@VexoSMMAdmin</h3>
+            <h3 className="mt-1 text-2xl font-black text-white">@VexaroSMMAdmin</h3>
             <p className="mt-2 text-xs leading-relaxed text-slate-300">
               Connect directly with our official management on Telegram. Fastest channel for immediate order acceleration, refill checks, and custom solutions.
             </p>
@@ -6146,13 +6146,13 @@ function SupportPage({
 
           <div className="mt-6">
             <a
-              href="https://t.me/VexoSMMAdmin"
+              href="https://t.me/VexaroSMMAdmin"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2aa8e8] py-3.5 text-center text-sm font-black text-white transition hover:bg-[#2297d2] shadow-[0_4px_20px_rgba(42,168,232,0.25)]"
             >
               <Icon name="telegram" size={18} />
-              <span>Open Telegram Chat (@VexoSMMAdmin)</span>
+              <span>Open Telegram Chat (@VexaroSMMAdmin)</span>
             </a>
           </div>
         </div>
@@ -6173,9 +6173,9 @@ function SupportPage({
           <div className="mt-6">
             <p className="text-xs uppercase font-bold tracking-wider text-slate-400">WhatsApp Business Support</p>
             <h3 className="mt-1 text-2xl font-black text-white">+92 317 6437013</h3>
-            <p className="text-xs text-[#25d366] font-medium mt-0.5">Username: @VexoSMMAdmin</p>
+            <p className="text-xs text-[#25d366] font-medium mt-0.5">Username: @VexaroSMMAdmin</p>
             <p className="mt-2 text-xs leading-relaxed text-slate-300">
-              Message Vexo SMM Admin directly on WhatsApp for instant deposit verifications, order acceleration, custom bulk packages, and 24/7 dedicated support.
+              Message VEXARO SMM Admin directly on WhatsApp for instant deposit verifications, order acceleration, custom bulk packages, and 24/7 dedicated support.
             </p>
           </div>
 

@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | VEXO SMM Panel",
-  description: "Terms of service, platform usage rules, order fulfillment policies, and user responsibilities for VEXO SMM.",
+  title: "Terms of Service | VEXARO SMM Panel",
+  description: "Terms of service, platform usage rules, order fulfillment policies, and user responsibilities for VEXARO SMM.",
 };
 
 export default function TermsPage() {
@@ -16,7 +16,7 @@ export default function TermsPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#baff00] text-sm font-black text-[#07100f] shadow-[0_0_15px_rgba(186,255,0,0.35)]">
               V
             </div>
-            <span className="text-lg font-black tracking-tight text-white">VEXO SMM</span>
+            <span className="text-lg font-black tracking-tight text-white">VEXARO SMM</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link
@@ -45,7 +45,7 @@ export default function TermsPage() {
             Terms of Service &amp; User Agreement
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Last updated: September 16, 2026. By accessing VEXO SMM services, you agree to these terms.
+            Last updated: September 16, 2026. By accessing VEXARO SMM services, you agree to these terms.
           </p>
         </div>
 
@@ -53,7 +53,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-black text-white">1. General Platform Terms</h2>
             <p>
-              By signing up, adding funds, or placing orders on VEXO SMM (&quot;the Platform&quot;), you acknowledge and agree that you are bound by these terms. We reserve the right to alter, modify, or amend these terms at any time without prior individual notice. You are encouraged to review this page periodically.
+              By signing up, adding funds, or placing orders on VEXARO SMM (&quot;the Platform&quot;), you acknowledge and agree that you are bound by these terms. We reserve the right to alter, modify, or amend these terms at any time without prior individual notice. You are encouraged to review this page periodically.
             </p>
           </section>
 
@@ -61,7 +61,7 @@ export default function TermsPage() {
             <h2 className="text-lg font-black text-white">2. SMM Services &amp; Delivery</h2>
             <ul className="list-disc pl-5 space-y-2">
               <li>
-                <strong>Purpose:</strong> VEXO SMM services are promotional utilities designed to boost visibility, social metrics, and brand appearance across supported digital networks.
+                <strong>Purpose:</strong> VEXARO SMM services are promotional utilities designed to boost visibility, social metrics, and brand appearance across supported digital networks.
               </li>
               <li>
                 <strong>Target Links:</strong> You must supply a valid, publicly accessible profile URL, video link, or username. Orders placed with private accounts, invalid URLs, or changed usernames after submission cannot be canceled or refunded once dispatched.
@@ -111,7 +111,7 @@ export default function TermsPage() {
             </p>
             <div className="rounded-xl border border-white/10 bg-[#0d1618] p-4 text-xs space-y-1 font-mono">
               <p>WhatsApp: <span className="text-[#25d366]">+92 317 6437013</span></p>
-              <p>Telegram: <span className="text-[#229ed9]">@VexoSMMAdmin</span></p>
+              <p>Telegram: <span className="text-[#229ed9]">@VexaroSMMAdmin</span></p>
               <p>Support Portal: In-app ticket system at /dashboard</p>
             </div>
           </section>

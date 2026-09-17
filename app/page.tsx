@@ -233,8 +233,8 @@ function getPlatformName(cat: string, name: string): string {
 
 const FAQ_ITEMS = [
   {
-    q: "What is VEXO SMM and how does it work?",
-    a: "VEXO SMM is the world's leading, high-speed automated social media marketing panel. We connect your social profiles directly to high-capacity delivery networks to accelerate your followers, likes, views, comments, and engagement within minutes at direct wholesale rates.",
+    q: "What is VEXARO SMM Panel and how does it work?",
+    a: "VEXARO SMM is the world's leading, high-speed automated social media marketing panel. We connect your social profiles directly to high-capacity delivery networks to accelerate your followers, likes, views, comments, and engagement within minutes at direct wholesale rates.",
   },
   {
     q: "Are these services safe for my social media accounts?",
@@ -245,12 +245,12 @@ const FAQ_ITEMS = [
     a: "Virtually all orders begin processing automatically within 0 to 15 minutes after submission. Our automated API queue handles requests 24/7 without manual intervention, giving you instant real-time progress.",
   },
   {
-    q: "What payment methods are supported?",
+    q: "What payment methods are supported on VEXARO SMM?",
     a: "We support verified local and global payment methods including Visa, Mastercard, Apple Pay, Google Pay, Binance Pay, USDT/Crypto, Payeer, SadaPay, JazzCash, Easypaisa, and direct Bank Wire Transfers.",
   },
   {
     q: "What happens if an order drops or fails to complete?",
-    a: "We guarantee money-back wallet protection. If an order cannot be completed or experiences drops, 100% of the remaining charge is automatically credited back to your VEXO wallet balance. Guaranteed services also include free 30-day refills.",
+    a: "We guarantee money-back wallet protection. If an order cannot be completed or experiences drops, 100% of the remaining charge is automatically credited back to your VEXARO wallet balance. Guaranteed services also include free 30-day refills.",
   },
 ];
 
@@ -394,7 +394,7 @@ export default function LandingPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg sm:text-2xl font-black tracking-tight text-white group-hover:text-[#baff00] transition">
-                    VEXO SMM
+                    VEXARO SMM
                   </span>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full border border-lime-400/20 bg-lime-400/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#baff00]">
@@ -564,20 +564,18 @@ export default function LandingPage() {
               <div className="w-full min-w-0">
                 <div className="inline-flex items-center gap-2 rounded-full border border-lime-300/20 bg-lime-300/10 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-[#baff00]">
                   <Icon name="spark" size={14} />
-                  <span>The World&apos;s #1 SMM Automation Platform</span>
+                  <span>The World&apos;s #1 SMM Panel Automation Platform</span>
                 </div>
 
                 <h1 className="mt-5 text-fluid-hero font-black tracking-tight text-white">
-                  Welcome to <span className="text-[#baff00]">VEXO SMM</span>
-                  <br />
-                  <span className="text-slate-200">
-                    The World&apos;s Leading &amp; Most Affordable SMM Panel
+                  VEXARO SMM Panel –{" "}
+                  <span className="text-[#baff00]">
+                    Affordable Social Media Marketing Services
                   </span>
                 </h1>
 
                 <p className="mt-5 text-fluid-body font-medium text-slate-300 max-w-2xl">
-                  🔥⚡ Boost Your Global Online Presence | Instant Automated
-                  Delivery &amp; Trusted Worldwide Services 🔥
+                  Boost your digital reach with the best and cheapest SMM panel for Instagram followers, TikTok likes, YouTube watch time, and Facebook marketing. Fast, automated delivery with 24/7 support.
                 </p>
 
                 {/* Trust Badges */}
@@ -621,7 +619,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between border-b border-white/10 pb-4">
                     <div>
                       <h2 className="text-xl font-black text-white">
-                        Sign In to VEXO
+                        Sign In to VEXARO
                       </h2>
                       <p className="mt-0.5 text-xs text-slate-400">
                         Access your panel, orders &amp; live wallet
@@ -824,14 +822,13 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl">
             <div className="text-center">
               <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-[#baff00]">
-                Why VEXO SMM
+                Why Choose VEXARO SMM Panel
               </span>
               <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
-                Elevate Your Worldwide Presence with VEXO SMM
+                Affordable Social Media Marketing Services &amp; Growth Solutions
               </h2>
               <p className="mx-auto mt-3 text-fluid-body text-slate-400 max-w-2xl">
-                Engineered for creators, marketing agencies, and global enterprises
-                who require high speed, direct wholesale pricing, and 100% automation.
+                Engineered for creators, influencers, resellers, and digital marketing agencies who require fast speeds, wholesale rates, and automatic SMM panel delivery.
               </p>
             </div>
 
@@ -906,7 +903,7 @@ export default function LandingPage() {
                 Simple 4-Step Flow
               </span>
               <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
-                How VEXO SMM Works
+                How VEXARO SMM Panel Works
               </h2>
               <p className="mx-auto mt-3 text-fluid-body text-slate-400 max-w-2xl">
                 Start growing your channels in under 60 seconds with our streamlined workflow.
@@ -924,7 +921,7 @@ export default function LandingPage() {
                   Start Your Journey
                 </h3>
                 <p className="mt-2 text-xs sm:text-sm leading-relaxed text-slate-400">
-                  Create your free VEXO account in seconds. No complex verification
+                  Create your free VEXARO account in seconds. No complex verification
                   or passwords required.
                 </p>
               </div>
@@ -986,10 +983,10 @@ export default function LandingPage() {
                   Live Wholesale Rates
                 </span>
                 <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
-                  Explore VEXO Services
+                  Instagram, TikTok &amp; YouTube Growth Services
                 </h2>
                 <p className="mt-2 text-sm text-slate-400">
-                  Transparent wholesale pricing. Direct USD ($) &amp; PKR (₨) rates. Instant automated dispatch.
+                  Transparent wholesale pricing on the best and cheapest SMM panel. Direct USD ($) &amp; PKR (₨) rates with instant automated dispatch.
                 </p>
               </div>
               <Link
@@ -1150,10 +1147,10 @@ export default function LandingPage() {
                 Got Questions?
               </span>
               <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
-                Frequently Asked Questions
+                Frequently Asked Questions About Our SMM Panel
               </h2>
               <p className="mt-3 text-fluid-body text-slate-400">
-                Everything you need to know about VEXO SMM services, security, and wallet protection.
+                Everything you need to know about VEXARO SMM Panel services, security, and wallet protection.
               </p>
             </div>
 
@@ -1202,7 +1199,7 @@ export default function LandingPage() {
                     All Systems Fully Operational
                   </span>
                   <h3 className="mt-3 text-fluid-h3 font-black text-white">
-                    VEXO Real-Time Network Status
+                    VEXARO Real-Time Network Status
                   </h3>
                 </div>
                 <div className="text-xs text-slate-400">
@@ -1258,7 +1255,7 @@ export default function LandingPage() {
                     Need Custom Bulk Pricing or Instant Deposit Approval?
                   </h3>
                   <p className="mt-2 text-sm text-slate-300 max-w-xl">
-                    Message <strong>Vexo SMM Admin</strong> directly on WhatsApp or Telegram. We verify bank receipts in minutes and configure custom reseller discounts.
+                    Message <strong>VEXARO SMM Admin</strong> directly on WhatsApp or Telegram. We verify bank receipts in minutes and configure custom reseller discounts.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -1272,7 +1269,7 @@ export default function LandingPage() {
                     <span>Chat on WhatsApp (+92 317 6437013)</span>
                   </a>
                   <a
-                    href="https://t.me/VexoSMMAdmin"
+                    href="https://t.me/VexaroSMMAdmin"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-center gap-2 rounded-xl bg-[#229ed9] px-6 py-3.5 text-sm font-black text-white shadow-[0_0_24px_rgba(34,158,217,0.3)] transition hover:bg-[#1f8ec4]"
@@ -1296,7 +1293,7 @@ export default function LandingPage() {
               <div className="flex items-center gap-2">
                 <span className="flex h-2.5 w-2.5 rounded-full bg-[#baff00] animate-pulse" />
                 <span className="text-xs font-black uppercase tracking-wider text-white">
-                  Live VEXO Support
+                  Live VEXARO Support
                 </span>
               </div>
               <button
@@ -1321,13 +1318,13 @@ export default function LandingPage() {
                 <span>WhatsApp (+92 317 6437013)</span>
               </a>
               <a
-                href="https://t.me/VexoSMMAdmin"
+                href="https://t.me/VexaroSMMAdmin"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 rounded-xl bg-[#229ed9] py-2.5 text-xs font-black text-white hover:bg-[#1f8ec4] transition"
               >
                 <Icon name="telegram" size={16} />
-                <span>Telegram (@VexoSMMAdmin)</span>
+                <span>Telegram (@VexaroSMMAdmin)</span>
               </a>
             </div>
           </div>
@@ -1351,49 +1348,79 @@ export default function LandingPage() {
       {/* ---------------- 13. FOOTER ---------------- */}
       <footer className="w-full border-t border-white/10 bg-[#050a0a] px-[clamp(1rem,4vw,2.5rem)] py-12 text-xs text-slate-400">
         <div className="mx-auto max-w-7xl">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="lg:col-span-2">
               <div className="flex items-center gap-2.5">
                 <BrandMark />
-                <span className="text-xl font-black text-white">VEXO SMM</span>
+                <span className="text-xl font-black text-white">VEXARO SMM</span>
               </div>
-              <p className="mt-3 text-xs leading-relaxed text-slate-400">
+              <p className="mt-3 text-xs leading-relaxed text-slate-400 max-w-sm">
                 The World&apos;s Leading &amp; Most Affordable SMM Panel.
-                Automating social growth for global influencers, agencies, and businesses.
+                Automating social growth for global influencers, agencies, and businesses with instant delivery.
               </p>
+              <div className="mt-4 flex items-center gap-2 text-slate-400 text-xs">
+                <span>Support:</span>
+                <a
+                  href="https://t.me/VexaroSMMAdmin"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#229ed9] font-bold hover:underline"
+                >
+                  @VexaroSMMAdmin
+                </a>
+                <span>•</span>
+                <a
+                  href="https://wa.me/923176437013"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#25d366] font-bold hover:underline"
+                >
+                  WhatsApp
+                </a>
+              </div>
             </div>
 
             <div>
               <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">
-                Platform Navigation
+                SMM Services
               </h4>
               <ul className="mt-3 space-y-2">
                 <li>
-                  <a href="#services" className="hover:text-[#baff00] transition">
-                    Services Catalog
-                  </a>
+                  <Link href="/smm-panel" className="hover:text-[#baff00] transition">
+                    Best SMM Panel
+                  </Link>
                 </li>
                 <li>
-                  <a href="#features" className="hover:text-[#baff00] transition">
-                    Features &amp; APIs
-                  </a>
+                  <Link href="/instagram-services" className="hover:text-[#baff00] transition">
+                    Instagram SMM Panel
+                  </Link>
                 </li>
                 <li>
-                  <a href="#how-it-works" className="hover:text-[#baff00] transition">
-                    How It Works
-                  </a>
+                  <Link href="/tiktok-services" className="hover:text-[#baff00] transition">
+                    TikTok SMM Panel
+                  </Link>
                 </li>
                 <li>
-                  <a href="#faq" className="hover:text-[#baff00] transition">
-                    FAQ &amp; Guarantees
-                  </a>
+                  <Link href="/youtube-services" className="hover:text-[#baff00] transition">
+                    YouTube SMM Panel
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/facebook-services" className="hover:text-[#baff00] transition">
+                    Facebook SMM Panel
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/telegram-services" className="hover:text-[#baff00] transition">
+                    Telegram SMM Panel
+                  </Link>
                 </li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">
-                Resellers &amp; Developers
+                Resellers &amp; API
               </h4>
               <ul className="mt-3 space-y-2">
                 <li>
@@ -1413,18 +1440,23 @@ export default function LandingPage() {
                 </li>
                 <li>
                   <Link href="/signup" className="hover:text-[#baff00] transition">
-                    Create Reseller Account
+                    Create Free Account
                   </Link>
+                </li>
+                <li>
+                  <a href="#faq" className="hover:text-[#baff00] transition">
+                    FAQ &amp; Guarantees
+                  </a>
                 </li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">
-                Support &amp; Administration
+                Support &amp; Contact
               </h4>
               <p className="mt-3 leading-relaxed">
-                Admin: <strong className="text-slate-200">Vexo SMM Admin</strong>
+                Admin: <strong className="text-slate-200">VEXARO SMM Admin</strong>
                 <br />
                 WhatsApp:{" "}
                 <a
@@ -1438,19 +1470,19 @@ export default function LandingPage() {
                 <br />
                 Telegram:{" "}
                 <a
-                  href="https://t.me/VexoSMMAdmin"
+                  href="https://t.me/VexaroSMMAdmin"
                   target="_blank"
                   rel="noreferrer"
                   className="text-[#229ed9] hover:underline"
                 >
-                  @VexoSMMAdmin
+                  @VexaroSMMAdmin
                 </a>
               </p>
             </div>
           </div>
 
           <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 pt-6 text-[11px]">
-            <p>© 2026 VEXO SMM. All rights reserved.</p>
+            <p>© 2026 VEXARO SMM. All rights reserved.</p>
             <div className="flex items-center gap-6">
               <Link href="/terms" className="hover:text-[#baff00] transition">
                 Terms of Service

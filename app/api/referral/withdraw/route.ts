@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       "Bank Transfer",
       "Nayapay",
       "Sadapay",
+      "VEXARO Wallet",
       "VEXO Wallet",
     ];
 
@@ -53,7 +54,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (method !== "VEXO Wallet") {
+    const isWalletTransfer = method === "VEXARO Wallet" || method === "VEXO Wallet";
+
+    if (!isWalletTransfer) {
       if (!accountNumber || accountNumber.length < 8) {
         return NextResponse.json(
           { success: false, error: "Please provide a valid account or mobile number." },
@@ -100,7 +103,7 @@ export async function POST(request: Request) {
 
       const amountUsd = Number((amountPkr / USD_TO_PKR_RATE).toFixed(2));
 
-      if (method === "VEXO Wallet") {
+      if (isWalletTransfer) {
         // Instant credit to main order wallet
         await client.query(
           `INSERT INTO vexo_wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
@@ -116,7 +119,7 @@ export async function POST(request: Request) {
         const withdrawalResult = await client.query(
           `INSERT INTO vexo_referral_withdrawals 
              (user_id, amount_pkr, amount_usd, method, account_number, account_title, status)
-           VALUES ($1, $2, $3, 'VEXO Wallet', $4, $5, 'Transferred to Wallet')
+           VALUES ($1, $2, $3, 'VEXARO Wallet', $4, $5, 'Transferred to Wallet')
            RETURNING id`,
           [user.id, amountPkr, amountUsd, `Wallet #${user.id}`, user.name || "Internal Transfer"]
         );
@@ -129,7 +132,7 @@ export async function POST(request: Request) {
             user.id,
             amountPkr,
             withdrawalResult.rows[0].id,
-            `Referral commission transferred to main VEXO wallet balance`,
+            `Referral commission transferred to main VEXARO wallet balance`,
           ]
         );
 
@@ -137,7 +140,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
           success: true,
-          message: `₨${amountPkr.toFixed(2)} ($${amountUsd}) has been instantly credited to your VEXO wallet balance!`,
+          message: `₨${amountPkr.toFixed(2)} ($${amountUsd}) has been instantly credited to your VEXARO wallet balance!`,
           status: "Transferred to Wallet",
         });
       } else {
