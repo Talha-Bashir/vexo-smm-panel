@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/request-user";
 import { getUserWallet } from "@/lib/wallet";
 import { getAllPlatformSettings } from "@/lib/admin";
+import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +13,35 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Authentication required." }, { status: 401 });
     }
 
-    const [wallet, settings] = await Promise.all([
+    const [wallet, settings, bonusClaim] = await Promise.all([
       getUserWallet(Number(user.id)),
       getAllPlatformSettings(),
+      db
+        .query(
+          `SELECT id, amount_pkr, status, reason, claim_reference, created_at, updated_at
+           FROM vexo_signup_bonus_claims
+           WHERE user_id = $1 AND status = 'CLAIMED'
+           ORDER BY updated_at DESC, created_at DESC
+           LIMIT 1`,
+          [Number(user.id)]
+        )
+        .then((res) => res.rows[0] || null)
+        .catch(() => null),
     ]);
 
     return NextResponse.json({
       success: true,
       ...wallet,
+      bonusClaim: bonusClaim
+        ? {
+            id: String(bonusClaim.id),
+            amount: Number(bonusClaim.amount_pkr),
+            status: bonusClaim.status,
+            reason: bonusClaim.reason,
+            claimReference: bonusClaim.claim_reference,
+            grantedAt: bonusClaim.updated_at || bonusClaim.created_at,
+          }
+        : null,
       sadaPayNumber: settings.sadapay_number || "03197008275",
       sadaPayTitle: settings.sadapay_title || "Saeed Bashir",
     });

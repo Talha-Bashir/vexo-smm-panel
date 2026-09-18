@@ -37,6 +37,35 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [isExistingAccount, setIsExistingAccount] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deviceFingerprint, setDeviceFingerprint] = useState("");
+
+  useEffect(() => {
+    try {
+      const str = [
+        typeof window !== "undefined" ? `${window.screen?.width}x${window.screen?.height}` : "",
+        typeof window !== "undefined" ? window.screen?.colorDepth : "",
+        typeof navigator !== "undefined" ? (navigator.hardwareConcurrency || 2) : "",
+        typeof navigator !== "undefined" ? (navigator.language || "") : "",
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      ].join("|");
+
+      if (typeof window !== "undefined" && window.crypto?.subtle) {
+        const encoder = new TextEncoder();
+        window.crypto.subtle.digest("SHA-256", encoder.encode(str)).then((buf) => {
+          const hash = Array.from(new Uint8Array(buf))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+          setDeviceFingerprint(hash);
+        }).catch(() => {
+          let h = 0;
+          for (let i = 0; i < str.length; i++) {
+            h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+          }
+          setDeviceFingerprint("fp_" + Math.abs(h).toString(16));
+        });
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     try {
@@ -94,6 +123,7 @@ export default function SignupPage() {
           referralCode: referralCode.trim(),
           botToken,
           honeypot,
+          deviceFingerprint,
         }),
       });
 
@@ -105,6 +135,13 @@ export default function SignupPage() {
         }
         setError(data.error || "Unable to create account.");
         return;
+      }
+
+      // Store bonus celebration payload for dashboard welcome notification
+      if (data.bonus) {
+        try {
+          sessionStorage.setItem("vexo_new_user_bonus", JSON.stringify(data.bonus));
+        } catch {}
       }
 
       // Hard redirect to load session cookie natively into middleware & root dashboard
@@ -132,8 +169,17 @@ export default function SignupPage() {
             </p>
           </div>
 
+          {/* Welcome Promotional Bonus Notice */}
+          <div className="mt-4 rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 p-3 text-xs text-[#baff00] flex items-start gap-2.5">
+            <span className="mt-0.5 shrink-0 text-base">🎁</span>
+            <div>
+              <strong className="text-white block font-black">Rs. 50 Welcome Bonus Credit</strong>
+              Genuine new accounts receive ₨50 promotional credit instantly on signup to test our services!
+            </div>
+          </div>
+
           {hasReferralParam && (
-            <div className="mt-5 rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 p-3 text-center text-xs text-[#baff00]">
+            <div className="mt-3 rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 p-3 text-center text-xs text-[#baff00]">
               🎁 You were invited with referral code: <span className="font-bold">{referralCode}</span>
             </div>
           )}

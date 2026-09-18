@@ -4,6 +4,7 @@ import { db, ensureDatabase } from "@/lib/db";
 import { createSession, hashPassword } from "@/lib/auth";
 import { getCorsHeaders, handleCorsPreflight } from "@/lib/cors";
 import { verifyBotProtection } from "@/lib/bot-protection";
+import { processSignupBonus } from "@/lib/signup-bonus";
 
 function generateReferralCode() {
   return "VX" + crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -30,7 +31,9 @@ export async function POST(request: Request) {
     const inputReferralCode = String(body.referralCode || body.ref || "").trim().toUpperCase();
     const botToken = String(body.botToken || body.turnstileToken || body["cf-turnstile-response"] || "");
     const honeypot = String(body.honeypot || body._hp_trap || "");
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const deviceFingerprint = String(body.deviceFingerprint || "").trim();
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined;
+    const userAgent = request.headers.get("user-agent") || undefined;
 
     const botCheck = await verifyBotProtection(botToken, honeypot, clientIp);
     if (!botCheck.success) {
@@ -101,6 +104,20 @@ export async function POST(request: Request) {
     const newUser = result.rows[0];
     await createSession(newUser.id);
 
+    // Evaluate and grant Rs. 50 new user promotional signup bonus
+    let bonusResult = null;
+    try {
+      bonusResult = await processSignupBonus({
+        userId: Number(newUser.id),
+        email: newUser.email,
+        clientIp,
+        deviceFingerprint,
+        userAgent,
+      });
+    } catch (bonusErr) {
+      console.error("VEXO SIGNUP BONUS PROCESS WARNING:", bonusErr);
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -110,6 +127,14 @@ export async function POST(request: Request) {
           email: newUser.email,
           referralCode: newUser.referral_code,
         },
+        bonus: bonusResult
+          ? {
+              granted: bonusResult.granted,
+              amount: bonusResult.amount,
+              message: bonusResult.message,
+              reason: bonusResult.reason,
+            }
+          : null,
       },
       { headers: corsHeaders }
     );

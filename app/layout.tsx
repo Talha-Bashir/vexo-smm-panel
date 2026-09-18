@@ -318,7 +318,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-[#0a1110] text-slate-100">
+      <body className="min-h-full flex flex-col bg-[#0a1110] text-slate-100" suppressHydrationWarning>
         {children}
         <Analytics />
       </body>

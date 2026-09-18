@@ -262,14 +262,14 @@ export async function POST(request: Request) {
 
     // 3. Verify user's available wallet balance for the entire valid batch
     const currentWallet = await getUserWallet(user.id);
-    const balancePkr = currentWallet.balancePkr;
+    const availablePkr = currentWallet.totalAvailablePkr ?? (currentWallet.balancePkr + (currentWallet.bonusBalancePkr || 0));
 
-    if (balancePkr < totalEstimatedCharge) {
+    if (availablePkr < totalEstimatedCharge) {
       return NextResponse.json({
         success: false,
-        error: `Insufficient wallet balance for mass batch. Total required: ₨${totalEstimatedCharge.toLocaleString()}, Available: ₨${balancePkr.toLocaleString()}.`,
+        error: `Insufficient wallet balance for mass batch. Total required: ₨${totalEstimatedCharge.toLocaleString()}, Available: ₨${availablePkr.toLocaleString()}.`,
         requiredPkr: totalEstimatedCharge,
-        balancePkr,
+        balancePkr: availablePkr,
         validCount,
         totalLines: parsedLines.length,
         parsedLines,

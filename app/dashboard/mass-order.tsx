@@ -41,6 +41,7 @@ interface MassOrderBatchResponse {
 interface MassOrderPageProps {
   services: Service[];
   walletBalancePkr: number;
+  bonusBalancePkr?: number;
   onOrdersCreated: () => void;
   navigate: (page: string) => void;
 }
@@ -48,6 +49,7 @@ interface MassOrderPageProps {
 export function MassOrderPage({
   services,
   walletBalancePkr,
+  bonusBalancePkr = 0,
   onOrdersCreated,
   navigate,
 }: MassOrderPageProps) {
@@ -181,7 +183,12 @@ export function MassOrderPage({
         <div className="flex flex-wrap items-center gap-3">
           <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-right">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Your Balance</p>
-            <p className="text-lg font-black text-[#baff00]">₨{walletBalancePkr.toLocaleString()}</p>
+            <p className="text-lg font-black text-[#baff00]">₨{(walletBalancePkr + bonusBalancePkr).toLocaleString()}</p>
+            {bonusBalancePkr > 0 && (
+              <p className="text-[10px] text-slate-400">
+                (₨{walletBalancePkr.toFixed(2)} real + ₨{bonusBalancePkr.toFixed(2)} bonus)
+              </p>
+            )}
           </div>
           <button
             onClick={() => navigate("Add Funds")}

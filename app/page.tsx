@@ -422,6 +422,7 @@ export default function LandingPage() {
               {announcements.length > 0 ? (
                 <button
                   type="button"
+                  suppressHydrationWarning
                   onClick={() => {
                     setSelectedAnnouncement(announcements[0]);
                     setAnnouncementModalOpen(true);
@@ -459,6 +460,7 @@ export default function LandingPage() {
               </a>
               <button
                 type="button"
+                suppressHydrationWarning
                 onClick={handleDismissTopBanner}
                 className="rounded p-1 text-slate-400 hover:text-white hover:bg-white/10 transition shrink-0 ml-1"
                 title="Dismiss announcement bar"
@@ -543,6 +545,8 @@ export default function LandingPage() {
 
           {/* Mobile / Tablet Hamburger Button */}
           <button
+            type="button"
+            suppressHydrationWarning
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#121b1d] text-slate-300 lg:hidden"
             aria-label="Toggle navigation menu"
@@ -1119,6 +1123,8 @@ export default function LandingPage() {
                 ].map((p) => (
                   <button
                     key={p}
+                    type="button"
+                    suppressHydrationWarning
                     onClick={() => setSelectedPlatform(p)}
                     className={`shrink-0 rounded-xl px-3.5 py-2 transition ${
                       selectedPlatform === p
@@ -1135,6 +1141,7 @@ export default function LandingPage() {
               <div className="relative w-full md:w-80">
                 <input
                   type="text"
+                  suppressHydrationWarning
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter by ID, platform, or keyword..."
@@ -1262,6 +1269,7 @@ export default function LandingPage() {
                   >
                     <button
                       type="button"
+                      suppressHydrationWarning
                       onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
                       className="flex w-full items-center justify-between p-5 text-left text-sm sm:text-base font-bold text-white transition hover:text-[#baff00]"
                     >
@@ -1325,6 +1333,8 @@ export default function LandingPage() {
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <button
+                      type="button"
+                      suppressHydrationWarning
                       onClick={() => {
                         setSelectedAnnouncement(announcements[0]);
                         setAnnouncementModalOpen(true);
@@ -1448,6 +1458,8 @@ export default function LandingPage() {
                 </span>
               </div>
               <button
+                type="button"
+                suppressHydrationWarning
                 onClick={() => setSupportDrawerOpen(false)}
                 className="text-slate-400 hover:text-white"
                 aria-label="Close support drawer"
@@ -1492,6 +1504,8 @@ export default function LandingPage() {
 
         {/* Floating Action Button */}
         <button
+          type="button"
+          suppressHydrationWarning
           onClick={() => setSupportDrawerOpen(!supportDrawerOpen)}
           className="flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-[#baff00] text-[#07100f] shadow-[0_0_28px_rgba(186,255,0,0.35)] transition-transform hover:scale-105 active:scale-95"
           aria-label="Open support options"
@@ -1713,6 +1727,8 @@ export default function LandingPage() {
                 </div>
               </div>
               <button
+                type="button"
+                suppressHydrationWarning
                 onClick={() => setAnnouncementModalOpen(false)}
                 className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition"
               >
@@ -1741,6 +1757,8 @@ export default function LandingPage() {
                   </a>
                 )}
                 <button
+                  type="button"
+                  suppressHydrationWarning
                   onClick={() => setAnnouncementModalOpen(false)}
                   className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10 transition"
                 >

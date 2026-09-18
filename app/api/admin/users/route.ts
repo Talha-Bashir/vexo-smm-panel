@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/admin-guard";
 import { ensureAdminSchema } from "@/lib/admin";
 import { hashPassword } from "@/lib/auth";
+import { grantAdminBonus } from "@/lib/signup-bonus";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,16 @@ export async function GET(req: Request) {
     await ensureAdminSchema();
     const q = new URL(req.url).searchParams.get("q")?.trim() || "";
     const r = await db.query(
-      `SELECT u.id, u.name, u.email, u.created_at, COALESCE(w.balance_pkr, 0) balance_pkr,
-              (SELECT COUNT(*) FROM vexo_orders o WHERE o.user_id = u.id) order_count,
-              (SELECT COUNT(*) FROM vexo_deposits d WHERE d.user_id = u.id) deposit_count
+      `SELECT u.id, u.name, u.email, u.created_at,
+              COALESCE(w.balance_pkr, 0) AS balance_pkr,
+              COALESCE(w.bonus_balance_pkr, 0) AS bonus_balance_pkr,
+              c.status AS bonus_status,
+              c.reason AS bonus_reason,
+              (SELECT COUNT(*) FROM vexo_orders o WHERE o.user_id = u.id) AS order_count,
+              (SELECT COUNT(*) FROM vexo_deposits d WHERE d.user_id = u.id) AS deposit_count
        FROM vexo_users u
        LEFT JOIN vexo_wallets w ON w.user_id = u.id
+       LEFT JOIN vexo_signup_bonus_claims c ON c.user_id = u.id
        WHERE (u.role = 'user' OR u.role IS NULL)
          AND ($1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')
        ORDER BY u.created_at DESC
@@ -38,6 +44,9 @@ export async function GET(req: Request) {
         email: x.email,
         createdAt: x.created_at,
         balancePkr: +x.balance_pkr,
+        bonusBalancePkr: +x.bonus_balance_pkr,
+        bonusStatus: x.bonus_status || null,
+        bonusReason: x.bonus_reason || null,
         orderCount: +x.order_count,
         depositCount: +x.deposit_count,
       })),
@@ -57,6 +66,30 @@ export async function PATCH(req: Request) {
     if (g.error) return g.error;
     await ensureAdminSchema();
     const b = await req.json();
+
+    // Support manual signup / promotional bonus grant by admin
+    if (b?.action === "grant_bonus") {
+      const userId = Number(b?.userId);
+      const amount = b?.amount !== undefined ? Number(b?.amount) : 50.0;
+      const reason = String(b?.reason || "Manual promotional bonus grant by admin");
+
+      if (!Number.isInteger(userId) || userId < 1) {
+        return NextResponse.json({ success: false, error: "Invalid user ID." }, { status: 400 });
+      }
+
+      const result = await grantAdminBonus({
+        userId,
+        adminId: +g.user!.id,
+        amountPkr: amount,
+        reason,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: result.message,
+        bonusBalancePkr: result.newBonusBalance,
+      });
+    }
 
     // Support admin password reset
     if (b?.action === "reset_password") {

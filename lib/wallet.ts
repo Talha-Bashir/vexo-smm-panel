@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { ensureBonusSchema } from "@/lib/signup-bonus";
 
 let schemaPromise: Promise<void> | null = null;
 
@@ -107,6 +108,9 @@ export function ensureWalletSchema() {
         CREATE INDEX IF NOT EXISTS vexo_order_refills_user_created_idx
           ON vexo_order_refills(user_id, created_at DESC);
       `)
+      .then(async () => {
+        await ensureBonusSchema();
+      })
       .then(() => undefined)
       .catch((error) => {
         schemaPromise = null;
@@ -127,7 +131,7 @@ export async function getUserWallet(userId: number) {
   );
 
   const wallet = await db.query(
-    `SELECT user_id, balance_pkr, updated_at
+    `SELECT user_id, balance_pkr, bonus_balance_pkr, updated_at
      FROM vexo_wallets
      WHERE user_id = $1`,
     [userId]
@@ -152,8 +156,14 @@ export async function getUserWallet(userId: number) {
     [userId]
   );
 
+  const balancePkr = Number(wallet.rows[0]?.balance_pkr ?? 0);
+  const bonusBalancePkr = Number(wallet.rows[0]?.bonus_balance_pkr ?? 0);
+  const totalAvailablePkr = Math.round((balancePkr + bonusBalancePkr) * 100) / 100;
+
   return {
-    balancePkr: Number(wallet.rows[0]?.balance_pkr ?? 0),
+    balancePkr,
+    bonusBalancePkr,
+    totalAvailablePkr,
     deposits: deposits.rows.map((row) => ({
       id: row.id,
       method: row.method,
@@ -229,26 +239,33 @@ export async function reserveWalletForOrder(input: {
     );
 
     const walletResult = await client.query(
-      `SELECT balance_pkr FROM vexo_wallets WHERE user_id = $1 FOR UPDATE`,
+      `SELECT balance_pkr, COALESCE(bonus_balance_pkr, 0) AS bonus_balance_pkr
+       FROM vexo_wallets WHERE user_id = $1 FOR UPDATE`,
       [input.userId]
     );
 
-    const balancePkr = Number(walletResult.rows[0]?.balance_pkr ?? 0);
+    const realBalancePkr = Number(walletResult.rows[0]?.balance_pkr ?? 0);
+    const bonusBalancePkr = Number(walletResult.rows[0]?.bonus_balance_pkr ?? 0);
+    const totalAvailable = Math.round((realBalancePkr + bonusBalancePkr) * 100) / 100;
     const chargePkr = Math.round(input.chargePkr * 100) / 100;
 
     if (!Number.isFinite(chargePkr) || chargePkr <= 0) {
       throw new Error("Invalid order charge.");
     }
 
-    if (balancePkr + 0.000001 < chargePkr) {
-      throw new InsufficientWalletBalanceError(balancePkr, chargePkr);
+    if (totalAvailable + 0.000001 < chargePkr) {
+      throw new InsufficientWalletBalanceError(totalAvailable, chargePkr);
     }
+
+    // Promotional bonus credit is deducted first, then real deposited balance
+    const bonusChargePkr = Math.round(Math.min(bonusBalancePkr, chargePkr) * 100) / 100;
+    const realChargePkr = Math.round((chargePkr - bonusChargePkr) * 100) / 100;
 
     const orderResult = await client.query(
       `INSERT INTO vexo_orders
-        (user_id, idempotency_key, service_id, service_name, platform, link, quantity, rate_pkr, rate, charge_pkr, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, 'Payment Reserved')
-       RETURNING id, charge_pkr, status, created_at`,
+        (user_id, idempotency_key, service_id, service_name, platform, link, quantity, rate_pkr, rate, charge_pkr, bonus_charge_pkr, real_charge_pkr, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11, 'Payment Reserved')
+       RETURNING id, charge_pkr, bonus_charge_pkr, real_charge_pkr, status, created_at`,
       [
         input.userId,
         input.orderIdempotencyKey,
@@ -259,6 +276,8 @@ export async function reserveWalletForOrder(input: {
         input.quantity,
         input.ratePkr,
         chargePkr,
+        bonusChargePkr,
+        realChargePkr,
       ]
     );
 
@@ -266,24 +285,39 @@ export async function reserveWalletForOrder(input: {
 
     await client.query(
       `UPDATE vexo_wallets
-       SET balance_pkr = balance_pkr - $2, updated_at = NOW()
+       SET balance_pkr = balance_pkr - $2,
+           bonus_balance_pkr = bonus_balance_pkr - $3,
+           updated_at = NOW()
        WHERE user_id = $1`,
-      [input.userId, chargePkr]
+      [input.userId, realChargePkr, bonusChargePkr]
     );
 
-    await client.query(
-      `INSERT INTO vexo_wallet_transactions
-        (user_id, type, amount_pkr, reference_type, reference_id, description)
-       VALUES ($1, 'Debit', $2, 'order', $3, $4)`,
-      [input.userId, chargePkr, order.id, `Payment for order ${order.id}`]
-    );
+    if (bonusChargePkr > 0) {
+      await client.query(
+        `INSERT INTO vexo_wallet_transactions
+          (user_id, type, amount_pkr, reference_type, reference_id, description)
+         VALUES ($1, 'Debit', $2, 'order_bonus', $3, $4)`,
+        [input.userId, bonusChargePkr, order.id, `Payment for order ${order.id} (Promotional Bonus Credit)`]
+      );
+    }
+
+    if (realChargePkr > 0) {
+      await client.query(
+        `INSERT INTO vexo_wallet_transactions
+          (user_id, type, amount_pkr, reference_type, reference_id, description)
+         VALUES ($1, 'Debit', $2, 'order_real', $3, $4)`,
+        [input.userId, realChargePkr, order.id, `Payment for order ${order.id} (Real Balance)`]
+      );
+    }
 
     await client.query("COMMIT");
 
     return {
       existing: false,
       order,
-      balancePkr: balancePkr - chargePkr,
+      balancePkr: realBalancePkr - realChargePkr,
+      bonusBalancePkr: bonusBalancePkr - bonusChargePkr,
+      totalAvailablePkr: totalAvailable - chargePkr,
     };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
@@ -312,7 +346,7 @@ export async function refundFailedOrder(orderId: string, reason: string) {
     await client.query("BEGIN");
 
     const orderResult = await client.query(
-      `SELECT id, user_id, charge_pkr, status
+      `SELECT id, user_id, charge_pkr, COALESCE(bonus_charge_pkr, 0) AS bonus_charge_pkr, COALESCE(real_charge_pkr, 0) AS real_charge_pkr, status
        FROM vexo_orders
        WHERE id = $1
        FOR UPDATE`,
@@ -336,20 +370,43 @@ export async function refundFailedOrder(orderId: string, reason: string) {
       [order.user_id]
     );
 
-    await client.query(
-      `UPDATE vexo_wallets
-       SET balance_pkr = balance_pkr + $2, updated_at = NOW()
-       WHERE user_id = $1`,
-      [order.user_id, order.charge_pkr]
-    );
+    const totalCharge = Number(order.charge_pkr || 0);
+    let bonusRefund = Number(order.bonus_charge_pkr || 0);
+    let realRefund = Number(order.real_charge_pkr || 0);
+
+    // Fallback for legacy orders placed before split tracking
+    if (bonusRefund === 0 && realRefund === 0 && totalCharge > 0) {
+      realRefund = totalCharge;
+    }
 
     await client.query(
-      `INSERT INTO vexo_wallet_transactions
-        (user_id, type, amount_pkr, reference_type, reference_id, description)
-       VALUES ($1, 'Refund', $2, 'order_refund', $3, $4)
-       ON CONFLICT (reference_type, reference_id) DO NOTHING`,
-      [order.user_id, order.charge_pkr, order.id, `Refund for failed order ${order.id}: ${reason}`]
+      `UPDATE vexo_wallets
+       SET balance_pkr = balance_pkr + $2,
+           bonus_balance_pkr = bonus_balance_pkr + $3,
+           updated_at = NOW()
+       WHERE user_id = $1`,
+      [order.user_id, realRefund, bonusRefund]
     );
+
+    if (realRefund > 0) {
+      await client.query(
+        `INSERT INTO vexo_wallet_transactions
+          (user_id, type, amount_pkr, reference_type, reference_id, description)
+         VALUES ($1, 'Refund', $2, 'order_refund', $3, $4)
+         ON CONFLICT (reference_type, reference_id) DO NOTHING`,
+        [order.user_id, realRefund, order.id, `Refund for failed order ${order.id}: ${reason}`]
+      );
+    }
+
+    if (bonusRefund > 0) {
+      await client.query(
+        `INSERT INTO vexo_wallet_transactions
+          (user_id, type, amount_pkr, reference_type, reference_id, description)
+         VALUES ($1, 'Refund', $2, 'order_bonus_refund', $3, $4)
+         ON CONFLICT (reference_type, reference_id) DO NOTHING`,
+        [order.user_id, bonusRefund, order.id, `Promotional bonus credit restored for failed order ${order.id}: ${reason}`]
+      );
+    }
 
     await client.query(
       `UPDATE vexo_orders

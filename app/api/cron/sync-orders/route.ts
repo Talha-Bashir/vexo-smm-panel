@@ -100,7 +100,10 @@ export async function runOrderSync() {
 
   // 2. Query active orders awaiting status sync (limit to 50 to comfortably stay within serverless execution window)
   const activeOrdersQuery = await db.query(
-    `SELECT id, user_id, provider_order_id, provider_id, service_id, quantity, charge_pkr, status, created_at
+    `SELECT id, user_id, provider_order_id, provider_id, service_id, quantity, charge_pkr,
+            COALESCE(bonus_charge_pkr, 0) AS bonus_charge_pkr,
+            COALESCE(real_charge_pkr, 0) AS real_charge_pkr,
+            status, created_at
      FROM vexo_orders
      WHERE provider_order_id IS NOT NULL
        AND status IN ('Pending', 'Processing', 'In progress', 'In Progress', 'Payment Reserved')
@@ -190,36 +193,67 @@ export async function runOrderSync() {
           // Ensure idempotency: verify this order hasn't already received a partial refund
           const existingRefund = await client.query(
             `SELECT id FROM vexo_wallet_transactions
-             WHERE reference_type = 'partial_refund' AND reference_id = $1
+             WHERE reference_type IN ('partial_refund', 'partial_bonus_refund') AND reference_id = $1
              LIMIT 1`,
             [String(order.id)]
           );
 
           if (!existingRefund.rows[0] && refundPkr > 0) {
-            // Credit unfulfilled portion back to user wallet
             await client.query(
               `INSERT INTO vexo_wallets (user_id) VALUES ($1)
                ON CONFLICT (user_id) DO NOTHING`,
               [order.user_id]
             );
 
-            await client.query(
-              `UPDATE vexo_wallets
-               SET balance_pkr = balance_pkr + $1, updated_at = NOW()
-               WHERE user_id = $2`,
-              [refundPkr, order.user_id]
-            );
+            const origBonus = Number(order.bonus_charge_pkr || 0);
+            const origReal = Number(order.real_charge_pkr || 0);
+            const totalOrigCharge = chargePkr > 0 ? chargePkr : (origBonus + origReal);
+
+            let bonusPartialRefund = 0;
+            let realPartialRefund = refundPkr;
+
+            if (totalOrigCharge > 0 && origBonus > 0) {
+              const bonusRatio = origBonus / totalOrigCharge;
+              bonusPartialRefund = Math.min(origBonus, Math.round(refundPkr * bonusRatio * 100) / 100);
+              realPartialRefund = Math.round((refundPkr - bonusPartialRefund) * 100) / 100;
+            }
 
             await client.query(
-              `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
-               VALUES ($1, 'Refund', $2, 'partial_refund', $3, $4)`,
-              [
-                order.user_id,
-                refundPkr,
-                String(order.id),
-                `Partial refund for order ${order.id}: ${remains} of ${originalQty} remains unfulfilled.`,
-              ]
+              `UPDATE vexo_wallets
+               SET balance_pkr = balance_pkr + $1,
+                   bonus_balance_pkr = bonus_balance_pkr + $2,
+                   updated_at = NOW()
+               WHERE user_id = $3`,
+              [realPartialRefund, bonusPartialRefund, order.user_id]
             );
+
+            if (realPartialRefund > 0) {
+              await client.query(
+                `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
+                 VALUES ($1, 'Refund', $2, 'partial_refund', $3, $4)
+                 ON CONFLICT (reference_type, reference_id) DO NOTHING`,
+                [
+                  order.user_id,
+                  realPartialRefund,
+                  String(order.id),
+                  `Partial refund for order ${order.id}: ${remains} of ${originalQty} remains unfulfilled.`,
+                ]
+              );
+            }
+
+            if (bonusPartialRefund > 0) {
+              await client.query(
+                `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
+                 VALUES ($1, 'Refund', $2, 'partial_bonus_refund', $3, $4)
+                 ON CONFLICT (reference_type, reference_id) DO NOTHING`,
+                [
+                  order.user_id,
+                  bonusPartialRefund,
+                  String(order.id),
+                  `Partial promotional bonus refund for order ${order.id}: ${remains} of ${originalQty} unfulfilled.`,
+                ]
+              );
+            }
 
             totalRefundedPkr += refundPkr;
             partialRefundsCount++;
@@ -282,7 +316,7 @@ export async function runOrderSync() {
 
           const existingRefund = await client.query(
             `SELECT id FROM vexo_wallet_transactions
-             WHERE (reference_type IN ('order_refund', 'partial_refund')) AND reference_id = $1
+             WHERE (reference_type IN ('order_refund', 'order_bonus_refund', 'partial_refund')) AND reference_id = $1
              LIMIT 1`,
             [String(order.id)]
           );
@@ -296,23 +330,48 @@ export async function runOrderSync() {
               [order.user_id]
             );
 
-            await client.query(
-              `UPDATE vexo_wallets
-               SET balance_pkr = balance_pkr + $1, updated_at = NOW()
-               WHERE user_id = $2`,
-              [chargePkr, order.user_id]
-            );
+            let bonusRefund = Number(order.bonus_charge_pkr || 0);
+            let realRefund = Number(order.real_charge_pkr || 0);
+            if (bonusRefund === 0 && realRefund === 0 && chargePkr > 0) {
+              realRefund = chargePkr;
+            }
 
             await client.query(
-              `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
-               VALUES ($1, 'Refund', $2, 'order_refund', $3, $4)`,
-              [
-                order.user_id,
-                chargePkr,
-                String(order.id),
-                `Full refund for cancelled order ${order.id}.`,
-              ]
+              `UPDATE vexo_wallets
+               SET balance_pkr = balance_pkr + $1,
+                   bonus_balance_pkr = bonus_balance_pkr + $2,
+                   updated_at = NOW()
+               WHERE user_id = $3`,
+              [realRefund, bonusRefund, order.user_id]
             );
+
+            if (realRefund > 0) {
+              await client.query(
+                `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
+                 VALUES ($1, 'Refund', $2, 'order_refund', $3, $4)
+                 ON CONFLICT (reference_type, reference_id) DO NOTHING`,
+                [
+                  order.user_id,
+                  realRefund,
+                  String(order.id),
+                  `Full refund for cancelled order ${order.id}.`,
+                ]
+              );
+            }
+
+            if (bonusRefund > 0) {
+              await client.query(
+                `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
+                 VALUES ($1, 'Refund', $2, 'order_bonus_refund', $3, $4)
+                 ON CONFLICT (reference_type, reference_id) DO NOTHING`,
+                [
+                  order.user_id,
+                  bonusRefund,
+                  String(order.id),
+                  `Promotional bonus credit restored for cancelled order ${order.id}.`,
+                ]
+              );
+            }
 
             totalRefundedPkr += chargePkr;
           }

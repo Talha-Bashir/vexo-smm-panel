@@ -52,6 +52,10 @@ export default function Admin() {
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [userQ, setUserQ] = useState("");
+  const [deposits, setDeposits] = useState<any[]>([]);
+  const [depositBusyId, setDepositBusyId] = useState("");
+  const [depositScreenshot, setDepositScreenshot] = useState<string | null>(null);
+  const [depositFilter, setDepositFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
   const [orders, setOrders] = useState<any[]>([]);
   const [orderQ, setOrderQ] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
@@ -81,6 +85,7 @@ export default function Admin() {
     try {
       if (tab === "Dashboard") setStats((await api("/api/admin/overview")).stats);
       if (tab === "Users") setUsers((await api(`/api/admin/users?q=${encodeURIComponent(userQ)}`)).users);
+      if (tab === "Deposits") setDeposits((await api("/api/admin/deposits")).deposits || []);
       if (tab === "Orders") setOrders((await api(`/api/admin/orders?q=${encodeURIComponent(orderQ)}&status=${encodeURIComponent(orderStatus)}`)).orders);
       if (tab === "Services") {
         const [sData, pData] = await Promise.all([
@@ -151,6 +156,12 @@ export default function Admin() {
   }
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlTab = new URLSearchParams(window.location.search).get("tab") as Tab | null;
+      if (urlTab && tabs.includes(urlTab)) {
+        setTab(urlTab);
+      }
+    }
     fetch("/api/auth/me", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
@@ -185,6 +196,82 @@ export default function Admin() {
       setError(e instanceof Error ? e.message : "Wallet update failed.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function grantBonus(userId: number, userNameOrEmail: string, currentBonus: number) {
+    const inputAmount = window.prompt(
+      `Add Promotional Bonus to ${userNameOrEmail}\n\nEnter bonus amount in PKR (Default: 50):`,
+      "50"
+    );
+    if (inputAmount === null) return;
+    const trimmed = inputAmount.trim();
+    const amount = trimmed === "" ? 50 : Number(trimmed);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      alert("Please enter a valid positive number for promotional bonus credit.");
+      return;
+    }
+
+    try {
+      setBusy(true);
+      setError("");
+      const res = await api("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "grant_bonus",
+          userId,
+          amount,
+          reason: "Manual bonus grant by admin",
+        }),
+      });
+
+      // Optimistically update the user row immediately in UI
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                bonusBalancePkr: Number(res.bonusBalancePkr ?? (Number(u.bonusBalancePkr || 0) + amount)),
+                bonusStatus: "CLAIMED",
+                bonusReason: "ADMIN_MANUAL_GRANTED",
+              }
+            : u
+        )
+      );
+
+      alert(res.message || `✓ Rs. ${amount} promotional bonus added successfully!`);
+      await load();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Bonus grant failed.";
+      setError(msg);
+      alert("❌ " + msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateDeposit(depositId: string, action: "approve" | "reject") {
+    if (depositBusyId) return;
+    let rejectionReason = "";
+    if (action === "reject") {
+      rejectionReason =
+        window.prompt("Reason for rejection:", "Payment could not be verified.")?.trim() ||
+        "Payment could not be verified.";
+    }
+    setDepositBusyId(depositId);
+    setError("");
+    try {
+      await api("/api/admin/deposits", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ depositId, action, rejectionReason }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to update deposit.");
+    } finally {
+      setDepositBusyId("");
     }
   }
 
@@ -374,19 +461,18 @@ export default function Admin() {
         {error && <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
 
         {tab === "Dashboard" && <Dashboard stats={stats} setTab={setTab} />}
-        {tab === "Users" && <Users users={users} q={userQ} setQ={setUserQ} reload={load} wallet={wallet} resetPass={resetUserPassword} busy={busy} />}
+        {tab === "Users" && <Users users={users} q={userQ} setQ={setUserQ} reload={load} wallet={wallet} grantBonus={grantBonus} resetPass={resetUserPassword} busy={busy} />}
         {tab === "Deposits" && (
-          <div className={card + " p-8"}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black">Customer Deposit Verification</h2>
-                <p className="mt-2 text-sm text-slate-400">Review receipts, verify TIDs, and approve manual SadaPay / Easypaisa deposits.</p>
-              </div>
-              <a className="rounded-xl bg-[#baff00] px-6 py-3 text-sm font-black text-[#07100f] transition hover:bg-[#d2ff5a]" href="/admin/deposits">
-                Open Deposit Queue →
-              </a>
-            </div>
-          </div>
+          <DepositsAdmin
+            deposits={deposits}
+            reload={load}
+            updateDeposit={updateDeposit}
+            busyId={depositBusyId}
+            previewScreenshot={depositScreenshot}
+            setPreviewScreenshot={setDepositScreenshot}
+            filter={depositFilter}
+            setFilter={setDepositFilter}
+          />
         )}
         {tab === "Orders" && <Orders orders={orders} q={orderQ} setQ={setOrderQ} status={orderStatus} setStatus={setOrderStatus} reload={load} update={updateOrderStatus} />}
         {tab === "Withdrawals" && <Withdrawals withdrawals={withdrawals} reload={load} update={updateWithdrawal} busy={busy} />}
@@ -498,7 +584,7 @@ function Dashboard({ stats, setTab }: { stats: any; setTab: (t: Tab) => void }) 
           <h2 className="font-black text-lg">Quick Admin Links</h2>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-300">
             <button onClick={() => setTab("Users")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">👥 Manage Users</button>
-            <a href="/admin/deposits" className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">💳 Review Deposits</a>
+            <button onClick={() => setTab("Deposits")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">💳 Review Deposits</button>
             <button onClick={() => setTab("Orders")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">📦 Update Orders</button>
             <button onClick={() => setTab("Withdrawals")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">💸 Referral Payouts</button>
             <button onClick={() => setTab("Tickets")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">🎫 Support Tickets</button>
@@ -568,7 +654,25 @@ function Dashboard({ stats, setTab }: { stats: any; setTab: (t: Tab) => void }) 
   );
 }
 
-function Users({ users, q, setQ, reload, wallet, resetPass, busy }: { users: any[]; q: string; setQ: (v: string) => void; reload: () => void; wallet: (id: number, m: "add" | "deduct") => void; resetPass: (id: number, email: string) => void; busy: boolean }) {
+function Users({
+  users,
+  q,
+  setQ,
+  reload,
+  wallet,
+  grantBonus,
+  resetPass,
+  busy,
+}: {
+  users: any[];
+  q: string;
+  setQ: (v: string) => void;
+  reload: () => void;
+  wallet: (id: number, m: "add" | "deduct") => void;
+  grantBonus: (id: number, nameOrEmail: string, currentBonus: number) => void;
+  resetPass: (id: number, email: string) => void;
+  busy: boolean;
+}) {
   return (
     <section className={card + " overflow-hidden"}>
       <div className="flex flex-col gap-3 border-b border-white/10 p-5 md:flex-row">
@@ -584,7 +688,7 @@ function Users({ users, q, setQ, reload, wallet, resetPass, busy }: { users: any
         </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-[950px] w-full text-left">
+        <table className="min-w-[1000px] w-full text-left">
           <thead className="bg-[#0b1418] text-xs uppercase text-slate-500">
             <tr>
               {["User", "Balance", "Orders", "Deposits", "Joined", "Actions"].map((x) => (
@@ -599,20 +703,72 @@ function Users({ users, q, setQ, reload, wallet, resetPass, busy }: { users: any
                   <b>{u.name}</b>
                   <p className="text-xs text-slate-500">{u.email}</p>
                 </td>
-                <td className="px-5 py-4 font-black">{money(u.balancePkr)}</td>
+                <td className="px-5 py-4 font-black">
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <span className="text-[11px] font-normal text-slate-400">Real:</span>
+                    <span>{money(u.balancePkr)}</span>
+                  </div>
+                  {Number(u.bonusBalancePkr || 0) > 0 ? (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 rounded bg-[#baff00]/10 border border-[#baff00]/30 px-2 py-0.5 text-[10px] font-bold text-[#baff00]">
+                        <span>🎁</span>
+                        <span>Bonus: {money(Number(u.bonusBalancePkr))}</span>
+                      </span>
+                      {u.bonusReason && (
+                        <p className="mt-0.5 text-[9px] text-slate-400 font-mono">({u.bonusReason})</p>
+                      )}
+                    </div>
+                  ) : u.bonusStatus === "REJECTED" ? (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300" title={`Reason: ${u.bonusReason}`}>
+                        <span>⚠️</span>
+                        <span>Blocked: {u.bonusReason || "No bonus"}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                        <span>🎁 ₨0 bonus</span>
+                      </span>
+                    </div>
+                  )}
+                </td>
                 <td className="px-5 py-4">{u.orderCount}</td>
                 <td className="px-5 py-4">{u.depositCount}</td>
                 <td className="px-5 py-4 text-xs text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                 <td className="px-5 py-4">
-                  <div className="flex flex-wrap gap-2">
-                    <button disabled={busy} onClick={() => wallet(u.id, "add")} className="rounded-lg bg-[#baff00] px-3 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition">
-                      + Add
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      disabled={busy}
+                      onClick={() => wallet(u.id, "add")}
+                      className="rounded-lg bg-[#baff00] px-2.5 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                      title="Add real deposited funds"
+                    >
+                      + Real
                     </button>
-                    <button disabled={busy} onClick={() => wallet(u.id, "deduct")} className="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-400/20 transition">
-                      − Deduct
+                    <button
+                      disabled={busy}
+                      onClick={() => wallet(u.id, "deduct")}
+                      className="rounded-lg border border-red-400/20 bg-red-400/10 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20 transition"
+                      title="Deduct real funds"
+                    >
+                      − Real
                     </button>
-                    <button disabled={busy} onClick={() => resetPass(u.id, u.email)} className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-xs font-bold text-yellow-300 hover:bg-yellow-400/20 transition">
-                      🔑 Reset Pass
+                    <button
+                      disabled={busy}
+                      onClick={() => grantBonus(u.id, u.name || u.email, u.bonusBalancePkr)}
+                      className="rounded-lg border border-[#baff00]/40 bg-[#baff00]/10 px-2.5 py-1.5 text-xs font-bold text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition shadow-sm"
+                      title="Grant or top-up promotional bonus credit"
+                    >
+                      🎁 Add Bonus
+                    </button>
+                    <button
+                      disabled={busy}
+                      onClick={() => resetPass(u.id, u.email)}
+                      className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-1.5 text-xs font-bold text-yellow-300 hover:bg-yellow-400/20 transition"
+                      title="Reset user password"
+                    >
+                      🔑 Reset
                     </button>
                   </div>
                 </td>
@@ -621,6 +777,294 @@ function Users({ users, q, setQ, reload, wallet, resetPass, busy }: { users: any
           </tbody>
         </table>
         {!users.length && <p className="p-10 text-center text-sm text-slate-500">No users found.</p>}
+      </div>
+    </section>
+  );
+}
+
+function DepositsAdmin({
+  deposits,
+  reload,
+  updateDeposit,
+  busyId,
+  previewScreenshot,
+  setPreviewScreenshot,
+  filter,
+  setFilter,
+}: {
+  deposits: any[];
+  reload: () => void;
+  updateDeposit: (id: string, action: "approve" | "reject") => void;
+  busyId: string;
+  previewScreenshot: string | null;
+  setPreviewScreenshot: (url: string | null) => void;
+  filter: "All" | "Pending" | "Approved" | "Rejected";
+  setFilter: (f: "All" | "Pending" | "Approved" | "Rejected") => void;
+}) {
+  const [q, setQ] = useState("");
+
+  const filtered = useMemo(() => {
+    return deposits.filter((d) => {
+      const matchFilter = filter === "All" || d.status === filter;
+      const query = q.toLowerCase().trim();
+      const matchQuery =
+        !query ||
+        d.name?.toLowerCase().includes(query) ||
+        d.email?.toLowerCase().includes(query) ||
+        d.transactionId?.toLowerCase().includes(query) ||
+        d.method?.toLowerCase().includes(query);
+      return matchFilter && matchQuery;
+    });
+  }, [deposits, filter, q]);
+
+  const pendingCount = deposits.filter((d) => d.status === "Pending").length;
+  const approvedCount = deposits.filter((d) => d.status === "Approved").length;
+  const rejectedCount = deposits.filter((d) => d.status === "Rejected").length;
+
+  return (
+    <section className={card + " overflow-hidden"}>
+      {/* Top Header & Metrics */}
+      <div className="border-b border-white/10 p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-black text-white flex items-center gap-2">
+              <span>💳</span>
+              <span>Customer Deposit Verification</span>
+            </h2>
+            <p className="mt-1 text-xs text-slate-400">
+              Review receipts, verify transaction IDs, and approve Easypaisa / JazzCash / SadaPay deposits to credit user wallets.
+            </p>
+          </div>
+          <button
+            onClick={reload}
+            className="self-start rounded-xl border border-white/10 bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+          >
+            🔄 Refresh Queue
+          </button>
+        </div>
+
+        {/* Counter cards */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div
+            onClick={() => setFilter("Pending")}
+            className={`cursor-pointer rounded-xl border p-3 transition ${
+              filter === "Pending"
+                ? "border-amber-400/50 bg-amber-400/10"
+                : "border-white/5 bg-white/[0.02] hover:bg-white/5"
+            }`}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Review</p>
+            <p className="mt-1 text-2xl font-black text-amber-300">{pendingCount}</p>
+          </div>
+          <div
+            onClick={() => setFilter("Approved")}
+            className={`cursor-pointer rounded-xl border p-3 transition ${
+              filter === "Approved"
+                ? "border-emerald-400/50 bg-emerald-400/10"
+                : "border-white/5 bg-white/[0.02] hover:bg-white/5"
+            }`}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approved</p>
+            <p className="mt-1 text-2xl font-black text-emerald-300">{approvedCount}</p>
+          </div>
+          <div
+            onClick={() => setFilter("Rejected")}
+            className={`cursor-pointer rounded-xl border p-3 transition ${
+              filter === "Rejected"
+                ? "border-red-400/50 bg-red-400/10"
+                : "border-white/5 bg-white/[0.02] hover:bg-white/5"
+            }`}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Rejected</p>
+            <p className="mt-1 text-2xl font-black text-red-400">{rejectedCount}</p>
+          </div>
+          <div
+            onClick={() => setFilter("All")}
+            className={`cursor-pointer rounded-xl border p-3 transition ${
+              filter === "All"
+                ? "border-[#baff00]/50 bg-[#baff00]/10"
+                : "border-white/5 bg-white/[0.02] hover:bg-white/5"
+            }`}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Requests</p>
+            <p className="mt-1 text-2xl font-black text-white">{deposits.length}</p>
+          </div>
+        </div>
+
+        {/* Filter Bar & Search */}
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-1.5 overflow-x-auto">
+            {(["All", "Pending", "Approved", "Rejected"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  filter === f
+                    ? "bg-[#baff00] text-[#07100f]"
+                    : "bg-white/5 text-slate-400 hover:text-white"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search user, email, TID, method..."
+              className="h-9 w-full sm:w-64 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]/50"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="min-w-[1050px] w-full text-left">
+          <thead className="bg-[#0b1418] text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <tr>
+              <th className="px-5 py-4">User</th>
+              <th className="px-5 py-4">Method</th>
+              <th className="px-5 py-4">Amount</th>
+              <th className="px-5 py-4">Transaction ID</th>
+              <th className="px-5 py-4">Receipt Proof</th>
+              <th className="px-5 py-4">Submitted</th>
+              <th className="px-5 py-4">Status</th>
+              <th className="px-5 py-4">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-xs">
+            {filtered.map((d) => (
+              <tr key={d.id} className="hover:bg-white/[0.02] transition">
+                <td className="px-5 py-4">
+                  <p className="font-bold text-white">{d.name}</p>
+                  <p className="text-[11px] text-slate-500">{d.email}</p>
+                </td>
+                <td className="px-5 py-4">
+                  <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-1 font-semibold text-slate-200">
+                    {d.method}
+                  </span>
+                </td>
+                <td className="px-5 py-4 font-black text-sm text-white">
+                  ₨{Number(d.amount).toLocaleString()}
+                </td>
+                <td className="px-5 py-4 font-mono text-[11px] text-slate-300 select-all">
+                  {d.transactionId}
+                </td>
+                <td className="px-5 py-4">
+                  {d.screenshot ? (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewScreenshot(d.screenshot)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#baff00]/30 bg-[#baff00]/10 px-2.5 py-1 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f]"
+                    >
+                      <span>🖼️</span>
+                      <span>View Proof</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-slate-600">
+                      {d.status === "Pending" ? "No receipt" : "Purged ✓"}
+                    </span>
+                  )}
+                </td>
+                <td className="px-5 py-4 whitespace-nowrap text-[11px] text-slate-500">
+                  {new Date(d.createdAt).toLocaleString()}
+                </td>
+                <td className="px-5 py-4">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${
+                      d.status === "Approved"
+                        ? "bg-emerald-400/10 text-emerald-300 border border-emerald-400/20"
+                        : d.status === "Rejected"
+                        ? "bg-red-400/10 text-red-300 border border-red-400/20"
+                        : "bg-amber-400/10 text-amber-300 border border-amber-400/20"
+                    }`}
+                  >
+                    {d.status}
+                  </span>
+                  {d.rejectionReason && (
+                    <p className="mt-1 text-[10px] text-red-400 max-w-[160px] truncate" title={d.rejectionReason}>
+                      {d.rejectionReason}
+                    </p>
+                  )}
+                </td>
+                <td className="px-5 py-4">
+                  {d.status === "Pending" ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={!!busyId}
+                        onClick={() => updateDeposit(d.id, "approve")}
+                        className="rounded-lg bg-[#baff00] px-3 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition"
+                      >
+                        {busyId === d.id ? "..." : "Approve"}
+                      </button>
+                      <button
+                        disabled={!!busyId}
+                        onClick={() => updateDeposit(d.id, "reject")}
+                        className="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20 disabled:opacity-50 transition"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-600 font-medium">Reviewed</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {!filtered.length && (
+          <div className="p-12 text-center text-slate-500">
+            <p className="font-bold text-sm">No deposits found</p>
+            <p className="mt-1 text-xs">
+              {q ? `No deposit requests match "${q}".` : "No deposits currently in this view."}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Proof Screenshot Modal */}
+      {previewScreenshot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] max-w-2xl w-full overflow-hidden rounded-3xl border border-white/10 bg-[#111a1d] p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <span>🖼️</span>
+                <span>Payment Receipt Proof</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPreviewScreenshot(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition"
+              >
+                ✕ Close
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto rounded-2xl border border-white/5 bg-black/50 p-3 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewScreenshot}
+                alt="Deposit Receipt"
+                className="max-h-[65vh] w-auto max-w-full rounded-xl object-contain"
+              />
+            </div>
+            <p className="mt-3 text-center text-[11px] text-slate-500">
+              💡 Upon approval or rejection, the screenshot binary is automatically purged from the database for storage optimization and privacy.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Security Footer Note */}
+      <div className="border-t border-white/10 bg-[#0b1418] p-4 text-[11px] text-slate-400 flex items-center gap-2">
+        <span className="text-[#baff00] font-bold">🔒 Security Guarantee:</span>
+        <span>
+          Approving a deposit automatically locks the record under a PostgreSQL transaction, credits the user&apos;s real balance, and logs an immutable ledger entry.
+        </span>
       </div>
     </section>
   );

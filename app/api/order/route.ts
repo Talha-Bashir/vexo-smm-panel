@@ -229,6 +229,8 @@ export async function POST(request: Request) {
         rate,
         charge,
         balancePkr: reservation.balancePkr,
+        bonusBalancePkr: reservation.bonusBalancePkr,
+        totalAvailablePkr: reservation.totalAvailablePkr,
         failoverAttempts: dispatchResult.failoverAttempts,
       });
     } catch (dispatchErr) {

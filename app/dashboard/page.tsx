@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MassOrderPage } from "./mass-order";
 import { SubscriptionsPage } from "./subscriptions";
+import BonusCelebrationModal from "@/components/bonus-celebration-modal";
 
 type RizviService = {
   service: number;
@@ -395,6 +396,9 @@ export default function Home() {
   const [servicesError, setServicesError] = useState("");
   const [orders, setOrders] = useState<VexoOrder[]>([]);
   const [walletBalancePkr, setWalletBalancePkr] = useState(DEFAULT_WALLET_BALANCE_PKR);
+  const [bonusBalancePkr, setBonusBalancePkr] = useState(0);
+  const [bonusCelebration, setBonusCelebration] = useState<{ amount: number; claimKey?: string } | null>(null);
+  const totalAvailablePkr = walletBalancePkr + bonusBalancePkr;
   const [sadaPayNumber, setSadaPayNumber] = useState("03197008275");
   const [sadaPayTitle, setSadaPayTitle] = useState("Saeed Bashir");
   const [deposits, setDeposits] = useState<VexoDeposit[]>([]);
@@ -406,6 +410,36 @@ export default function Home() {
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Record<string, boolean>>({});
   const [expandedMobileAnnouncement, setExpandedMobileAnnouncement] = useState<string | null>(null);
+
+  function handleCloseCelebration() {
+    if (bonusCelebration?.claimKey) {
+      try {
+        localStorage.setItem(bonusCelebration.claimKey, "1");
+      } catch {}
+    }
+    setBonusCelebration(null);
+  }
+
+  function handleOrderNowCelebration() {
+    handleCloseCelebration();
+    navigate("New Order");
+  }
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("vexo_new_user_bonus");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.granted && parsed?.amount > 0) {
+          setBonusCelebration({
+            amount: Number(parsed.amount),
+            claimKey: "vexo_new_user_bonus_celebrated",
+          });
+        }
+        sessionStorage.removeItem("vexo_new_user_bonus");
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     async function loadAnnouncements() {
@@ -530,9 +564,30 @@ export default function Home() {
       }
 
       setWalletBalancePkr(Number(data.balancePkr || 0));
+      setBonusBalancePkr(Number(data.bonusBalancePkr || 0));
       if (data.sadaPayNumber) setSadaPayNumber(String(data.sadaPayNumber));
       if (data.sadaPayTitle) setSadaPayTitle(String(data.sadaPayTitle));
       setDeposits(Array.isArray(data.deposits) ? data.deposits : []);
+
+      // Check if user has an active bonus to celebrate (both newly registered and existing registered users)
+      const currentBonus = Number(data.bonusBalancePkr || 0);
+      if (currentBonus > 0) {
+        const claimId =
+          data.bonusClaim?.claimReference ||
+          data.bonusClaim?.grantedAt ||
+          data.bonusClaim?.id ||
+          `balance_${currentBonus}`;
+        const claimKey = `vexo_celebrated_bonus_${claimId}`;
+        try {
+          const alreadyCelebrated = localStorage.getItem(claimKey);
+          if (!alreadyCelebrated) {
+            setBonusCelebration({
+              amount: Number(data.bonusClaim?.amount || currentBonus),
+              claimKey,
+            });
+          }
+        } catch {}
+      }
     } catch (error) {
       console.error("VEXO WALLET LOAD ERROR:", error);
     }
@@ -824,23 +879,55 @@ export default function Home() {
           <div className="shrink-0 flex items-center gap-1.5 sm:gap-2.5">
             {/* Mobile Balance Pill */}
             <button
+              type="button"
+              suppressHydrationWarning
               onClick={() => navigate("Add Funds")}
-              className="flex items-center gap-1 rounded-xl border border-[#baff00]/25 bg-[#baff00]/10 px-2 py-1 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] sm:hidden shrink-0"
-              title="Add Funds / View Wallet"
+              className="flex items-center gap-1.5 rounded-xl border border-[#baff00]/25 bg-[#baff00]/10 px-2.5 py-1.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] sm:hidden shrink-0"
+              title={`Total: ₨${totalAvailablePkr.toFixed(2)} (Real: ₨${walletBalancePkr.toFixed(2)} + Bonus: ₨${bonusBalancePkr.toFixed(2)}) • Click to Add Funds`}
             >
               <Icon name="wallet" size={13} />
-              <span className="font-mono">{formatWalletBalance(selectedCurrency, currencyRates, walletBalancePkr)}</span>
+              <span className="font-mono">{formatWalletBalance(selectedCurrency, currencyRates, totalAvailablePkr)}</span>
+              {bonusBalancePkr > 0 && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setBonusCelebration({ amount: bonusBalancePkr, claimKey: "manual_view" });
+                  }}
+                  className="rounded bg-[#baff00] px-1 text-[9px] font-black text-[#07100f] cursor-pointer"
+                  title="Click to view Bonus Celebration"
+                >
+                  BONUS
+                </span>
+              )}
             </button>
 
+            {/* Desktop Balance Pill */}
             <button
+              type="button"
+              suppressHydrationWarning
               onClick={() => navigate("Add Funds")}
-              className="hidden rounded-xl bg-white/5 px-4 py-2 text-right transition hover:bg-[#baff00] hover:text-[#07100f] sm:block shrink-0"
-              title="Change wallet currency"
+              className="hidden sm:flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white transition hover:border-[#baff00]/40 hover:bg-white/10 shrink-0 group"
+              title={`Total Available: ₨${totalAvailablePkr.toFixed(2)} (Real: ₨${walletBalancePkr.toFixed(2)} + Bonus: ₨${bonusBalancePkr.toFixed(2)}) • Click to Add Funds`}
             >
-              <p className="text-[10px] uppercase tracking-wide text-slate-500">
-                Balance • {selectedCurrency}
-              </p>
-              <p className="font-bold">{formatWalletBalance(selectedCurrency, currencyRates, walletBalancePkr)}</p>
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#baff00]/10 text-[#baff00] group-hover:bg-[#baff00] group-hover:text-[#07100f] transition shrink-0">
+                <Icon name="wallet" size={13} />
+              </span>
+              <span className="font-extrabold text-white group-hover:text-[#baff00] transition whitespace-nowrap">
+                {formatWalletBalance(selectedCurrency, currencyRates, totalAvailablePkr)}
+              </span>
+              {bonusBalancePkr > 0 && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setBonusCelebration({ amount: bonusBalancePkr, claimKey: "manual_view" });
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md bg-[#baff00]/15 px-1.5 py-0.5 text-[10px] font-black text-[#baff00] border border-[#baff00]/30 hover:bg-[#baff00] hover:text-[#07100f] shrink-0 cursor-pointer"
+                  title="Click to view Congratulations Bonus Celebration"
+                >
+                  <span>+₨{bonusBalancePkr.toFixed(0)}</span>
+                  <span className="text-[9px] font-bold opacity-80">bonus</span>
+                </span>
+              )}
             </button>
 
             <div className="relative shrink-0">
@@ -1109,6 +1196,7 @@ export default function Home() {
               selectedCurrency={selectedCurrency}
               currencyRates={currencyRates}
               walletBalancePkr={walletBalancePkr}
+              bonusBalancePkr={bonusBalancePkr}
               currentUser={currentUser}
               onOrderService={handleOrderService}
             />
@@ -1136,9 +1224,11 @@ export default function Home() {
               onSelectServiceId={setSelectedServiceId}
               onOrderCreated={handleOrderCreated}
               walletBalancePkr={walletBalancePkr}
+              bonusBalancePkr={bonusBalancePkr}
               selectedCurrency={selectedCurrency}
               currencyRates={currencyRates}
               navigate={navigate}
+              onCelebrateBonus={() => setBonusCelebration({ amount: bonusBalancePkr || 50, claimKey: "manual_celebrate" })}
             />
           )}
 
@@ -1146,6 +1236,7 @@ export default function Home() {
             <MassOrderPage
               services={services}
               walletBalancePkr={walletBalancePkr}
+              bonusBalancePkr={bonusBalancePkr}
               onOrdersCreated={() => {
                 loadOrders();
                 loadWallet();
@@ -1176,13 +1267,16 @@ export default function Home() {
               setSelectedCurrency={setSelectedCurrency}
               rates={currencyRates}
               walletBalancePkr={walletBalancePkr}
+              bonusBalancePkr={bonusBalancePkr}
               deposits={deposits}
               sadaPayNumber={sadaPayNumber}
               sadaPayTitle={sadaPayTitle}
               onWalletUpdated={(balancePkr, nextDeposits) => {
                 setWalletBalancePkr(balancePkr);
                 setDeposits(nextDeposits);
+                loadWallet();
               }}
+              onCelebrateBonus={() => setBonusCelebration({ amount: bonusBalancePkr || 50, claimKey: "manual_celebrate" })}
             />
           )}
 
@@ -1303,6 +1397,16 @@ export default function Home() {
           <span className="text-[10px] font-semibold">Menu</span>
         </button>
       </nav>
+
+      {/* Bonus Party Popper Celebration Modal */}
+      {bonusCelebration && (
+        <BonusCelebrationModal
+          isOpen={Boolean(bonusCelebration)}
+          amount={bonusCelebration.amount}
+          onClose={handleCloseCelebration}
+          onOrderNow={handleOrderNowCelebration}
+        />
+      )}
     </main>
   );
 }
@@ -1316,6 +1420,7 @@ function Dashboard({
   selectedCurrency,
   currencyRates,
   walletBalancePkr,
+  bonusBalancePkr = 0,
   currentUser,
   onOrderService,
 }: {
@@ -1325,10 +1430,12 @@ function Dashboard({
   selectedCurrency: string;
   currencyRates: Record<string, number>;
   walletBalancePkr: number;
+  bonusBalancePkr?: number;
   currentUser: CurrentUser | null;
   onOrderService: (serviceId: number | string) => void;
 }) {
   const [todayLabel, setTodayLabel] = useState("");
+  const totalAvailablePkr = walletBalancePkr + bonusBalancePkr;
 
   useEffect(() => {
     setTodayLabel(new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
@@ -1353,6 +1460,32 @@ function Dashboard({
 
   return (
     <div className="mx-auto max-w-[1280px] space-y-7">
+      {/* Promotional Bonus Reminder Banner */}
+      {bonusBalancePkr > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-[#baff00]/35 bg-gradient-to-r from-[#baff00]/15 via-[#baff00]/5 to-transparent p-4 shadow-lg shadow-[#baff00]/5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#baff00] text-xl shadow-[0_0_16px_rgba(186,255,0,0.3)]">
+              🎁
+            </span>
+            <div>
+              <p className="text-xs font-black text-white sm:text-sm">
+                ₨{bonusBalancePkr.toFixed(2)} Promotional Bonus Credit Available
+              </p>
+              <p className="text-[11px] text-slate-300">
+                Non-withdrawable welcome promo. Automatically deducted first on your next purchase!
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("New Order")}
+            className="shrink-0 rounded-xl bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer"
+          >
+            Use Bonus Now →
+          </button>
+        </div>
+      )}
+
       {/* 1. Clean Dashboard Welcome Card */}
       <div className="antigravity-card rounded-xl p-5 sm:p-6 relative overflow-hidden">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1393,8 +1526,12 @@ function Dashboard({
         />
         <Stat
           title="Wallet Balance"
-          value={formatWalletBalance(selectedCurrency, currencyRates, walletBalancePkr)}
-          subtitle={`₨${walletBalancePkr.toLocaleString()} PKR available to spend`}
+          value={formatWalletBalance(selectedCurrency, currencyRates, totalAvailablePkr)}
+          subtitle={
+            bonusBalancePkr > 0
+              ? `₨${walletBalancePkr.toFixed(2)} Real + ₨${bonusBalancePkr.toFixed(2)} Bonus Credit`
+              : `₨${walletBalancePkr.toLocaleString()} PKR available to spend`
+          }
           icon="wallet"
         />
         <Stat
@@ -1589,14 +1726,21 @@ function Dashboard({
             <div className="rounded-2xl bg-white/[0.03] border border-white/5 p-4.5 space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Icon name="wallet" size={14} className="text-[#baff00]" />
-                Available Balance
+                Available Spending Power
               </span>
               <p className="text-3xl sm:text-4xl font-black text-white tracking-tight pt-1">
-                {formatWalletBalance(selectedCurrency, currencyRates, walletBalancePkr)}
+                {formatWalletBalance(selectedCurrency, currencyRates, totalAvailablePkr)}
               </p>
-              <p className="text-[11px] text-slate-400 pt-0.5">
-                ₨{walletBalancePkr.toLocaleString()} PKR verified balance
-              </p>
+              <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-slate-400">
+                  Real Balance: <strong className="text-white">₨{walletBalancePkr.toFixed(2)}</strong>
+                </span>
+                {bonusBalancePkr > 0 && (
+                  <span className="rounded-md border border-[#baff00]/30 bg-[#baff00]/10 px-2 py-0.5 text-[11px] font-bold text-[#baff00]">
+                    🎁 Bonus Credit: ₨{bonusBalancePkr.toFixed(2)} (Non-withdrawable)
+                  </span>
+                )}
+              </div>
             </div>
 
             <button
@@ -2418,18 +2562,22 @@ function NewOrder({
   onSelectServiceId,
   onOrderCreated,
   walletBalancePkr,
+  bonusBalancePkr = 0,
   selectedCurrency,
   currencyRates,
   navigate,
+  onCelebrateBonus,
 }: {
   services: Service[];
   selectedServiceId: string;
   onSelectServiceId: (id: string) => void;
   onOrderCreated: (order: VexoOrder) => void;
   walletBalancePkr: number;
+  bonusBalancePkr?: number;
   selectedCurrency: string;
   currencyRates: Record<string, number>;
   navigate: (page: string) => void;
+  onCelebrateBonus?: () => void;
 }) {
   const [platform, setPlatform] = useState<string>("All");
   const [actionType, setActionType] = useState<string>("all");
@@ -2697,7 +2845,8 @@ function NewOrder({
         ? Math.round((Number(service.price) * numericQuantity + Number.EPSILON) * 100) / 100
         : Math.round(((Number(service.price) / 1000) * numericQuantity + Number.EPSILON) * 100) / 100
       : 0;
-  const isInsufficient = walletBalancePkr < charge;
+  const totalAvailable = walletBalancePkr + bonusBalancePkr;
+  const isInsufficient = totalAvailable < charge;
 
   async function placeOrder() {
     setOrderMessage("");
@@ -2814,6 +2963,39 @@ function NewOrder({
           </button>
         )}
       </div>
+
+      {/* Promotional Bonus Celebration Callout Banner */}
+      {bonusBalancePkr > 0 && (
+        <div className="rounded-xl border border-[#baff00]/30 bg-gradient-to-r from-[#baff00]/10 via-[#0a1214] to-[#baff00]/10 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 text-white shadow-lg">
+          <div className="flex items-center gap-3.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#baff00]/20 text-xl border border-[#baff00]/40 shadow-[0_0_15px_rgba(186,255,0,0.2)]">
+              🎉
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-black uppercase tracking-wider text-[#baff00]">
+                  Promotional Bonus Active
+                </p>
+                <span className="rounded-full bg-[#baff00] px-2 py-0.5 text-[10px] font-black text-black">
+                  ₨{bonusBalancePkr.toFixed(2)} FREE
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                You have promotional bonus credit ready to spend on eligible orders. Enjoy the boost!
+              </p>
+            </div>
+          </div>
+          {onCelebrateBonus && (
+            <button
+              type="button"
+              onClick={onCelebrateBonus}
+              className="rounded-xl border border-[#baff00]/50 bg-[#baff00] px-4 py-2 text-xs font-black text-black hover:bg-[#a6e600] active:scale-95 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(186,255,0,0.3)] cursor-pointer"
+            >
+              <span>🎉</span> Celebrate Bonus <span>🎊</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Main 3-Step Flow: Left Form Card (Step 1 & 2) + Right Sticky Checkout Dock (Step 3) */}
       <div className="grid w-full min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
@@ -3378,11 +3560,16 @@ function NewOrder({
 
               <div className="mt-2">
                 <p className="text-2xl font-black text-white">
-                  ₨{walletBalancePkr.toFixed(2)}
+                  ₨{totalAvailable.toFixed(2)}
                 </p>
                 {selectedCurrency !== "PKR" && (
                   <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                    ≈ {formatWalletBalance(selectedCurrency, currencyRates, walletBalancePkr)}
+                    ≈ {formatWalletBalance(selectedCurrency, currencyRates, totalAvailable)}
+                  </p>
+                )}
+                {bonusBalancePkr > 0 && (
+                  <p className="text-[11px] text-[#baff00] font-medium mt-1">
+                    ₨{walletBalancePkr.toFixed(2)} real + ₨{bonusBalancePkr.toFixed(2)} bonus credit
                   </p>
                 )}
               </div>
@@ -3393,10 +3580,16 @@ function NewOrder({
                   <span>Order Cost</span>
                   <span className="font-bold text-white">₨{charge.toFixed(2)}</span>
                 </div>
+                {bonusBalancePkr > 0 && charge > 0 && (
+                  <div className="flex justify-between text-[#baff00] text-[11px] font-medium">
+                    <span>🎁 Bonus Applied First</span>
+                    <span>-₨{Math.min(bonusBalancePkr, charge).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-400">
                   <span>Balance After Order</span>
                   <span className={`font-bold ${isInsufficient ? "text-red-400" : "text-[#baff00]"}`}>
-                    ₨{Math.max(0, walletBalancePkr - charge).toFixed(2)}
+                    ₨{Math.max(0, totalAvailable - charge).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -3478,7 +3671,7 @@ function NewOrder({
                   onClick={() => navigate("Add Funds")}
                   className="w-full rounded-xl py-2.5 text-xs font-black bg-amber-400 text-[#07100f] hover:bg-amber-300 transition-all text-center cursor-pointer"
                 >
-                  Add Funds to Wallet (₨{(charge - walletBalancePkr).toFixed(2)} needed)
+                  Add Funds to Wallet (₨{(charge - totalAvailable).toFixed(2)} needed)
                 </button>
               )}
             </div>
@@ -4170,20 +4363,24 @@ function AddFundsPage({
   setSelectedCurrency,
   rates,
   walletBalancePkr,
+  bonusBalancePkr = 0,
   deposits,
   sadaPayNumber = "03197008275",
   sadaPayTitle = "Saeed Bashir",
   onWalletUpdated,
+  onCelebrateBonus,
 }: {
   currentUser?: CurrentUser | null;
   selectedCurrency: string;
   setSelectedCurrency: (code: string) => void;
   rates: Record<string, number>;
   walletBalancePkr: number;
+  bonusBalancePkr?: number;
   deposits: VexoDeposit[];
   sadaPayNumber?: string;
   sadaPayTitle?: string;
   onWalletUpdated: (balancePkr: number, deposits: VexoDeposit[]) => void;
+  onCelebrateBonus?: () => void;
 }) {
   const [openCurrency, setOpenCurrency] = useState(false);
   const [searchCurrency, setSearchCurrency] = useState("");
@@ -4355,11 +4552,30 @@ function AddFundsPage({
           <div className="rounded-xl bg-[#070d0d] p-5 text-white shadow-xl sm:p-7 border border-white/10">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Available Wallet Balance</p>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Real Deposited Balance</p>
                 <p className="mt-3 text-4xl font-black tracking-tight text-[#baff00]">
                   {formatWalletBalance(selectedCurrency, rates, walletBalancePkr)}
                 </p>
-                <p className="mt-2 text-sm text-slate-400">Spendable on any service instantly</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-slate-400">₨{walletBalancePkr.toFixed(2)} verified balance</span>
+                  {bonusBalancePkr > 0 && (
+                    <div className="inline-flex items-center gap-2">
+                      <span className="rounded-md border border-[#baff00]/30 bg-[#baff00]/10 px-2 py-0.5 text-[11px] font-bold text-[#baff00]">
+                        🎁 +₨{bonusBalancePkr.toFixed(2)} Promotional Credit (Total ₨{(walletBalancePkr + bonusBalancePkr).toFixed(2)})
+                      </span>
+                      {onCelebrateBonus && (
+                        <button
+                          type="button"
+                          onClick={onCelebrateBonus}
+                          className="rounded-md border border-[#baff00]/40 bg-[#baff00]/20 px-2 py-0.5 text-[11px] font-black text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="Celebrate Bonus"
+                        >
+                          <span>🎉</span> Celebrate <span>🎊</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <button
                 type="button"
