@@ -153,6 +153,7 @@ export async function POST(request: Request) {
         charge: Number(existing.charge_pkr),
         status: existing.status,
         balancePkr: null,
+        createdAt: existing.created_at,
       });
     }
 
@@ -232,6 +233,7 @@ export async function POST(request: Request) {
         bonusBalancePkr: reservation.bonusBalancePkr,
         totalAvailablePkr: reservation.totalAvailablePkr,
         failoverAttempts: dispatchResult.failoverAttempts,
+        createdAt: reservation.order.created_at,
       });
     } catch (dispatchErr) {
       const reason = dispatchErr instanceof Error ? dispatchErr.message : "Unable to place provider order.";

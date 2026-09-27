@@ -61,7 +61,7 @@ const PROVIDERS = [
     id: env.PROVIDER_1_ID || "pak_smm",
     name: env.PROVIDER_1_NAME || "PAK SMM Panels",
     apiUrl: env.PROVIDER_1_URL || "https://paksmmpanels.com/api/v2",
-    apiKey: env.PROVIDER_1_KEY || "79a0cf7ddd9ebce0a0cf81e7e5ec3faef3571ef5",
+    apiKey: env.PROVIDER_1_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -69,7 +69,7 @@ const PROVIDERS = [
     id: env.PROVIDER_2_ID || "smooth_smm",
     name: env.PROVIDER_2_NAME || "Smooth SMM",
     apiUrl: env.PROVIDER_2_URL || "https://smoothsmm.com/api/v2",
-    apiKey: env.PROVIDER_2_KEY || "5c6ad1550d3b72ca6afd09ffcb930bf7",
+    apiKey: env.PROVIDER_2_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -77,7 +77,7 @@ const PROVIDERS = [
     id: env.PROVIDER_3_ID || "am_smm",
     name: env.PROVIDER_3_NAME || "AM SMM Panel",
     apiUrl: env.PROVIDER_3_URL || "https://amsmmpanel.com/api/v2",
-    apiKey: env.PROVIDER_3_KEY || "135357052667f0556edecybercoree7acb990708f59b15b40",
+    apiKey: env.PROVIDER_3_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -85,7 +85,7 @@ const PROVIDERS = [
     id: env.PROVIDER_4_ID || "pakistan_smm",
     name: env.PROVIDER_4_NAME || "Pakistan SMM Panel",
     apiUrl: env.PROVIDER_4_URL || "https://pakistansmmpanel.pk/api/v2",
-    apiKey: env.PROVIDER_4_KEY || "8c532842fdd74e2889c4zerotrust74f1bb81314ab98aaee5",
+    apiKey: env.PROVIDER_4_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -93,7 +93,7 @@ const PROVIDERS = [
     id: env.PROVIDER_5_ID || "rizvi_smm",
     name: env.PROVIDER_5_NAME || "Rizvi SMM Panels",
     apiUrl: env.PROVIDER_5_URL || "https://rizvismmpanels.com/api/v2",
-    apiKey: env.PROVIDER_5_KEY || "04968c4867c7385287482cf0cf73246d",
+    apiKey: env.PROVIDER_5_KEY || env.RIZVI_API_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -104,11 +104,25 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-function detectGuarantee(name, category, refillFlag) {
-  const text = `${name} ${category}`.toLowerCase();
-  const noRefillPattern = /no refill|no-refill|drop 100%|drop: 100%|no guarantee|non-guaranteed|without refill|no drop 0%|drop high/i;
-  if (noRefillPattern.test(text)) return false;
+function normalizeDashes(str) {
+  return (str || "").replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-");
+}
 
+const NO_REFILL_PATTERN =
+  /no[\s-]*refill|without[\s-]*refill|refill[\s:]*no|refill[\s:]*0|0%[\s-]*refill|drop[\s-]*100%|100%[\s-]*drop|drop[\s-]*able|dropable|high[\s-]*drop|drop[\s-]*high|no[\s-]*guarantee|non[\s-]*guaranteed|not[\s-]*guaranteed|can[\s-]*drop|drop[\s-]*possible/i;
+
+function isDropOrNoRefill(name, category = "", description = "") {
+  const text = normalizeDashes(`${name} ${category} ${description}`);
+  return NO_REFILL_PATTERN.test(text);
+}
+
+function detectGuarantee(name, category, refillFlag, description = "") {
+  // CRITICAL: Any service marked drop-able, 100% drop, or no-refill is NEVER guaranteed.
+  if (isDropOrNoRefill(name, category, description)) {
+    return false;
+  }
+
+  const text = normalizeDashes(`${name} ${category}`);
   const guaranteePattern = /refill|guarantee|guaranteed|non-drop|non drop|r30|r60|r90|r365|lifetime|permanent/i;
   return Boolean(refillFlag || guaranteePattern.test(text));
 }
@@ -403,15 +417,18 @@ async function main() {
         const rateUsd = Math.round(rawRate * 1000000) / 1000000;
         const min = Math.max(1, Math.min(Number(item.min || 1), 2000000000));
         const max = Math.max(min, Math.min(Number(item.max || 100000), 2147483647));
-        const refill = Boolean(item.refill);
+        const description = String(item.desc || item.description || "").trim();
+        const rawRefill = Boolean(item.refill);
+        const isDrop = isDropOrNoRefill(name, category, description);
+        const refill = isDrop ? false : rawRefill;
         const cancel = Boolean(item.cancel);
 
         const platform = detectPlatform(name, category);
-        const isGuaranteed = detectGuarantee(name, category, refill);
+        const isGuaranteed = isDrop ? false : detectGuarantee(name, category, refill, description);
         const groupKey = generateGroupKey(platform, name, category, type, min, max, isGuaranteed);
 
         allRawRows.push({
-          pId, remoteServiceId, name, type, category, rateUsd, min, max, refill, cancel, isGuaranteed, groupKey
+          pId, remoteServiceId, name, type, category, rateUsd, min, max, refill, cancel, isGuaranteed, groupKey, description
         });
       }
     }
@@ -423,13 +440,13 @@ async function main() {
       const params = [];
       let pIdx = 1;
       for (const r of batch) {
-        valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11})`);
-        params.push(r.pId, r.remoteServiceId, r.name, r.type, r.category, r.rateUsd, r.min, r.max, r.refill, r.cancel, r.isGuaranteed, r.groupKey);
-        pIdx += 12;
+        valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12})`);
+        params.push(r.pId, r.remoteServiceId, r.name, r.type, r.category, r.rateUsd, r.min, r.max, r.refill, r.cancel, r.isGuaranteed, r.groupKey, r.description);
+        pIdx += 13;
       }
       await client.query(
         `INSERT INTO vexo_provider_services
-         (provider_id, remote_service_id, name, type, category, rate_usd, min, max, refill, cancel, is_guaranteed, service_group_key)
+         (provider_id, remote_service_id, name, type, category, rate_usd, min, max, refill, cancel, is_guaranteed, service_group_key, description)
          VALUES ${valClauses.join(", ")}
          ON CONFLICT (provider_id, remote_service_id) DO UPDATE SET
            name = EXCLUDED.name,
@@ -442,6 +459,7 @@ async function main() {
            cancel = EXCLUDED.cancel,
            is_guaranteed = EXCLUDED.is_guaranteed,
            service_group_key = EXCLUDED.service_group_key,
+           description = EXCLUDED.description,
            updated_at = NOW()`,
         params
       );
@@ -472,7 +490,7 @@ async function main() {
 
   const allServicesRes = await pool.query(
     `SELECT ps.id, ps.provider_id, p.name as provider_name, ps.remote_service_id, ps.name, ps.type, ps.category,
-            ps.rate_usd, ps.min, ps.max, ps.refill, ps.cancel, ps.is_guaranteed, ps.service_group_key
+            ps.rate_usd, ps.min, ps.max, ps.refill, ps.cancel, ps.is_guaranteed, ps.service_group_key, ps.description
      FROM vexo_provider_services ps
      JOIN vexo_providers p ON p.id = ps.provider_id
      WHERE p.enabled = true AND ps.rate_usd > 0
@@ -495,6 +513,7 @@ async function main() {
       refill: Boolean(row.refill),
       cancel: Boolean(row.cancel),
       isGuaranteed: Boolean(row.is_guaranteed),
+      description: String(row.description || "").trim(),
     });
   }
 
@@ -518,36 +537,24 @@ async function main() {
     const providerRatesObj = {};
     for (const q of quotes) {
       providerRatesObj[q.providerId] = {
+        remoteServiceId: q.remoteServiceId,
         rateUsd: q.rateUsd,
-        remoteId: q.remoteServiceId,
         name: q.name,
-        guaranteed: q.isGuaranteed,
+        refill: q.refill,
       };
     }
 
-    const fallbackQueue = eligibleQuotes.map((q, idx) => ({
-      rank: idx + 1,
+    const fallbackQueue = eligibleQuotes.slice(1).map((q) => ({
       providerId: q.providerId,
-      providerName: q.providerName,
       remoteServiceId: q.remoteServiceId,
       rateUsd: q.rateUsd,
-      isGuaranteed: q.isGuaranteed,
+      refill: q.refill,
     }));
 
     const existing = existingMap.get(groupKey);
-    const autoRoute = existing ? existing.auto_route !== false : true;
-    const rateMultiplier = existing ? Number(existing.rate_multiplier || (1 + DEFAULT_MARKUP)) : (1 + DEFAULT_MARKUP);
-
-    // Filter: "Compare panels services and list ONLY those which are cheaper"
-    // 1. Multiple providers competed across panels OR ultra-cheap baseline (<= $0.50)
-    // 2. Base rate is affordable (<= $5.00)
-    const providerSet = new Set(quotes.map((q) => q.providerId));
-    const isMultiProvider = providerSet.size >= 2;
-    const isPackageService = cheapest.type?.toLowerCase()?.includes("package") || (Number(cheapest.min) === 1 && Number(cheapest.max) === 1);
-    const isAffordable = cheapest.rateUsd <= 5.0 || (isPackageService && cheapest.rateUsd <= 15.0);
-    const isCheaperService = (isMultiProvider || cheapest.rateUsd <= 5.0) && isAffordable;
-
-    const enabled = isCheaperService;
+    const autoRoute = existing ? Boolean(existing.auto_route) : true;
+    const rateMultiplier = existing ? Number(existing.rate_multiplier || 1.25) : 1.25;
+    const enabled = existing ? Boolean(existing.enabled) : true;
     const popular = existing ? Boolean(existing.popular) : false;
 
     const activeProviderId = autoRoute ? cheapest.providerId : String(existing?.active_provider_id || cheapest.providerId);
@@ -557,14 +564,18 @@ async function main() {
     const baseRateUsd = selectedQuote.rateUsd;
     const ratePkr = Math.round(baseRateUsd * USD_TO_PKR * rateMultiplier * 10000) / 10000;
 
-    const cleanTitle = generateDisplayTitle(platform, groupKey, isGuaranteed, selectedQuote.name);
+    const isServiceDrop = isDropOrNoRefill(selectedQuote.name, selectedQuote.category, selectedQuote.description);
+    const finalGuaranteed = isServiceDrop ? false : isGuaranteed;
+    const finalRefill = isServiceDrop ? false : selectedQuote.refill;
+
+    const cleanTitle = generateDisplayTitle(platform, groupKey, finalGuaranteed, selectedQuote.name);
 
     routedItems.push({
       cleanTitle,
       platform,
       category: String(selectedQuote.category || platform || "General").trim(),
       groupKey,
-      isGuaranteed,
+      isGuaranteed: finalGuaranteed,
       autoRoute,
       activeProviderId,
       activeRemoteServiceId,
@@ -573,12 +584,13 @@ async function main() {
       ratePkr,
       min: selectedQuote.min,
       max: selectedQuote.max,
-      refill: selectedQuote.refill,
+      refill: finalRefill,
       cancel: selectedQuote.cancel,
       enabled,
       popular,
       fallbackQueue,
-      providerRatesObj
+      providerRatesObj,
+      description: String(selectedQuote.description || "").trim(),
     });
   }
 
@@ -590,7 +602,7 @@ async function main() {
     const params = [];
     let pIdx = 1;
     for (const r of chunk) {
-      valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18})`);
+      valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18}, $${pIdx+19})`);
       params.push(
         r.cleanTitle,
         r.platform,
@@ -610,14 +622,15 @@ async function main() {
         r.enabled,
         r.popular,
         JSON.stringify(r.fallbackQueue),
-        JSON.stringify(r.providerRatesObj)
+        JSON.stringify(r.providerRatesObj),
+        r.description
       );
-      pIdx += 19;
+      pIdx += 20;
     }
 
     await pool.query(
       `INSERT INTO vexo_routed_services
-       (name, platform, category, service_group_key, is_guaranteed, auto_route, active_provider_id, active_remote_service_id, base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel, enabled, popular, fallback_queue, provider_rates)
+       (name, platform, category, service_group_key, is_guaranteed, auto_route, active_provider_id, active_remote_service_id, base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel, enabled, popular, fallback_queue, provider_rates, description)
        VALUES ${valClauses.join(", ")}
        ON CONFLICT (service_group_key) DO UPDATE SET
          name = EXCLUDED.name,
@@ -635,6 +648,7 @@ async function main() {
          enabled = EXCLUDED.enabled,
          fallback_queue = EXCLUDED.fallback_queue,
          provider_rates = EXCLUDED.provider_rates,
+         description = EXCLUDED.description,
          updated_at = NOW()`,
       params
     );

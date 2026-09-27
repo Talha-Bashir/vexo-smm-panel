@@ -2,7 +2,7 @@ const API_URL =
   process.env.RIZVI_API_URL || "https://rizvismmpanels.com/api/v2";
 
 const API_KEY =
-  process.env.RIZVI_API_KEY || process.env.PROVIDER_5_KEY || "04968c4867c7385287482cf0cf73246d";
+  process.env.RIZVI_API_KEY || process.env.PROVIDER_5_KEY || "";
 
 type RizviResponse = unknown;
 

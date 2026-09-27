@@ -59,7 +59,7 @@ async function isAuthorized(request: Request): Promise<boolean> {
   return false;
 }
 
-export async function runTrashCleanup(): Promise<CleanupReport> {
+async function runTrashCleanup(): Promise<CleanupReport> {
   let expiredSessions = 0;
   let oldActivityLogs = 0;
   let staleRejectedDeposits = 0;

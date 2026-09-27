@@ -38,7 +38,7 @@ export interface ToolProduct {
   isPartnerBot?: boolean;
 }
 
-export const TOOLS_CATALOG: ToolProduct[] = [
+const TOOLS_CATALOG: ToolProduct[] = [
   // AI & Content
   {
     id: "chatgpt_plus",

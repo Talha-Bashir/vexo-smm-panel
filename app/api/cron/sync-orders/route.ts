@@ -75,7 +75,7 @@ async function isAuthorized(request: Request): Promise<boolean> {
   return false;
 }
 
-export async function runOrderSync() {
+async function runOrderSync() {
   // Gracefully ensure wallet schema without failing the entire sync on non-fatal DB warnings
   try {
     await ensureWalletSchema();

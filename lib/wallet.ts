@@ -216,7 +216,7 @@ export async function reserveWalletForOrder(input: {
     await client.query("BEGIN");
 
     const existing = await client.query(
-      `SELECT id, provider_order_id, status, charge_pkr
+      `SELECT id, provider_order_id, status, charge_pkr, created_at
        FROM vexo_orders
        WHERE idempotency_key = $1 AND user_id = $2
        LIMIT 1`,

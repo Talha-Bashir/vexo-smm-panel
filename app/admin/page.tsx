@@ -1095,7 +1095,7 @@ function Orders({ orders, q, setQ, status, setStatus, reload, update }: { orders
         <table className="min-w-[1200px] w-full text-left">
           <thead className="bg-[#0b1418] text-xs uppercase text-slate-500">
             <tr>
-              {["Order", "User", "Service", "Qty", "Charge", "Status", "Action"].map((x) => (
+              {["Order", "User", "Service", "Qty", "Charge", "Status", "Date & Time", "Action"].map((x) => (
                 <th key={x} className="px-5 py-4">{x}</th>
               ))}
             </tr>
@@ -1115,6 +1115,10 @@ function Orders({ orders, q, setQ, status, setStatus, reload, update }: { orders
                 <td className="px-5 py-4">{o.quantity.toLocaleString()}</td>
                 <td className="px-5 py-4 font-black">{money(o.chargePkr)}</td>
                 <td className="px-5 py-4"><Badge>{o.status}</Badge></td>
+                <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-400">
+                  <p className="font-semibold text-slate-300">{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</p>
+                  <p className="text-[11px] text-slate-500">{o.createdAt ? new Date(o.createdAt).toLocaleTimeString() : ""}</p>
+                </td>
                 <td className="px-5 py-4">
                   <select value={o.status} onChange={(e) => update(o.id, e.target.value)} className="rounded-lg border border-white/10 bg-[#0b1418] px-2 py-2 text-xs">
                     <option>Pending</option>

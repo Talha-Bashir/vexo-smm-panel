@@ -19,12 +19,20 @@
 
 # production
 /build
+dist/
 
 # misc
 .DS_Store
+Thumbs.db
 *.pem
+.idea/
+*.suo
+*.sw?
+/git
 
 # debug
+*.log
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

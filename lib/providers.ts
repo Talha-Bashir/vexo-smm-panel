@@ -14,7 +14,7 @@ export const STATIC_PROVIDERS: ProviderConfig[] = [
     id: process.env.PROVIDER_1_ID || "pak_smm",
     name: process.env.PROVIDER_1_NAME || "PAK SMM Panels",
     apiUrl: process.env.PROVIDER_1_URL || "https://paksmmpanels.com/api/v2",
-    apiKey: process.env.PROVIDER_1_KEY || "79a0cf7ddd9ebce0a0cf81e7e5ec3faef3571ef5",
+    apiKey: process.env.PROVIDER_1_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -22,7 +22,7 @@ export const STATIC_PROVIDERS: ProviderConfig[] = [
     id: process.env.PROVIDER_2_ID || "smooth_smm",
     name: process.env.PROVIDER_2_NAME || "Smooth SMM",
     apiUrl: process.env.PROVIDER_2_URL || "https://smoothsmm.com/api/v2",
-    apiKey: process.env.PROVIDER_2_KEY || "5c6ad1550d3b72ca6afd09ffcb930bf7",
+    apiKey: process.env.PROVIDER_2_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -30,7 +30,7 @@ export const STATIC_PROVIDERS: ProviderConfig[] = [
     id: process.env.PROVIDER_3_ID || "am_smm",
     name: process.env.PROVIDER_3_NAME || "AM SMM Panel",
     apiUrl: process.env.PROVIDER_3_URL || "https://amsmmpanel.com/api/v2",
-    apiKey: process.env.PROVIDER_3_KEY || "135357052667f0556edecybercoree7acb990708f59b15b40",
+    apiKey: process.env.PROVIDER_3_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -38,7 +38,7 @@ export const STATIC_PROVIDERS: ProviderConfig[] = [
     id: process.env.PROVIDER_4_ID || "pakistan_smm",
     name: process.env.PROVIDER_4_NAME || "Pakistan SMM Panel",
     apiUrl: process.env.PROVIDER_4_URL || "https://pakistansmmpanel.pk/api/v2",
-    apiKey: process.env.PROVIDER_4_KEY || "8c532842fdd74e2889c4zerotrust74f1bb81314ab98aaee5",
+    apiKey: process.env.PROVIDER_4_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -46,7 +46,7 @@ export const STATIC_PROVIDERS: ProviderConfig[] = [
     id: process.env.PROVIDER_5_ID || "rizvi_smm",
     name: process.env.PROVIDER_5_NAME || "Rizvi SMM Panels",
     apiUrl: process.env.PROVIDER_5_URL || "https://rizvismmpanels.com/api/v2",
-    apiKey: process.env.PROVIDER_5_KEY || "04968c4867c7385287482cf0cf73246d",
+    apiKey: process.env.PROVIDER_5_KEY || process.env.RIZVI_API_KEY || "",
     currency: "USD",
     enabled: true,
   },
@@ -130,6 +130,9 @@ export async function ensureProvidersSchema(): Promise<void> {
         ALTER TABLE vexo_routed_services ALTER COLUMN min TYPE BIGINT;
         ALTER TABLE vexo_routed_services ALTER COLUMN max TYPE BIGINT;
 
+        ALTER TABLE vexo_provider_services ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+        ALTER TABLE vexo_routed_services ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS provider_id VARCHAR(50);
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS failover_attempts JSONB DEFAULT '[]';
       `);
@@ -142,7 +145,11 @@ export async function ensureProvidersSchema(): Promise<void> {
            ON CONFLICT (id) DO UPDATE SET
              name = EXCLUDED.name,
              api_url = EXCLUDED.api_url,
-             api_key = EXCLUDED.api_key`,
+             api_key = CASE
+               WHEN EXCLUDED.api_key IS NOT NULL AND EXCLUDED.api_key <> ''
+               THEN EXCLUDED.api_key
+               ELSE vexo_providers.api_key
+             END`,
           [p.id, p.name, p.apiUrl, p.apiKey, p.currency, p.enabled]
         );
       }

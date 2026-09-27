@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/sync-orders",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/check-balances",
+      "schedule": "0 6 * * *"
     }
   ]
 }

@@ -292,6 +292,12 @@ function convertRizviService(item: RizviService): Service {
   const retailUsd = (item as any).rate_usd != null ? Number((item as any).rate_usd) : Math.round(baseUsd * mult * 10000) / 10000;
   const retailPkr = (item as any).rate_pkr != null ? Number((item as any).rate_pkr) : getVexoRate(item.rate);
 
+  const rawDesc = String(item.desc || (item as any).description || "").trim();
+  const normText = `${item.name} ${item.category || ""} ${rawDesc}`.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-");
+  const isDrop = /no[\s-]*refill|without[\s-]*refill|refill[\s:]*no|refill[\s:]*0|0%[\s-]*refill|drop[\s-]*100%|100%[\s-]*drop|drop[\s-]*able|dropable|high[\s-]*drop|drop[\s-]*high|no[\s-]*guarantee|non[\s-]*guaranteed|not[\s-]*guaranteed|can[\s-]*drop|drop[\s-]*possible/i.test(normText);
+  const isG = isDrop ? false : Boolean((item as any).is_guaranteed || item.refill);
+  const isRefill = isDrop ? false : Boolean(item.refill || isG);
+
   return {
     id: item.service,
     platform: normalizedPlatform,
@@ -299,7 +305,7 @@ function convertRizviService(item: RizviService): Service {
     name: item.name,
     type: item.type,
     description:
-      item.desc ||
+      rawDesc ||
       `${item.type} service • ${item.average_time || "Fast delivery"}`,
     price: retailPkr.toFixed(4),
     rate_usd: retailUsd,
@@ -308,8 +314,8 @@ function convertRizviService(item: RizviService): Service {
     min: String(item.min),
     max: String(item.max),
     category: item.category,
-    refill: Boolean(item.refill),
-    is_guaranteed: Boolean((item as any).is_guaranteed || item.refill),
+    refill: isRefill,
+    is_guaranteed: isG,
     popular: Boolean(item.popular),
   };
 }
@@ -1650,7 +1656,10 @@ function Dashboard({
                       className="group transition hover:bg-white/[0.025]"
                     >
                       <td className="py-3.5 pr-4 font-mono font-bold text-slate-300 group-hover:text-white">
-                        {order.orderId ? `#${order.orderId}` : `#${order.localId}`}
+                        <div>{order.orderId ? `#${order.orderId}` : `#${order.localId}`}</div>
+                        <div className="text-[10px] font-normal text-slate-500 font-sans mt-0.5">
+                          {order.createdAt ? new Date(order.createdAt).toLocaleString() : ""}
+                        </div>
                       </td>
                       <td className="py-3.5 pr-4 max-w-[220px]">
                         <div className="flex items-center gap-2">
@@ -2084,9 +2093,13 @@ function ServicesPage({
                       #{service.id} • {service.platform}
                     </span>
                   </div>
-                  {service.refill ? (
+                  {isServiceGuaranteed(service) ? (
                     <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-[10px] font-bold text-[#baff00]">
                       ✓ Refill
+                    </span>
+                  ) : isServiceDropOrNoRefill(service) ? (
+                    <span className="rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-400">
+                      ⛔ No Refill
                     </span>
                   ) : (
                     <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-400">
@@ -2170,9 +2183,13 @@ function ServicesPage({
                       {Number(service.min).toLocaleString()} / {Number(service.max).toLocaleString()}
                     </td>
                     <td className="px-4 py-3.5">
-                      {service.refill ? (
+                      {isServiceGuaranteed(service) ? (
                         <span className="rounded-full bg-lime-400/15 px-2.5 py-0.5 text-[10px] font-bold text-[#baff00]">
                           ✓ Refill
+                        </span>
+                      ) : isServiceDropOrNoRefill(service) ? (
+                        <span className="rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[10px] font-bold text-rose-400">
+                          ⛔ No Refill
                         </span>
                       ) : (
                         <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] font-medium text-slate-400">
@@ -2214,13 +2231,28 @@ function ServicesPage({
                 <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-white/5 font-bold ${getPlatformIconClass(service.platform)}`}>
                   <Icon name={service.icon} size={22} strokeWidth={2} />
                 </div>
-                <span className="shrink-0 rounded-lg bg-[#070d0d] px-2.5 py-1 text-[10px] font-bold text-slate-400">
-                  ID #{service.id}
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isServiceGuaranteed(service) ? (
+                    <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-[10px] font-bold text-[#baff00]">
+                      ✓ Refill
+                    </span>
+                  ) : isServiceDropOrNoRefill(service) ? (
+                    <span className="rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-400">
+                      ⛔ No Refill
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                      Standard
+                    </span>
+                  )}
+                  <span className="rounded-lg bg-[#070d0d] px-2.5 py-1 text-[10px] font-bold text-slate-400">
+                    ID #{service.id}
+                  </span>
+                </div>
               </div>
 
               <h3 className="mt-4 break-words font-bold leading-6 text-white">{service.name}</h3>
-              <p className="mt-1 text-xs text-slate-400 line-clamp-2">{service.description}</p>
+              <p className="mt-1 text-xs text-slate-400 line-clamp-2">{formatServiceDescription(service.description)}</p>
 
               <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
                 <div className="rounded-xl bg-[#0a1110] p-3">
@@ -2341,13 +2373,38 @@ function getServiceLinkPlaceholder(platform: string, actionType?: string) {
   }
 }
 
+function normalizeDashes(str: string): string {
+  return (str || "").replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-");
+}
+
+function isServiceDropOrNoRefill(service: Service): boolean {
+  const raw = `${service.name} ${service.category || ""} ${service.description || ""}`;
+  const text = normalizeDashes(raw);
+  const noRefillPattern =
+    /no[\s-]*refill|without[\s-]*refill|refill[\s:]*no|refill[\s:]*0|0%[\s-]*refill|drop[\s-]*100%|100%[\s-]*drop|drop[\s-]*able|dropable|high[\s-]*drop|drop[\s-]*high|no[\s-]*guarantee|non[\s-]*guaranteed|not[\s-]*guaranteed|can[\s-]*drop|drop[\s-]*possible/i;
+  return noRefillPattern.test(text);
+}
+
 function isServiceGuaranteed(service: Service): boolean {
+  // CRITICAL: Any drop-able or no-refill service is NEVER guaranteed.
+  if (isServiceDropOrNoRefill(service)) return false;
   if (service.is_guaranteed === true || service.refill === true) return true;
-  const text = `${service.name} ${service.category || ""}`.toLowerCase();
-  const noRefill = /no refill|no-refill|without refill|no guarantee|non-guaranteed|drop 100%|drop: 100%/i;
-  if (noRefill.test(text)) return false;
+  const text = normalizeDashes(`${service.name} ${service.category || ""}`);
   const guaranteed = /refill|guarantee|guaranteed|non-drop|non drop|r30|r60|r90|r365|lifetime|permanent/i;
   return guaranteed.test(text);
+}
+
+function formatServiceDescription(desc?: string): string {
+  if (!desc) return "";
+  return desc
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .trim();
 }
 
 function detectServiceAction(service: Service): string {
@@ -2915,14 +2972,14 @@ function NewOrder({
         rate: Number(data.rate ?? service.price),
         charge: Number(data.charge ?? charge),
         status: "Pending",
-        createdAt: new Date().toISOString(),
+        createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString(),
       };
 
       onOrderCreated(createdOrder);
       setOrderMessage(
         data.orderId
-          ? `Order #${data.orderId} placed successfully! Tracking live updates in Orders.`
-          : "Order placed successfully! Dispatched to provider queue."
+          ? `Order #${data.orderId} placed successfully at ${new Date(createdOrder.createdAt).toLocaleTimeString()}! Tracking live updates in Orders.`
+          : `Order placed successfully at ${new Date(createdOrder.createdAt).toLocaleTimeString()}! Dispatched to provider queue.`
       );
       setLink("");
     } catch (error) {
@@ -3120,10 +3177,16 @@ function NewOrder({
                           className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
                             isServiceGuaranteed(service)
                               ? "bg-[#baff00]/10 text-[#baff00] border border-[#baff00]/25"
+                              : isServiceDropOrNoRefill(service)
+                              ? "bg-rose-500/10 text-rose-400 border border-rose-500/25"
                               : "bg-amber-400/10 text-amber-400 border border-amber-400/25"
                           }`}
                         >
-                          {isServiceGuaranteed(service) ? "🛡️ Guaranteed Refill" : "⚡ Standard"}
+                          {isServiceGuaranteed(service)
+                            ? "🛡️ Guaranteed Refill"
+                            : isServiceDropOrNoRefill(service)
+                            ? "⛔ 100% Drop / No Refill"
+                            : "⚡ Standard"}
                         </span>
                       </div>
 
@@ -3277,10 +3340,18 @@ function NewOrder({
                                 <span className="text-[10px] font-semibold text-slate-300">{s.platform}</span>
                                 <span
                                   className={`text-[10px] font-bold ml-1 ${
-                                    isG ? "text-[#baff00]" : "text-amber-400"
+                                    isG
+                                      ? "text-[#baff00]"
+                                      : isServiceDropOrNoRefill(s)
+                                      ? "text-rose-400"
+                                      : "text-amber-400"
                                   }`}
                                 >
-                                  {isG ? "🛡️ Guaranteed" : "⚡ Standard"}
+                                  {isG
+                                    ? "🛡️ Guaranteed"
+                                    : isServiceDropOrNoRefill(s)
+                                    ? "⛔ 100% Drop / No Refill"
+                                    : "⚡ Standard"}
                                 </span>
                                 {isSelected && (
                                   <span className="rounded bg-[#baff00] px-1.5 py-0.5 text-[9px] font-black text-[#07100f] ml-auto">
@@ -3346,10 +3417,16 @@ function NewOrder({
                           className={`rounded-full px-2 py-0.5 text-[9px] font-black tracking-wide ${
                             isServiceGuaranteed(service)
                               ? "bg-[#baff00]/15 text-[#baff00] border border-[#baff00]/30"
+                              : isServiceDropOrNoRefill(service)
+                              ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
                               : "bg-amber-400/15 text-amber-400 border border-amber-400/30"
                           }`}
                         >
-                          {isServiceGuaranteed(service) ? "🛡️ Guaranteed Refill" : "⚡ Standard"}
+                          {isServiceGuaranteed(service)
+                            ? "🛡️ Guaranteed Refill"
+                            : isServiceDropOrNoRefill(service)
+                            ? "⛔ Drop-Able / No Refill"
+                            : "⚡ Standard"}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-400">
@@ -3386,8 +3463,20 @@ function NewOrder({
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-2.5 border border-white/5">
                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Refill / Drop</span>
-                        <span className={`text-xs sm:text-sm font-bold truncate block ${isServiceGuaranteed(service) ? "text-[#baff00]" : "text-amber-400"}`}>
-                          {isServiceGuaranteed(service) ? "🛡️ 30-Day Refill" : "⚡ Standard / Non-Drop"}
+                        <span
+                          className={`text-xs sm:text-sm font-bold truncate block ${
+                            isServiceGuaranteed(service)
+                              ? "text-[#baff00]"
+                              : isServiceDropOrNoRefill(service)
+                              ? "text-rose-400"
+                              : "text-amber-400"
+                          }`}
+                        >
+                          {isServiceGuaranteed(service)
+                            ? "🛡️ 30-Day Refill"
+                            : isServiceDropOrNoRefill(service)
+                            ? "⛔ 100% Drop / No Refill"
+                            : "⚡ Standard (No Refill)"}
                         </span>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-2.5 border border-white/5">
@@ -3401,7 +3490,7 @@ function NewOrder({
                     {service.description && (
                       <div className="rounded-xl bg-white/[0.02] p-3 border border-white/5 text-[11px] leading-relaxed text-slate-300">
                         <p className="font-bold text-white mb-1">Service Instructions &amp; Provider Notes:</p>
-                        <p className="whitespace-pre-line text-slate-300">{service.description}</p>
+                        <p className="whitespace-pre-line text-slate-300">{formatServiceDescription(service.description)}</p>
                       </div>
                     )}
                   </div>
@@ -4044,8 +4133,8 @@ function OrdersPage({
                       <span className="font-bold text-[#baff00]">₨{order.charge.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                      <span>Date:</span>
-                      <span className="text-slate-400">{new Date(order.createdAt).toLocaleDateString()}</span>
+                      <span>Date & Time:</span>
+                      <span className="text-slate-400">{order.createdAt ? new Date(order.createdAt).toLocaleString() : "—"}</span>
                     </div>
                   </div>
 
@@ -4090,7 +4179,7 @@ function OrdersPage({
                   <th className="px-5 py-4">Quantity</th>
                   <th className="px-5 py-4">Charge</th>
                   <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Date</th>
+                  <th className="px-5 py-4">Date & Time</th>
                   <th className="px-5 py-4 text-right">Action</th>
                 </tr>
               </thead>
@@ -4141,8 +4230,9 @@ function OrdersPage({
                           {order.status}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-500">
-                        {new Date(order.createdAt).toLocaleString()}
+                      <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-400">
+                        <p className="font-semibold text-slate-300">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}</p>
+                        <p className="text-[11px] text-slate-500">{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : ""}</p>
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-right">
                         {(isCompleted || isPartial) && (
