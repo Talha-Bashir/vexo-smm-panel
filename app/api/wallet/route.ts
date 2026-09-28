@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/request-user";
 import { getUserWallet } from "@/lib/wallet";
 import { getAllPlatformSettings } from "@/lib/admin";
+import { getLiveForexUsdRate } from "@/lib/exchange-rate";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +14,10 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Authentication required." }, { status: 401 });
     }
 
-    const [wallet, settings, bonusClaim] = await Promise.all([
+    const [wallet, settings, liveUsdRate, bonusClaim] = await Promise.all([
       getUserWallet(Number(user.id)),
       getAllPlatformSettings(),
+      getLiveForexUsdRate(),
       db
         .query(
           `SELECT id, amount_pkr, status, reason, claim_reference, created_at, updated_at
@@ -44,6 +46,11 @@ export async function GET() {
         : null,
       sadaPayNumber: settings.sadapay_number || "03197008275",
       sadaPayTitle: settings.sadapay_title || "Saeed Bashir",
+      binanceUid: settings.binance_uid || "1069021883",
+      binanceName: settings.binance_name || "Talha Bashir Bhatti",
+      binanceUsdtAddress: settings.binance_usdt_address || "0xaa3037450e112ef10406df821803522bc589821c",
+      binanceNetwork: settings.binance_network || "BSC BNB Smart Chain (BEP20)",
+      liveUsdRate: liveUsdRate,
     });
   } catch (error) {
     console.error("VEXO WALLET GET ERROR:", error);

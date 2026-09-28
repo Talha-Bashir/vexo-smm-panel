@@ -1,9 +1,18 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 /* ---------------- TYPES ---------------- */
+
+export type PlatformTheme = "dark" | "light" | "midnight" | "purple";
+
+export const THEME_OPTIONS: { id: PlatformTheme; name: string; icon: string; dot: string }[] = [
+  { id: "dark", name: "Cyber Dark", icon: "⚡", dot: "#baff00" },
+  { id: "light", name: "Clean Light", icon: "☀️", dot: "#10b981" },
+  { id: "midnight", name: "Midnight Navy", icon: "🌌", dot: "#38bdf8" },
+  { id: "purple", name: "Neon Purple", icon: "🔮", dot: "#c084fc" },
+];
 
 type Service = {
   service: number;
@@ -185,8 +194,12 @@ function Icon({
 
 function BrandMark() {
   return (
-    <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-[#baff00] text-lg sm:text-xl font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)]">
-      V
+    <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(186,255,0,0.35)] border border-[#baff00]/30 group-hover:border-[#baff00]/60 transition-all duration-300">
+      <img
+        src="/logo.png"
+        alt="VEXARO SMM"
+        className="h-full w-full object-cover transition-transform group-hover:scale-105 duration-300"
+      />
     </div>
   );
 }
@@ -300,15 +313,41 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasSession, setHasSession] = useState(false);
 
-  // Floating Support Drawer
-  const [supportDrawerOpen, setSupportDrawerOpen] = useState(false);
-
   // System Announcements State
   const [announcements, setAnnouncements] = useState<{ id: string; title: string; message: string; createdAt: string }[]>([]);
   const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<{ id: string; title: string; message: string; createdAt: string } | null>(null);
   const [topBannerDismissed, setTopBannerDismissed] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState<PlatformTheme>("dark");
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    try {
+      const stored = (localStorage.getItem("vexo_platform_theme") || document.documentElement.getAttribute("data-theme") || "dark") as PlatformTheme;
+      const valid = ["dark", "light", "midnight", "purple"].includes(stored) ? stored : "dark";
+      setCurrentTheme(valid);
+      document.documentElement.setAttribute("data-theme", valid);
+    } catch {}
+  }, []);
+
+  const selectTheme = (theme: PlatformTheme) => {
+    setCurrentTheme(theme);
+    try {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("vexo_platform_theme", theme);
+    } catch {}
+  };
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setThemeMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Services Catalog Preview State
   const [services, setServices] = useState<Service[]>([]);
@@ -403,10 +442,14 @@ export default function LandingPage() {
     return filteredCatalogServices.slice(0, 16);
   }, [filteredCatalogServices]);
 
+  const currentThemeOption = useMemo(() => {
+    return THEME_OPTIONS.find((t) => t.id === currentTheme) || THEME_OPTIONS[0];
+  }, [currentTheme]);
+
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#070d0d] font-sans text-white selection:bg-[#baff00] selection:text-[#07100f]">
       {/* Background Ambient Glows */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden hero-ambient-glow">
         <div className="absolute -left-32 top-10 h-[clamp(16rem,30vw,32rem)] w-[clamp(16rem,30vw,32rem)] rounded-full bg-[#baff00]/5 blur-[120px]" />
         <div className="absolute right-0 top-1/4 h-[clamp(20rem,35vw,36rem)] w-[clamp(20rem,35vw,36rem)] rounded-full bg-[#00ffcc]/4 blur-[140px]" />
         <div className="absolute bottom-10 left-1/3 h-[clamp(14rem,25vw,28rem)] w-[clamp(14rem,25vw,28rem)] rounded-full bg-[#baff00]/4 blur-[130px]" />
@@ -449,14 +492,14 @@ export default function LandingPage() {
               </a>
               <span className="text-slate-600 hidden md:inline">•</span>
               <a
-                href="https://vexo-smm-panel-7sln.vercel.app/"
+                href="https://vexarosmm.com/"
                 target="_blank"
                 rel="noreferrer"
                 className="hidden md:inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition font-mono text-[11px]"
                 title="Official Website Link"
               >
                 <Icon name="globe" size={13} />
-                <span>vexo-smm-panel-7sln.vercel.app</span>
+                <span>vexarosmm.com</span>
               </a>
               <button
                 type="button"
@@ -510,6 +553,53 @@ export default function LandingPage() {
 
           {/* Action Buttons */}
           <div className="hidden sm:flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* 4-Theme Selector Dropdown */}
+            <div className="relative" ref={themeMenuRef}>
+              <button
+                type="button"
+                onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 sm:px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-white/30 shrink-0 cursor-pointer"
+                title="Choose Theme"
+                aria-label="Choose Theme"
+              >
+                <span>{currentThemeOption.icon}</span>
+                <span className="hidden md:inline font-bold">{currentThemeOption.name}</span>
+                <Icon name="chevronDown" size={12} className="text-slate-400" />
+              </button>
+
+              {themeMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-white/10 bg-[#0d1617] p-1.5 shadow-2xl z-50 animate-in fade-in duration-150">
+                  <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    Select Theme
+                  </div>
+                  {THEME_OPTIONS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        selectTheme(t.id);
+                        setThemeMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition cursor-pointer ${
+                        currentTheme === t.id
+                          ? "bg-white/15 text-white"
+                          : "text-slate-300 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{t.icon}</span>
+                        <span>{t.name}</span>
+                      </div>
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: t.dot }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <Link
               href="/dashboard"
               className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105 whitespace-nowrap shrink-0"
@@ -543,16 +633,31 @@ export default function LandingPage() {
             )}
           </div>
 
-          {/* Mobile / Tablet Hamburger Button */}
-          <button
-            type="button"
-            suppressHydrationWarning
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#121b1d] text-slate-300 lg:hidden"
-            aria-label="Toggle navigation menu"
-          >
-            <Icon name={mobileMenuOpen ? "x" : "menu"} size={20} />
-          </button>
+          {/* Mobile Theme Cycle (< 640px) & Hamburger Button */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                const idx = THEME_OPTIONS.findIndex((t) => t.id === currentTheme);
+                const next = THEME_OPTIONS[(idx + 1) % THEME_OPTIONS.length].id;
+                selectTheme(next);
+              }}
+              className="flex sm:hidden h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#121b1d] text-slate-300"
+              title={`Theme: ${currentThemeOption.name} (Tap to change)`}
+              aria-label="Cycle Theme"
+            >
+              <span className="text-base">{currentThemeOption.icon}</span>
+            </button>
+            <button
+              type="button"
+              suppressHydrationWarning
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#121b1d] text-slate-300"
+              aria-label="Toggle navigation menu"
+            >
+              <Icon name={mobileMenuOpen ? "x" : "menu"} size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Mobile / Tablet Dropdown Sheet */}
@@ -634,6 +739,25 @@ export default function LandingPage() {
                 </>
               )}
 
+              {/* 4 Theme Options in Mobile Sheet */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {THEME_OPTIONS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => selectTheme(t.id)}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-bold transition ${
+                      currentTheme === t.id
+                        ? "border-[#baff00] bg-white/15 text-white"
+                        : "border-white/10 bg-white/5 text-slate-300"
+                    }`}
+                  >
+                    <span>{t.icon}</span>
+                    <span>{t.name}</span>
+                  </button>
+                ))}
+              </div>
+
               {/* Official WhatsApp Channel & Live Link */}
               <a
                 href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
@@ -646,13 +770,13 @@ export default function LandingPage() {
               </a>
 
               <a
-                href="https://vexo-smm-panel-7sln.vercel.app/"
+                href="https://vexarosmm.com/"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2 text-center text-[11px] font-mono text-slate-300 transition hover:text-[#baff00]"
               >
                 <Icon name="globe" size={13} className="text-[#baff00]" />
-                <span>vexo-smm-panel-7sln.vercel.app</span>
+                <span>vexarosmm.com</span>
               </a>
             </div>
           </div>
@@ -663,143 +787,110 @@ export default function LandingPage() {
         {/* ---------------- 2. HERO SECTION (FLUID RESPONSIVE) ---------------- */}
         <section className="relative w-full px-[clamp(1rem,4vw,2.5rem)] pt-[clamp(2rem,5vw,4.5rem)] pb-[clamp(3rem,6vw,5.5rem)]">
           <div className="mx-auto max-w-7xl">
-            <div className="grid gap-[clamp(2rem,4vw,3.5rem)] lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-              {/* Left Column: Headline & Value Proposition */}
+            <div className="grid gap-[clamp(2rem,4vw,3.5rem)] lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+              {/* Left Column: Clean Headline & Value Proposition */}
               <div className="w-full min-w-0">
                 <div className="inline-flex items-center gap-2 rounded-full border border-lime-300/20 bg-lime-300/10 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-[#baff00]">
                   <Icon name="spark" size={14} />
-                  <span>The World&apos;s #1 SMM Panel Automation Platform</span>
+                  <span>The World&apos;s #1 SMM Automation Platform</span>
                 </div>
 
-                <h1 className="mt-5 text-fluid-hero font-black tracking-tight text-white">
-                  VEXARO SMM Panel –{" "}
+                <h1 className="mt-5 text-fluid-hero font-black tracking-tight text-white leading-tight">
+                  Accelerate Your Social Growth at{" "}
                   <span className="text-[#baff00]">
-                    Affordable Social Media Marketing Services
+                    Wholesale Rates
                   </span>
                 </h1>
 
-                <p className="mt-5 text-fluid-body font-medium text-slate-300 max-w-2xl">
-                  Boost your digital reach with the best and cheapest SMM panel for Instagram followers, TikTok likes, YouTube watch time, and Facebook marketing. Fast, automated delivery with 24/7 support.
+                <p className="mt-4 text-fluid-body font-medium text-slate-300 max-w-2xl leading-relaxed">
+                  The fastest, most reliable SMM panel for Instagram, TikTok, YouTube, WhatsApp &amp; Telegram. Instant automated delivery with 24/7 human support.
                 </p>
 
-                {/* Trust Badges */}
-                <div className="mt-6 flex flex-wrap gap-2.5 text-xs font-semibold text-slate-300">
-                  <span className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#10191b] px-3 py-1.5">
-                    <span className="text-[#baff00]"><Icon name="bolt" size={14} /></span>
-                    0 - 15 Min Instant Start
+                {/* Minimalist Trust Features */}
+                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-emerald-400 font-bold">✓</span> No Passwords Required
                   </span>
-                  <span className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#10191b] px-3 py-1.5">
-                    <span className="text-[#baff00]"><Icon name="shield" size={14} /></span>
-                    100% Safe (No Password Required)
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-emerald-400 font-bold">✓</span> 0 - 15m Instant Start
                   </span>
-                  <span className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#10191b] px-3 py-1.5">
-                    <span className="text-[#25d366]"><Icon name="whatsapp" size={14} /></span>
-                    24/7 Human Admin Support
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-emerald-400 font-bold">✓</span> 24/7 WhatsApp Support
                   </span>
                 </div>
 
-                {/* Supporting CTAs */}
-                <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                {/* Supporting CTAs (Clean, focused actions) */}
+                <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <Link
-                    href="/dashboard"
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#baff00] px-7 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_28px_rgba(186,255,0,0.3)] transition hover:bg-[#d2ff5a] hover:scale-105"
+                    href={hasSession ? "/dashboard" : "/signup"}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-[#baff00] px-7 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105"
                   >
-                    <span>⚡ Launch Antigravity New Order</span>
-                    <Icon name="bolt" size={16} />
+                    <span>{hasSession ? "Open Customer Dashboard" : "🚀 Get Started Free"}</span>
+                    <Icon name="arrowRight" size={16} />
                   </Link>
                   <a
                     href="#services"
                     className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/10"
                   >
-                    <span>Explore Our Services</span>
-                    <Icon name="search" size={16} />
+                    <span>View 500+ Services &amp; Rates ↓</span>
                   </a>
                 </div>
               </div>
 
-              {/* Right Column: Antigravity Client Access Portal */}
-              <div className="w-full max-w-[min(100%,30rem)] mx-auto lg:max-w-none">
-                <div className="rounded-3xl border border-white/10 bg-[#10191b]/95 p-[clamp(1.25rem,3vw,2rem)] shadow-2xl shadow-black/60 backdrop-blur-xl">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <div>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#baff00]/10 px-2.5 py-1 text-[11px] font-bold text-[#baff00]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
-                        Client Access Portal
-                      </span>
-                      <h2 className="mt-2 text-xl font-black text-white">
-                        {hasSession ? "Welcome Back to VEXARO" : "Instant Growth Access"}
-                      </h2>
-                      <p className="mt-0.5 text-xs text-slate-400">
-                        {hasSession ? "Manage active campaigns, balance & orders" : "Sign in or register to launch orders with automated delivery"}
-                      </p>
-                    </div>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#baff00]/10 text-[#baff00]">
-                      <Icon name="bolt" size={22} />
-                    </div>
+              {/* Right Column: Clean Client Access Portal */}
+              <div className="w-full max-w-[min(100%,28rem)] mx-auto lg:max-w-none">
+                <div className="rounded-3xl border border-white/10 bg-[#10191b]/95 p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
+                  <div className="border-b border-white/10 pb-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#baff00]/10 px-2.5 py-1 text-[11px] font-bold text-[#baff00]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
+                      Client Portal
+                    </span>
+                    <h2 className="mt-2 text-xl font-black text-white">
+                      {hasSession ? "Welcome Back to VEXARO" : "Instant Account Access"}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      {hasSession
+                        ? "Manage active orders, deposit balance & view live rates"
+                        : "Sign in or create a free account to place automated orders"}
+                    </p>
                   </div>
 
                   <div className="mt-5 space-y-3">
                     {hasSession ? (
-                      <>
-                        <Link
-                          href="/dashboard"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-[1.02]"
-                        >
-                          <span>Open Customer Dashboard</span>
-                          <Icon name="arrowRight" size={16} />
-                        </Link>
-                        <Link
-                          href="/dashboard?tab=add-funds"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-xs font-bold text-white transition hover:bg-white/10"
-                        >
-                          <span>Quick Deposit (Easypaisa / JazzCash / SadaPay)</span>
-                        </Link>
-                      </>
+                      <Link
+                        href="/dashboard"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a]"
+                      >
+                        <span>Go to Dashboard →</span>
+                      </Link>
                     ) : (
                       <>
                         <Link
                           href="/login"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-[1.02]"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a]"
                         >
-                          <span>Sign In to Account</span>
-                          <Icon name="arrowRight" size={16} />
+                          <span>Sign In to Account →</span>
                         </Link>
                         <Link
                           href="/signup"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-3 text-xs font-bold text-white transition hover:border-white/30 hover:bg-white/10"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-3 text-xs font-bold text-white transition hover:bg-white/10"
                         >
                           <span>Create Free Account</span>
-                          <Icon name="check" size={14} />
                         </Link>
                       </>
                     )}
 
-                    {/* Features list */}
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      <div className="rounded-xl border border-white/5 bg-[#0b1315] p-2.5 text-left">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Security</p>
-                        <p className="mt-0.5 text-xs font-bold text-emerald-400">🛡️ Zero Passwords Needed</p>
-                      </div>
-                      <div className="rounded-xl border border-white/5 bg-[#0b1315] p-2.5 text-left">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Speed</p>
-                        <p className="mt-0.5 text-xs font-bold text-[#baff00]">⚡ 0 - 15m Automated</p>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-white/5 bg-[#0b1315] p-3 text-xs text-slate-400">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-slate-300">Supported Payments</span>
-                        <span className="text-[10px] text-emerald-400 font-bold">100% Verified</span>
-                      </div>
+                    <div className="rounded-xl border border-white/5 bg-[#0b1315] p-3 text-center">
+                      <p className="text-[11px] font-bold text-slate-300">Accepted Gateways</p>
                       <p className="mt-1 text-[11px] text-slate-400">
-                        Easypaisa • JazzCash • SadaPay • Bank Transfer • Binance Pay
+                        Easypaisa • JazzCash • SadaPay • Binance Pay (USDT)
                       </p>
                     </div>
 
                     <div className="pt-1 text-center text-xs text-slate-400 flex items-center justify-between">
                       <Link
                         href="/forgot-password"
-                        className="text-xs text-slate-400 hover:text-[#baff00] transition"
+                        className="hover:text-[#baff00] transition text-[11px]"
                       >
                         Forgot password?
                       </Link>
@@ -807,7 +898,7 @@ export default function LandingPage() {
                         href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs font-bold text-[#25d366] hover:underline inline-flex items-center gap-1"
+                        className="font-bold text-[#25d366] hover:underline inline-flex items-center gap-1 text-[11px]"
                       >
                         <Icon name="whatsapp" size={13} />
                         <span>WhatsApp Channel</span>
@@ -1445,80 +1536,6 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* ---------------- 12. FLOATING SUPPORT WIDGET (PART 3) ---------------- */}
-      <div className="fixed bottom-5 right-5 sm:bottom-7 sm:right-7 z-50 flex flex-col items-end">
-        {/* Expandable Help Drawer */}
-        {supportDrawerOpen && (
-          <div className="mb-3 w-[clamp(16rem,85vw,20rem)] rounded-3xl border border-white/15 bg-[#10191b] p-5 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-2.5 w-2.5 rounded-full bg-[#baff00] animate-pulse" />
-                <span className="text-xs font-black uppercase tracking-wider text-white">
-                  Live VEXARO Support
-                </span>
-              </div>
-              <button
-                type="button"
-                suppressHydrationWarning
-                onClick={() => setSupportDrawerOpen(false)}
-                className="text-slate-400 hover:text-white"
-                aria-label="Close support drawer"
-              >
-                <Icon name="x" size={16} />
-              </button>
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-slate-300">
-              Need assistance with an order, balance top-up, or API key? Our team is online 24/7.
-            </p>
-            <div className="mt-4 flex flex-col gap-2.5">
-              <a
-                href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl border border-[#25d366]/40 bg-[#25d366]/15 py-2.5 text-xs font-black text-[#25d366] hover:bg-[#25d366] hover:text-[#07100f] transition"
-              >
-                <Icon name="whatsapp" size={16} />
-                <span>Join Official WhatsApp Channel</span>
-              </a>
-              <a
-                href="https://wa.me/923176437013"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl bg-[#25d366] py-2.5 text-xs font-black text-[#07100f] hover:bg-[#20ba5a] transition"
-              >
-                <Icon name="whatsapp" size={16} />
-                <span>WhatsApp (+92 317 6437013)</span>
-              </a>
-              <a
-                href="https://t.me/VexaroSMMAdmin"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl bg-[#229ed9] py-2.5 text-xs font-black text-white hover:bg-[#1f8ec4] transition"
-              >
-                <Icon name="telegram" size={16} />
-                <span>Telegram (@VexaroSMMAdmin)</span>
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* Floating Action Button */}
-        <button
-          type="button"
-          suppressHydrationWarning
-          onClick={() => setSupportDrawerOpen(!supportDrawerOpen)}
-          className="flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-[#baff00] text-[#07100f] shadow-[0_0_28px_rgba(186,255,0,0.35)] transition-transform hover:scale-105 active:scale-95"
-          aria-label="Open support options"
-          title="24/7 Customer Support"
-        >
-          {supportDrawerOpen ? (
-            <Icon name="x" size={24} />
-          ) : (
-            <Icon name="headset" size={26} />
-          )}
-        </button>
-      </div>
-
       {/* ---------------- 13. FOOTER ---------------- */}
       <footer className="w-full border-t border-white/10 bg-[#050a0a] px-[clamp(1rem,4vw,2.5rem)] py-12 text-xs text-slate-400">
         <div className="mx-auto max-w-7xl">
@@ -1667,13 +1684,13 @@ export default function LandingPage() {
                 <div>
                   <span className="text-slate-400">Live Website:</span>{" "}
                   <a
-                    href="https://vexo-smm-panel-7sln.vercel.app/"
+                    href="https://vexarosmm.com/"
                     target="_blank"
                     rel="noreferrer"
                     className="text-lime-400 font-mono text-[11px] font-bold hover:underline inline-flex items-center gap-1"
                   >
                     <Icon name="globe" size={12} />
-                    <span>vexo-smm-panel-7sln.vercel.app</span>
+                    <span>vexarosmm.com</span>
                   </a>
                 </div>
               </div>
@@ -1685,13 +1702,13 @@ export default function LandingPage() {
               <p>© 2026 VEXARO SMM. All rights reserved.</p>
               <span className="text-slate-600 hidden sm:inline">•</span>
               <a
-                href="https://vexo-smm-panel-7sln.vercel.app/"
+                href="https://vexarosmm.com/"
                 target="_blank"
                 rel="noreferrer"
                 className="text-slate-400 hover:text-[#baff00] inline-flex items-center gap-1 font-mono text-[11px] transition"
               >
                 <Icon name="globe" size={12} className="text-[#baff00]" />
-                <span>vexo-smm-panel-7sln.vercel.app</span>
+                <span>vexarosmm.com</span>
               </a>
             </div>
             <div className="flex items-center gap-6">

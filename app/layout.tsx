@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { GlobalSupportWidget } from "@/components/global-support-widget";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,7 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexo-smm-panel-7sln.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const viewport: Viewport = {
   themeColor: "#07100f",
@@ -30,9 +31,23 @@ export const metadata: Metadata = {
     template: "%s | VEXARO SMM Panel",
   },
   description:
-    "VEXARO SMM is the best, cheapest, and most reliable automated SMM panel. Buy Instagram followers, TikTok likes, YouTube watch time & views, and Telegram growth with instant delivery and 24/7 support.",
+    "VEXARO SMM (vexarosmm.com) is the #1 cheapest automated SMM panel in Pakistan & Worldwide. Buy Instagram followers, TikTok likes, YouTube 4000 hours watch time & views, Facebook followers, and Telegram members. Instant delivery with SadaPay, Easypaisa, JazzCash, and Binance Pay.",
   keywords: [
-   "buy youtube subscribers pakistan",
+    "vexarosmm",
+    "vexarosmm.com",
+    "vexaro smm",
+    "vexaro smm panel",
+    "vexaro panel",
+    "smm panel pakistan",
+    "cheapest smm panel",
+    "best smm panel pakistan",
+    "smm panel easypaisa",
+    "smm panel jazzcash",
+    "smm panel sadapay",
+    "smm panel binance pay",
+    "smm panel usdt",
+    "crypto smm panel",
+    "buy youtube subscribers pakistan",
     "buy youtube watchtime 4000 hours",
     "cheap youtube views",
     "facebook followers smm panel",
@@ -42,21 +57,11 @@ export const metadata: Metadata = {
     "main smm provider api",
     "automated smm panel",
     "instant smm delivery",
-    "vexo smm",
-    "vexarosmm",
-    "veaxaro smm",
-    "cheapest panel",
-    "vexosmm",
-    "social media growth pakistan",
-    "cheapest smm panel",
-    "smm panel pakistan",
-    "smm panel easypaisa",
-    "smm panel jazzcash",
-    "smm panel sadapay",
     "pakistani smm panel",
     "buy instagram followers pakistan",
     "buy instagram likes cheap",
     "buy tiktok likes pakistan",
+    "buy tiktok followers cheap",
     "smm panel",
     "best smm panel",
     "cheap smm panel",
@@ -69,18 +74,14 @@ export const metadata: Metadata = {
     "telegram smm panel",
     "pakistan smm panel",
     "pkr smm panel",
-    "smm reseller panel",
     "automatic smm panel",
     "fast smm panel",
-    "vexaro",
-    "vexaro smm",
-    "vexaro smm panel",
-    "vexaro panel",
     "buy instagram followers",
     "buy tiktok followers",
     "buy youtube watch time",
     "buy youtube subscribers",
     "social media growth",
+    "social media growth pakistan",
   ],
   authors: [{ name: "VEXARO SMM", url: SITE_URL }],
   creator: "VEXARO SMM",
@@ -100,7 +101,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
     title: "VEXARO SMM Panel – Affordable Social Media Marketing Services",
     description:
-      "Boost your social media growth instantly with VEXARO SMM. Cheapest automated SMM panel for Instagram, TikTok, YouTube, & Facebook. Easy deposits via SadaPay, Easypaisa, and JazzCash.",
+      "Boost your social media growth instantly with VEXARO SMM (vexarosmm.com). Cheapest automated SMM panel for Instagram, TikTok, YouTube, & Facebook. Easy deposits via SadaPay, Easypaisa, JazzCash, and Binance Pay.",
     siteName: "VEXARO SMM Services",
     images: [
       {
@@ -115,7 +116,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "VEXARO SMM Panel – Best & Cheapest SMM Panel",
     description:
-      "Cheapest SMM panel for Instagram, TikTok, YouTube, and Facebook. Instant automated delivery with 24/7 support.",
+      "Cheapest SMM panel (vexarosmm.com) for Instagram, TikTok, YouTube, and Facebook. Instant automated delivery with 24/7 support.",
     creator: "@VexaroSMMAdmin",
     images: ["/og-image.png"],
   },
@@ -135,6 +136,14 @@ export const metadata: Metadata = {
     other: {
       "google-site-verification": ["googleb27b1614a9d4e487.html", "googleb27b1614a9d4e487"],
     },
+  },
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [{ url: "/logo.png" }],
+    shortcut: ["/logo.png"],
   },
   category: "technology",
 };
@@ -163,7 +172,6 @@ const structuredData = {
         "https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q",
         "https://t.me/VexaroSMMAdmin",
         "https://wa.me/923176437013",
-        "https://vexo-smm-panel-7sln.vercel.app",
         "https://vexarosmm.com",
       ],
     },
@@ -305,7 +313,22 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Google tag (gtag.js) */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-34H7D6YB4D"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-34H7D6YB4D');`,
+          }}
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/png" href="/logo.png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
         <meta name="google-site-verification" content="googleb27b1614a9d4e487" />
         <meta name="google-site-verification" content="googleb27b1614a9d4e487.html" />
         <script
@@ -320,6 +343,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-[#0a1110] text-slate-100" suppressHydrationWarning>
         {children}
+        <GlobalSupportWidget />
         <Analytics />
       </body>
     </html>

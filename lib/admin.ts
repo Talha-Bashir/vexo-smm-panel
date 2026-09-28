@@ -33,6 +33,8 @@ export function ensureAdminSchema() {
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(120);
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS failure_reason TEXT;
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS provider_response JSONB;
+        ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS start_count VARCHAR(50);
+        ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS remains VARCHAR(50);
 
         CREATE TABLE IF NOT EXISTS vexo_service_overrides (
           service_id VARCHAR(120) PRIMARY KEY,
@@ -107,9 +109,14 @@ export async function getAllPlatformSettings(): Promise<Record<string, string>> 
   const settings: Record<string, string> = {
     platform_theme: "cyber-lime",
     global_profit_margin: "7",
+    dollar_order_markup: "7",
     usd_to_pkr: "278.0",
     sadapay_number: "03197008275",
     sadapay_title: "Saeed Bashir",
+    binance_uid: "1069021883",
+    binance_name: "Talha Bashir Bhatti",
+    binance_usdt_address: "0xaa3037450e112ef10406df821803522bc589821c",
+    binance_network: "BSC BNB Smart Chain (BEP20)",
   };
   try {
     const res = await db.query(`SELECT key, value FROM vexo_platform_settings`);

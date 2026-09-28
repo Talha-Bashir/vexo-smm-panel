@@ -3,9 +3,15 @@ import { getRequestUser } from "@/lib/request-user";
 import { ensureWalletSchema } from "@/lib/wallet";
 import { db } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
-
-const METHODS = new Set(["SadaPay", "Easypaisa", "JazzCash", "Bank Transfer"]);
+const METHODS = new Set([
+  "SadaPay",
+  "Easypaisa",
+  "JazzCash",
+  "Bank Transfer",
+  "Binance",
+  "Binance Pay",
+  "Binance (USDT / Pay ID)",
+]);
 
 export async function POST(request: Request) {
   try {

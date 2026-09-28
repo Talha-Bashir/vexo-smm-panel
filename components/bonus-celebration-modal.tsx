@@ -227,7 +227,7 @@ export default function BonusCelebrationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
       {/* Confetti Celebration Particle Canvas */}
       <canvas
         ref={canvasRef}
@@ -235,7 +235,7 @@ export default function BonusCelebrationModal({
       />
 
       {/* Celebratory Modal Card */}
-      <div className="relative z-[70] w-full max-w-lg rounded-3xl border-2 border-[#baff00]/50 bg-gradient-to-b from-[#11221e] via-[#0d1719] to-[#070e10] p-6 sm:p-8 text-center shadow-[0_0_80px_rgba(186,255,0,0.25)] animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="relative z-[70] w-full max-w-md my-auto max-h-[min(92vh,720px)] flex flex-col rounded-3xl border border-[#baff00]/50 bg-gradient-to-b from-[#11221e] via-[#0d1719] to-[#070e10] p-5 sm:p-6 text-center shadow-[0_0_60px_rgba(186,255,0,0.25)] animate-in zoom-in-95 duration-200 overflow-y-auto">
         {/* Ambient background glows */}
         <div className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 h-44 w-72 rounded-full bg-[#baff00]/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-10 right-0 h-32 w-32 rounded-full bg-[#00ffcc]/10 blur-2xl" />
@@ -244,7 +244,7 @@ export default function BonusCelebrationModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-xl p-2 text-slate-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+          className="absolute right-3.5 top-3.5 z-10 rounded-xl p-2 text-slate-400 hover:bg-white/10 hover:text-white transition cursor-pointer bg-white/5 border border-white/10"
           title="Close celebration"
           aria-label="Close celebration modal"
         >
@@ -254,69 +254,69 @@ export default function BonusCelebrationModal({
         </button>
 
         {/* Top Celebratory Badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#baff00]/40 bg-[#baff00]/15 px-3.5 py-1 text-xs font-black uppercase tracking-widest text-[#baff00] shadow-[0_0_15px_rgba(186,255,0,0.3)] animate-pulse">
+        <div className="inline-flex self-center items-center gap-2 rounded-full border border-[#baff00]/40 bg-[#baff00]/15 px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#baff00] shadow-[0_0_15px_rgba(186,255,0,0.3)] animate-pulse">
           <span>🎉</span>
           <span>CONGRATULATIONS!</span>
           <span>🎉</span>
         </div>
 
         {/* Party Popper Hero Icon with Bounce & Glow */}
-        <div className="mx-auto mt-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-[#baff00] via-[#89f500] to-[#00ffcc] text-4xl shadow-[0_0_40px_rgba(186,255,0,0.5)] transform hover:scale-105 transition">
+        <div className="mx-auto mt-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#baff00] via-[#89f500] to-[#00ffcc] text-3xl sm:text-4xl shadow-[0_0_30px_rgba(186,255,0,0.45)] transform hover:scale-105 transition">
           <span className="select-none filter drop-shadow">🎉</span>
         </div>
 
         {/* Headline */}
-        <h2 className="mt-5 text-2xl sm:text-3xl font-black tracking-tight text-white">
+        <h2 className="mt-3 text-xl sm:text-2xl font-black tracking-tight text-white">
           Rs. {amount} Bonus Credited!
         </h2>
 
-        <p className="mt-2 text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+        <p className="mt-1.5 text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
           Your <strong className="text-[#baff00]">VEXARO</strong> promotional bonus credit is active and deposited into your wallet. Enjoy boosting your social presence!
         </p>
 
         {/* Balance Showcase Box */}
-        <div className="mt-5 rounded-2xl border border-[#baff00]/30 bg-[#baff00]/10 p-4 text-center shadow-inner">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+        <div className="mt-3 rounded-2xl border border-[#baff00]/30 bg-[#baff00]/10 p-3 sm:p-3.5 text-center shadow-inner">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-300">
             Promotional Wallet Balance
           </p>
           <div className="mt-1 flex items-baseline justify-center gap-1.5">
-            <span className="text-3xl sm:text-4xl font-black text-[#baff00] tracking-tight">
+            <span className="text-2xl sm:text-3xl font-black text-[#baff00] tracking-tight">
               ₨{amount.toFixed(2)}
             </span>
-            <span className="text-sm font-bold text-slate-300">PKR</span>
+            <span className="text-xs font-bold text-slate-300">PKR</span>
           </div>
-          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-0.5 text-[11px] font-bold text-emerald-300 border border-emerald-500/30">
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/30">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
             <span>Active &amp; Ready to Spend</span>
           </div>
         </div>
 
         {/* Perks / Explanations */}
-        <div className="mt-5 space-y-2 text-left text-xs">
-          <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-2.5">
-            <span className="text-base leading-none">⚡</span>
+        <div className="mt-3 space-y-1.5 text-left text-xs">
+          <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-2 sm:p-2.5">
+            <span className="text-sm leading-none shrink-0 mt-0.5">⚡</span>
             <div>
-              <p className="font-bold text-white">100% Usable on All Services</p>
+              <p className="font-bold text-white text-xs">100% Usable on All Services</p>
               <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
                 Spend on Instagram followers/likes, TikTok views, YouTube watchtime, or Telegram growth.
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-2.5">
-            <span className="text-base leading-none">🎯</span>
+          <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-2 sm:p-2.5">
+            <span className="text-sm leading-none shrink-0 mt-0.5">🎯</span>
             <div>
-              <p className="font-bold text-white">Automatically Deducted First</p>
+              <p className="font-bold text-white text-xs">Automatically Deducted First</p>
               <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
                 Bonus credit is used before your real deposited cash whenever you place an order.
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-2.5">
-            <span className="text-base leading-none">🔒</span>
+          <div className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-2 sm:p-2.5">
+            <span className="text-sm leading-none shrink-0 mt-0.5">🔒</span>
             <div>
-              <p className="font-bold text-white">Promotional Growth Credit</p>
+              <p className="font-bold text-white text-xs">Promotional Growth Credit</p>
               <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
                 Credit cannot be cashed out or transferred. Guaranteed non-withdrawable promotional funds.
               </p>
@@ -325,19 +325,19 @@ export default function BonusCelebrationModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <button
             type="button"
             onClick={onOrderNow}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 px-5 text-sm font-black text-[#07100f] shadow-[0_0_30px_rgba(186,255,0,0.35)] hover:bg-[#d2ff5a] hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3 px-4 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.35)] hover:bg-[#d2ff5a] active:scale-[0.98] transition cursor-pointer"
           >
-            <span>🚀 Start Placing Orders (Spend Bonus)</span>
+            <span>🚀 Start Placing Orders</span>
             <span>→</span>
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-white/15 bg-white/5 py-3 px-4 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition cursor-pointer"
+            className="rounded-xl border border-white/15 bg-white/5 py-2.5 px-3 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition cursor-pointer"
           >
             Explore Dashboard
           </button>

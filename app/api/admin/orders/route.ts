@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/admin-guard";
 import { ensureAdminSchema, logAdminActivity } from "@/lib/admin";
+import { syncOrders } from "@/lib/order-sync";
 export const dynamic = "force-dynamic";
 
 async function guard() {
@@ -14,6 +15,14 @@ export async function GET(req: Request) {
     const g = await guard();
     if (g.error) return g.error;
     await ensureAdminSchema();
+
+    // Automatically synchronize active orders across providers (throttled to at most once per 30s)
+    try {
+      await syncOrders({ limit: 20, minAgeSeconds: 30 });
+    } catch (syncErr) {
+      console.warn("[AdminOrdersAPI] Auto-sync warning:", syncErr);
+    }
+
     const p = new URL(req.url).searchParams;
     const q = p.get("q")?.trim() || "";
     const s = p.get("status")?.trim() || "";
@@ -22,7 +31,7 @@ export async function GET(req: Request) {
       `SELECT o.id, o.user_id, u.name, u.email, o.provider_order_id,
               o.service_id, o.service_name, o.link, o.quantity,
               COALESCE(o.rate_pkr, o.rate, 0) AS rate_pkr,
-              o.charge_pkr, o.status, o.created_at, o.updated_at
+              o.charge_pkr, o.status, o.start_count, o.remains, o.created_at, o.updated_at
        FROM vexo_orders o
        LEFT JOIN vexo_users u ON u.id = o.user_id
        WHERE ($1 = '' OR o.provider_order_id ILIKE '%' || $1 || '%' OR o.service_id ILIKE '%' || $1 || '%' OR o.service_name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')
@@ -48,6 +57,8 @@ export async function GET(req: Request) {
         ratePkr: x.rate_pkr == null ? null : +x.rate_pkr,
         chargePkr: x.charge_pkr == null ? null : +x.charge_pkr,
         status: x.status,
+        startCount: x.start_count != null && String(x.start_count).trim() !== "" ? String(x.start_count).trim() : null,
+        remains: x.remains != null && String(x.remains).trim() !== "" ? String(x.remains).trim() : null,
         createdAt: x.created_at,
         updatedAt: x.updated_at,
       })),

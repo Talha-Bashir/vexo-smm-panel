@@ -158,8 +158,8 @@ export default function SignupPage() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md min-w-0 items-center justify-center">
         <div className="w-full max-w-full rounded-3xl bg-[#111a1d] p-5 shadow-2xl border border-white/10 sm:p-8">
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#baff00] text-2xl font-black text-[#07100f] shadow-[0_0_28px_rgba(186,255,0,0.18)]">
-              V
+            <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(186,255,0,0.35)] border border-[#baff00]/30">
+              <img src="/logo.png" alt="VEXARO SMM" className="h-full w-full object-cover" />
             </div>
             <h1 className="mt-5 text-2xl font-black tracking-tight sm:text-3xl">
               Create your account

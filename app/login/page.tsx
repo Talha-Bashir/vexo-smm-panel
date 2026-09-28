@@ -6,8 +6,8 @@ import { BotShield } from "@/components/bot-shield";
 
 function Mark() {
   return (
-    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#baff00] text-xl font-black text-[#07100f] shadow-[0_0_28px_rgba(186,255,0,0.18)]">
-      V
+    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(186,255,0,0.35)] border border-[#baff00]/30 mx-auto">
+      <img src="/logo.png" alt="VEXARO SMM" className="h-full w-full object-cover" />
     </div>
   );
 }

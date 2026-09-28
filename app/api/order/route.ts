@@ -13,6 +13,7 @@ import {
   refundFailedOrder,
   reserveWalletForOrder,
 } from "@/lib/wallet";
+import { getCachedProviderBalances, resolveEffectiveServicePricing } from "@/lib/balance-routing";
 
 type RizviService = {
   service: number;
@@ -67,13 +68,15 @@ export async function POST(request: Request) {
     let charge = 0;
     let min = 1;
     let max = 100000;
+    let preferredProviderId: string | undefined = undefined;
+    let maxAllowedCostUsd: number | undefined = undefined;
 
     // 1. Check vexo_routed_services
     const isNum = /^\d+$/.test(serviceId);
     const routedRes = await db.query(
       isNum
-        ? `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled FROM vexo_routed_services WHERE id = $1 LIMIT 1`
-        : `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled FROM vexo_routed_services WHERE service_group_key = $1 OR id::text = $1 LIMIT 1`,
+        ? `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled, active_provider_id, active_remote_service_id, fallback_queue, auto_route FROM vexo_routed_services WHERE id = $1 LIMIT 1`
+        : `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled, active_provider_id, active_remote_service_id, fallback_queue, auto_route FROM vexo_routed_services WHERE service_group_key = $1 OR id::text = $1 LIMIT 1`,
       [isNum ? Number(serviceId) : serviceId]
     );
 
@@ -84,8 +87,24 @@ export async function POST(request: Request) {
       }
       serviceName = routed.name;
       platform = platform || routed.platform || "SMM";
-      const mult = Number(routed.rate_multiplier || 1.07);
-      rate = calculateLivePricePkr(routed.base_rate_usd, mult, liveUsdToPkr);
+
+      let effectiveBaseUsd = Number(routed.base_rate_usd || 0);
+
+      if (routed.auto_route !== false) {
+        const balances = await getCachedProviderBalances();
+        const pricing = resolveEffectiveServicePricing(routed, balances, liveUsdToPkr);
+        rate = pricing.ratePkr;
+        effectiveBaseUsd = pricing.baseRateUsd;
+        preferredProviderId = pricing.activeProviderId;
+      } else {
+        const mult = Number(routed.rate_multiplier || 1.07);
+        rate = calculateLivePricePkr(effectiveBaseUsd, mult, liveUsdToPkr);
+        preferredProviderId = routed.active_provider_id || undefined;
+      }
+
+      // Maximum wholesale cost allowed to prevent negative profit (Margin Protection)
+      maxAllowedCostUsd = effectiveBaseUsd > 0 ? effectiveBaseUsd * 1.05 : undefined;
+
       min = Number(routed.min || 1);
       max = Number(routed.max || 100000);
       const isPkg = isPackageService(undefined, min, max);
@@ -160,8 +179,11 @@ export async function POST(request: Request) {
     const vexoOrderId = String(reservation.order.id);
 
     try {
-      // Dispatch order to cheapest provider with automatic multi-provider failover
-      const dispatchResult = await dispatchOrderWithFailover(serviceId, link, numericQuantity);
+      // Dispatch order to funded provider with automatic multi-provider failover and margin protection
+      const dispatchResult = await dispatchOrderWithFailover(serviceId, link, numericQuantity, {
+        preferredProviderId,
+        maxAllowedCostUsd,
+      });
 
       if (!dispatchResult.success || !dispatchResult.orderId) {
         const reason = dispatchResult.error || "All upstream providers failed to accept the order.";

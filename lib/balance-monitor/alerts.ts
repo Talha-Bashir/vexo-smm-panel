@@ -80,13 +80,15 @@ export async function processProviderAlert(
 
   // 1. Fetch existing alert state from database
   let previousLevel: AlertLevel = "NORMAL";
+  let lastNotifiedAt: Date | null = null;
   try {
     const existing = await db.query(
-      `SELECT last_alert_level FROM vexo_balance_alert_state WHERE provider_id = $1`,
+      `SELECT last_alert_level, last_notified_at FROM vexo_balance_alert_state WHERE provider_id = $1`,
       [check.id]
     );
     if (existing.rows.length > 0) {
       previousLevel = (existing.rows[0].last_alert_level as AlertLevel) || "NORMAL";
+      lastNotifiedAt = existing.rows[0].last_notified_at ? new Date(existing.rows[0].last_notified_at) : null;
     }
   } catch (err) {
     console.error(`[BalanceMonitor] Could not read alert state for ${check.id}:`, err);
@@ -96,11 +98,14 @@ export async function processProviderAlert(
   let notificationSent = false;
   let notificationType: "LOW" | "CRITICAL" | "RECOVERY" | "ERROR" | undefined;
 
+  // Remind again if critical/low for more than cooldown period (default 12h)
+  const COOLDOWN_HOURS = Number(process.env.BALANCE_ALERT_COOLDOWN_HOURS || 12);
+  const cooldownExpired = !lastNotifiedAt || (Date.now() - lastNotifiedAt.getTime()) > (COOLDOWN_HOURS * 3600 * 1000);
+
   // 2. Handle failure state
   if (!check.success || check.balance === undefined) {
     alertLevel = "ERROR";
-    // Only send error alert if we weren't already in ERROR state (prevents spam)
-    if (previousLevel !== "ERROR") {
+    if (previousLevel !== "ERROR" || !lastNotifiedAt || cooldownExpired) {
       notificationType = "ERROR";
       const msg = formatProviderErrorAlert(check.name, check.error);
       notificationSent = await sendTelegramNotification(msg);
@@ -128,16 +133,15 @@ export async function processProviderAlert(
 
   if (balance <= thresholds.critical) {
     alertLevel = "CRITICAL";
-    // Only alert if transitioning into CRITICAL
-    if (previousLevel !== "CRITICAL") {
+    // Alert if new state, or if notification was never successfully delivered, or if cooldown expired
+    if (previousLevel !== "CRITICAL" || !lastNotifiedAt || cooldownExpired) {
       notificationType = "CRITICAL";
       const msg = formatCriticalBalanceAlert(check.name, balance, thresholds.critical, currency);
       notificationSent = await sendTelegramNotification(msg);
     }
   } else if (balance <= thresholds.low) {
     alertLevel = "LOW";
-    // Alert when dropping from NORMAL or recovering from ERROR into LOW
-    if (previousLevel === "NORMAL" || previousLevel === "ERROR") {
+    if (previousLevel !== "LOW" || !lastNotifiedAt || cooldownExpired) {
       notificationType = "LOW";
       const msg = formatLowBalanceAlert(check.name, balance, thresholds.low, currency);
       notificationSent = await sendTelegramNotification(msg);

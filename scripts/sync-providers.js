@@ -127,6 +127,35 @@ function detectGuarantee(name, category, refillFlag, description = "") {
   return Boolean(refillFlag || guaranteePattern.test(text));
 }
 
+const OWNER_CONTACT_NUMBER = "03176437013";
+
+function sanitizeServiceDescription(text) {
+  if (!text || typeof text !== "string") return "";
+
+  let cleaned = text
+    .replace(/(?:\+?92|0092|0)?[\s-]*349[\s-]*7401844/g, OWNER_CONTACT_NUMBER)
+    .replace(/(?:\+?92|0092|0)?[\s-]*326[\s-]*4810548/g, OWNER_CONTACT_NUMBER)
+    .replace(/(?:\+?92|0092|0)?[\s-]*327[\s-]*7164331/g, OWNER_CONTACT_NUMBER);
+
+  cleaned = cleaned.replace(
+    /(^|[^\d+])(?:\+?92[\s-]?|0092[\s-]?|0)3\d{2}[\s-]?\d{3}[\s-]?\d{4}([^\d]|$)/gi,
+    (match, prefix, suffix) => `${prefix}${OWNER_CONTACT_NUMBER}${suffix}`
+  );
+
+  cleaned = cleaned.replace(
+    /(whatsapp|contact|support|call|phone|mobile|helpline)[\s:]*(?:on\s+)?(\+?\d[\d\s-]{8,15}\d)/gi,
+    (match, label, number) => {
+      const digitsOnly = number.replace(/\D/g, "");
+      if (digitsOnly.length >= 10 && digitsOnly.length <= 15) {
+        return `${label} ${OWNER_CONTACT_NUMBER}`;
+      }
+      return match;
+    }
+  );
+
+  return cleaned;
+}
+
 function detectPlatform(name, category) {
   const text = `${category} ${name}`.toLowerCase();
   if (text.includes("instagram") || text.includes("ig ")) return "Instagram";
@@ -251,11 +280,21 @@ async function makeProviderRequest(provider, params) {
 
   const res = await fetch(provider.apiUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+      "Accept": "application/json, text/plain, */*",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
     body: body.toString(),
   });
 
-  if (!res.ok) throw new Error(`${provider.name} HTTP ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 403) {
+      throw new Error(`${provider.name} returned HTTP 403 (Forbidden). Cloudflare/firewall blocked the request. Verify API key and IP access on ${provider.name}.`);
+    }
+    throw new Error(`${provider.name} HTTP ${res.status}`);
+  }
   return res.json();
 }
 
@@ -417,7 +456,7 @@ async function main() {
         const rateUsd = Math.round(rawRate * 1000000) / 1000000;
         const min = Math.max(1, Math.min(Number(item.min || 1), 2000000000));
         const max = Math.max(min, Math.min(Number(item.max || 100000), 2147483647));
-        const description = String(item.desc || item.description || "").trim();
+        const description = sanitizeServiceDescription(String(item.desc || item.description || "").trim());
         const rawRefill = Boolean(item.refill);
         const isDrop = isDropOrNoRefill(name, category, description);
         const refill = isDrop ? false : rawRefill;
@@ -590,7 +629,7 @@ async function main() {
       popular,
       fallbackQueue,
       providerRatesObj,
-      description: String(selectedQuote.description || "").trim(),
+      description: sanitizeServiceDescription(String(selectedQuote.description || "").trim()),
     });
   }
 

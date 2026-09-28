@@ -39,7 +39,17 @@ type Service = {
   refill: boolean;
   is_guaranteed?: boolean;
   popular?: boolean;
+  enabled?: boolean;
 };
+
+export type PlatformTheme = "dark" | "light" | "midnight" | "purple";
+
+export const THEME_OPTIONS: { id: PlatformTheme; name: string; icon: string; dot: string }[] = [
+  { id: "dark", name: "Cyber Dark", icon: "⚡", dot: "#baff00" },
+  { id: "light", name: "Clean Light", icon: "☀️", dot: "#10b981" },
+  { id: "midnight", name: "Midnight Navy", icon: "🌌", dot: "#38bdf8" },
+  { id: "purple", name: "Neon Purple", icon: "🔮", dot: "#c084fc" },
+];
 
 function isPackageService(service?: { type?: string; min?: string | number; max?: string | number } | null): boolean {
   if (!service) return false;
@@ -60,6 +70,8 @@ type VexoOrder = {
   rate: number;
   charge: number;
   status: string;
+  startCount?: string | null;
+  remains?: string | null;
   createdAt: string;
 };
 
@@ -407,6 +419,11 @@ export default function Home() {
   const totalAvailablePkr = walletBalancePkr + bonusBalancePkr;
   const [sadaPayNumber, setSadaPayNumber] = useState("03197008275");
   const [sadaPayTitle, setSadaPayTitle] = useState("Saeed Bashir");
+  const [binanceUid, setBinanceUid] = useState("1069021883");
+  const [binanceName, setBinanceName] = useState("Talha Bashir Bhatti");
+  const [binanceUsdtAddress, setBinanceUsdtAddress] = useState("0xaa3037450e112ef10406df821803522bc589821c");
+  const [binanceNetwork, setBinanceNetwork] = useState("BSC BNB Smart Chain (BEP20)");
+  const [liveForexUsdRate, setLiveForexUsdRate] = useState(278.0);
   const [deposits, setDeposits] = useState<VexoDeposit[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState("PKR");
   const [currencyRates, setCurrencyRates] = useState<Record<string, number>>({});
@@ -414,8 +431,86 @@ export default function Home() {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [announcements, setAnnouncements] = useState<VexoAnnouncement[]>([]);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const announcementsRef = useRef<HTMLDivElement>(null);
+  const [notificationFilter, setNotificationFilter] = useState<"all" | "orders" | "announcements">("all");
+  const [readNotificationKeys, setReadNotificationKeys] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem("vexo_read_notifications");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const markAllNotificationsAsRead = () => {
+    const updated: Record<string, boolean> = { ...readNotificationKeys };
+    announcements.forEach((a) => {
+      updated[`ann_${a.id}`] = true;
+    });
+    orders.forEach((o) => {
+      updated[`ord_${o.orderId || o.localId}`] = true;
+    });
+    updated["system_status_1"] = true;
+    setReadNotificationKeys(updated);
+    try {
+      localStorage.setItem("vexo_read_notifications", JSON.stringify(updated));
+    } catch {}
+  };
+
+  const markSingleNotificationAsRead = (key: string) => {
+    setReadNotificationKeys((prev) => {
+      const updated = { ...prev, [key]: true };
+      try {
+        localStorage.setItem("vexo_read_notifications", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Record<string, boolean>>({});
   const [expandedMobileAnnouncement, setExpandedMobileAnnouncement] = useState<string | null>(null);
+  const [currentTheme, setCurrentTheme] = useState<PlatformTheme>("dark");
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const stored = (localStorage.getItem("vexo_platform_theme") || document.documentElement.getAttribute("data-theme") || "dark") as PlatformTheme;
+      const valid = (["dark", "light", "midnight", "purple"].includes(stored) ? stored : "dark") as PlatformTheme;
+      setCurrentTheme(valid);
+      document.documentElement.setAttribute("data-theme", valid);
+    } catch {}
+  }, []);
+
+  const selectTheme = (theme: PlatformTheme) => {
+    setCurrentTheme(theme);
+    try {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("vexo_platform_theme", theme);
+    } catch {}
+  };
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setThemeMenuOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+      if (announcementsRef.current && !announcementsRef.current.contains(e.target as Node)) {
+        setAnnouncementsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const currentThemeOption = useMemo(() => {
+    return THEME_OPTIONS.find((t) => t.id === currentTheme) || THEME_OPTIONS[0];
+  }, [currentTheme]);
 
   function handleCloseCelebration() {
     if (bonusCelebration?.claimKey) {
@@ -557,6 +652,12 @@ export default function Home() {
     return () => window.clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (activePage === "Orders") {
+      loadOrders();
+    }
+  }, [activePage]);
+
   async function loadWallet() {
     try {
       const response = await fetch("/api/wallet", {
@@ -573,6 +674,11 @@ export default function Home() {
       setBonusBalancePkr(Number(data.bonusBalancePkr || 0));
       if (data.sadaPayNumber) setSadaPayNumber(String(data.sadaPayNumber));
       if (data.sadaPayTitle) setSadaPayTitle(String(data.sadaPayTitle));
+      if (data.binanceUid) setBinanceUid(String(data.binanceUid));
+      if (data.binanceName) setBinanceName(String(data.binanceName));
+      if (data.binanceUsdtAddress) setBinanceUsdtAddress(String(data.binanceUsdtAddress));
+      if (data.binanceNetwork) setBinanceNetwork(String(data.binanceNetwork));
+      if (data.liveUsdRate) setLiveForexUsdRate(Number(data.liveUsdRate));
       setDeposits(Array.isArray(data.deposits) ? data.deposits : []);
 
       // Check if user has an active bonus to celebrate (both newly registered and existing registered users)
@@ -692,8 +798,41 @@ export default function Home() {
     setSidebarOpen(false);
   }
 
+  const [buyAgainPrefill, setBuyAgainPrefill] = useState<{
+    serviceId?: number | string;
+    link?: string;
+    quantity?: number;
+    unavailableNotice?: string;
+  } | null>(null);
+
   function handleOrderService(serviceId: number | string) {
+    setBuyAgainPrefill(null);
     setSelectedServiceId(String(serviceId));
+    setActivePage("New Order");
+    setSidebarOpen(false);
+  }
+
+  function handleBuyAgain(order: VexoOrder) {
+    const serviceExists = services.some(
+      (s) => String(s.id) === String(order.serviceId) && s.enabled !== false
+    );
+
+    if (serviceExists) {
+      setSelectedServiceId(String(order.serviceId));
+      setBuyAgainPrefill({
+        serviceId: order.serviceId,
+        link: order.link,
+        quantity: order.quantity,
+      });
+    } else {
+      setSelectedServiceId("");
+      setBuyAgainPrefill({
+        link: order.link,
+        quantity: order.quantity,
+        unavailableNotice: `The service "${order.service}" is currently unavailable. Please select an active alternative from the catalog below.`,
+      });
+    }
+
     setActivePage("New Order");
     setSidebarOpen(false);
   }
@@ -717,8 +856,12 @@ export default function Home() {
       >
         {/* Logo */}
         <div className="flex h-20 items-center border-b border-white/[0.08] px-6 bg-white/[0.02]">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#baff00] text-lg font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.4)]">
-            V
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_24px_rgba(186,255,0,0.35)] border border-[#baff00]/30">
+            <img
+              src="/logo.png"
+              alt="VEXARO SMM"
+              className="h-full w-full object-cover"
+            />
           </div>
 
           <div className="ml-3">
@@ -772,22 +915,8 @@ export default function Home() {
                 </button>
               );
             })}
-            {/* Link to Public Website & WhatsApp Channel */}
-            <div className="mt-3 flex flex-col gap-1.5">
-              <a
-                href="https://vexo-smm-panel-7sln.vercel.app/"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] px-3.5 py-2.5 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/30 hover:bg-[#baff00]/5 hover:text-[#baff00]"
-                title="Open Live Website: vexo-smm-panel-7sln.vercel.app"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon name="globe" size={16} className="text-[#baff00]" />
-                  <span>vexo-smm-panel...</span>
-                </div>
-                <span className="rounded bg-[#baff00]/10 border border-[#baff00]/20 px-1.5 py-0.5 text-[9px] font-black text-[#baff00]">LIVE</span>
-              </a>
-
+            {/* WhatsApp Channel Link */}
+            <div className="mt-3">
               <a
                 href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
                 target="_blank"
@@ -876,182 +1005,371 @@ export default function Home() {
                 className="h-11 w-full rounded-xl border border-white/10 bg-[#172126] pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
               />
             </div>
-            <div className="min-w-0 flex-1 md:hidden">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">VEXARO</p>
-              <h1 className="text-sm sm:text-base font-black text-white truncate leading-tight">{activePage}</h1>
+            <div className="min-w-0 flex-1 md:hidden flex items-center gap-2.5">
+              <div className="relative h-8 w-8 shrink-0 rounded-lg overflow-hidden border border-[#baff00]/30 shadow-[0_0_10px_rgba(186,255,0,0.3)]">
+                <img src="/logo.png" alt="VEXARO" className="h-full w-full object-cover" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">VEXARO</p>
+                <h1 className="text-sm sm:text-base font-black text-white truncate leading-tight">{activePage}</h1>
+              </div>
             </div>
           </div>
 
           <div className="shrink-0 flex items-center gap-1.5 sm:gap-2.5">
-            {/* Mobile Balance Pill */}
-            <button
-              type="button"
-              suppressHydrationWarning
-              onClick={() => navigate("Add Funds")}
-              className="flex items-center gap-1.5 rounded-xl border border-[#baff00]/25 bg-[#baff00]/10 px-2.5 py-1.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] sm:hidden shrink-0"
-              title={`Total: ₨${totalAvailablePkr.toFixed(2)} (Real: ₨${walletBalancePkr.toFixed(2)} + Bonus: ₨${bonusBalancePkr.toFixed(2)}) • Click to Add Funds`}
-            >
-              <Icon name="wallet" size={13} />
-              <span className="font-mono">{formatWalletBalance(selectedCurrency, currencyRates, totalAvailablePkr)}</span>
-              {bonusBalancePkr > 0 && (
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setBonusCelebration({ amount: bonusBalancePkr, claimKey: "manual_view" });
-                  }}
-                  className="rounded bg-[#baff00] px-1 text-[9px] font-black text-[#07100f] cursor-pointer"
-                  title="Click to view Bonus Celebration"
-                >
-                  BONUS
-                </span>
-              )}
-            </button>
+            {/* Quick Notification Feed Box */}
+            <div className="relative shrink-0" ref={announcementsRef}>
+              {(() => {
+                const unreadAnnouncements = announcements.filter((a) => !readNotificationKeys[`ann_${a.id}`]).length;
+                const unreadOrders = orders.slice(0, 6).filter((o) => !readNotificationKeys[`ord_${o.orderId || o.localId}`]).length;
+                const unreadSystem = !readNotificationKeys["system_status_1"] ? 1 : 0;
+                const totalUnread = unreadAnnouncements + unreadOrders + unreadSystem;
 
-            {/* Desktop Balance Pill */}
-            <button
-              type="button"
-              suppressHydrationWarning
-              onClick={() => navigate("Add Funds")}
-              className="hidden sm:flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white transition hover:border-[#baff00]/40 hover:bg-white/10 shrink-0 group"
-              title={`Total Available: ₨${totalAvailablePkr.toFixed(2)} (Real: ₨${walletBalancePkr.toFixed(2)} + Bonus: ₨${bonusBalancePkr.toFixed(2)}) • Click to Add Funds`}
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#baff00]/10 text-[#baff00] group-hover:bg-[#baff00] group-hover:text-[#07100f] transition shrink-0">
-                <Icon name="wallet" size={13} />
-              </span>
-              <span className="font-extrabold text-white group-hover:text-[#baff00] transition whitespace-nowrap">
-                {formatWalletBalance(selectedCurrency, currencyRates, totalAvailablePkr)}
-              </span>
-              {bonusBalancePkr > 0 && (
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setBonusCelebration({ amount: bonusBalancePkr, claimKey: "manual_view" });
-                  }}
-                  className="inline-flex items-center gap-1 rounded-md bg-[#baff00]/15 px-1.5 py-0.5 text-[10px] font-black text-[#baff00] border border-[#baff00]/30 hover:bg-[#baff00] hover:text-[#07100f] shrink-0 cursor-pointer"
-                  title="Click to view Congratulations Bonus Celebration"
-                >
-                  <span>+₨{bonusBalancePkr.toFixed(0)}</span>
-                  <span className="text-[9px] font-bold opacity-80">bonus</span>
-                </span>
-              )}
-            </button>
-
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setAnnouncementsOpen(!announcementsOpen)}
-                className="relative rounded-xl border border-white/10 bg-white/5 p-2 sm:p-2.5 text-slate-200 transition hover:border-[#baff00]/30 hover:text-[#baff00] shrink-0"
-                title="View Announcements & Updates"
-                aria-label="Announcements"
-              >
-                <Icon name="bell" size={17} />
-                {announcements.length > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#baff00] text-[9px] sm:text-[10px] font-black text-[#07100f] ring-2 ring-[#0b1418] animate-pulse">
-                    {announcements.length}
-                  </span>
-                )}
-              </button>
-
-              {announcementsOpen && (
-                <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-20 sm:top-full sm:mt-2 w-auto sm:w-[clamp(18rem,88vw,24rem)] z-50 rounded-2xl border border-white/15 bg-[#0f191b] p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">📢</span>
-                      <h4 className="text-sm font-black text-white">Announcements</h4>
-                      {announcements.length > 0 && (
-                        <span className="rounded-full bg-[#baff00]/15 px-2 py-0.5 text-[10px] font-bold text-[#baff00]">
-                          {announcements.length} Total
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setAnnouncementsOpen(!announcementsOpen)}
+                      className="relative rounded-xl border border-white/10 bg-white/5 p-2 sm:p-2.5 text-slate-200 transition hover:border-[#baff00]/40 hover:text-[#baff00] shrink-0 cursor-pointer"
+                      title="View Notification Center & Order Updates"
+                      aria-label="Notification Center"
+                    >
+                      <Icon name="bell" size={17} />
+                      {totalUnread > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#baff00] text-[9px] sm:text-[10px] font-black text-[#07100f] ring-2 ring-[#0b1418] animate-pulse">
+                          {totalUnread > 9 ? "9+" : totalUnread}
                         </span>
                       )}
-                    </div>
-                    <button
-                      onClick={() => setAnnouncementsOpen(false)}
-                      className="text-xs text-slate-400 hover:text-white"
-                      aria-label="Close announcements"
-                    >
-                      <Icon name="x" size={16} />
                     </button>
-                  </div>
 
-                  <div className="mt-3 max-h-[65vh] overflow-y-auto space-y-3 pr-1">
-                    {announcements.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-slate-400">
-                        No active announcements right now.
-                      </div>
-                    ) : (
-                      announcements.map((a) => (
-                        <div
-                          key={a.id}
-                          className="rounded-xl border border-white/10 bg-white/[0.03] p-3.5 transition hover:border-lime-400/40"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <h5 className="font-bold text-sm text-white">{a.title}</h5>
-                            <span className="text-[10px] text-slate-500 shrink-0 font-mono">
-                              {new Date(a.createdAt).toLocaleDateString()}
+                    {announcementsOpen && (
+                      <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-20 sm:top-full sm:mt-2 w-auto sm:w-[clamp(21rem,92vw,26rem)] z-50 rounded-2xl border border-white/15 bg-[#0b1418]/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.85),0_0_30px_rgba(186,255,0,0.06)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
+                        {/* Feed Drawer Header */}
+                        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#baff00]/15 text-[#baff00]">
+                              <Icon name="bell" size={15} />
                             </span>
+                            <div>
+                              <h4 className="text-xs sm:text-sm font-black text-white">
+                                Notification Center
+                              </h4>
+                              <p className="text-[10px] text-slate-400">
+                                {totalUnread > 0 ? `${totalUnread} unread notifications` : "All notifications read"}
+                              </p>
+                            </div>
                           </div>
-                          <div className="mt-2 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
-                            {renderAnnouncementMessage(a.message)}
-                          </div>
-                          {extractAnnouncementUrl(a.message) && (
-                            <a
-                              href={extractAnnouncementUrl(a.message)!}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#baff00] px-3 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+
+                          <div className="flex items-center gap-2">
+                            {totalUnread > 0 && (
+                              <button
+                                type="button"
+                                onClick={markAllNotificationsAsRead}
+                                className="text-[10px] font-bold text-[#baff00] hover:underline cursor-pointer"
+                              >
+                                Mark all read
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setAnnouncementsOpen(false)}
+                              className="rounded-lg p-1 text-slate-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                              aria-label="Close notifications"
                             >
-                              <span>Open Channel / Link</span>
-                              <span>↗</span>
-                            </a>
+                              <Icon name="x" size={15} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Filter Sub-Tabs */}
+                        <div className="mt-3 flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.04] border border-white/5 text-[11px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setNotificationFilter("all")}
+                            className={`flex-1 py-1 rounded-lg transition text-center cursor-pointer ${
+                              notificationFilter === "all"
+                                ? "bg-white/15 text-white shadow-sm"
+                                : "text-slate-400 hover:text-white"
+                            }`}
+                          >
+                            All ({announcements.length + Math.min(orders.length, 6) + 1})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNotificationFilter("orders")}
+                            className={`flex-1 py-1 rounded-lg transition text-center cursor-pointer ${
+                              notificationFilter === "orders"
+                                ? "bg-white/15 text-white shadow-sm"
+                                : "text-slate-400 hover:text-white"
+                            }`}
+                          >
+                            Orders ({Math.min(orders.length, 6)})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNotificationFilter("announcements")}
+                            className={`flex-1 py-1 rounded-lg transition text-center cursor-pointer ${
+                              notificationFilter === "announcements"
+                                ? "bg-white/15 text-white shadow-sm"
+                                : "text-slate-400 hover:text-white"
+                            }`}
+                          >
+                            News ({announcements.length + 1})
+                          </button>
+                        </div>
+
+                        {/* Scrollable Feed List */}
+                        <div className="mt-3 max-h-[60vh] overflow-y-auto space-y-2.5 pr-1 no-scrollbar">
+                          {/* Live System Notice */}
+                          {(notificationFilter === "all" || notificationFilter === "announcements") && (
+                            <div className="rounded-xl border border-[#baff00]/30 bg-gradient-to-r from-[#baff00]/10 to-transparent p-3 transition space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase text-[#baff00]">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
+                                  System Health &amp; Gateway
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-400">Live</span>
+                              </div>
+                              <p className="text-xs text-white font-medium leading-relaxed">
+                                Instagram &amp; TikTok high-speed dispatches operational (5k/day). 0% fee SadaPay, JazzCash &amp; Binance Pay deposit channels verified.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Order Status Updates */}
+                          {(notificationFilter === "all" || notificationFilter === "orders") && (
+                            orders.slice(0, 6).map((ord) => {
+                              const key = `ord_${ord.orderId || ord.localId}`;
+                              const isUnread = !readNotificationKeys[key];
+                              const statusLower = ord.status.toLowerCase();
+                              const isComplete = statusLower === "completed";
+                              const isCancel = ["cancelled", "canceled"].includes(statusLower);
+
+                              return (
+                                <div
+                                  key={ord.localId}
+                                  onClick={() => {
+                                    markSingleNotificationAsRead(key);
+                                    navigate("Orders");
+                                    setAnnouncementsOpen(false);
+                                  }}
+                                  className={`rounded-xl border p-3 transition cursor-pointer hover:border-white/20 ${
+                                    isUnread
+                                      ? "border-[#baff00]/40 bg-white/[0.06]"
+                                      : "border-white/5 bg-white/[0.02]"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-black ${
+                                        isComplete ? "bg-emerald-500/20 text-emerald-400" : isCancel ? "bg-rose-500/20 text-rose-400" : "bg-amber-400/20 text-amber-300"
+                                      }`}>
+                                        {isComplete ? "✓" : isCancel ? "✕" : "↻"}
+                                      </span>
+                                      <p className="text-xs font-bold text-white truncate">
+                                        Order {ord.orderId ? `#${ord.orderId}` : `#${ord.localId}`}
+                                      </p>
+                                    </div>
+                                    <StatusPill status={ord.status} />
+                                  </div>
+                                  <p className="mt-1.5 text-xs text-slate-300 truncate">
+                                    {ord.service} · {ord.quantity.toLocaleString()} units
+                                  </p>
+                                  <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+                                    <span className="font-mono">
+                                      {ord.createdAt ? new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently"}
+                                    </span>
+                                    <span className="text-[#baff00] font-semibold hover:underline">Track in Orders →</span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+
+                          {/* Admin Announcements */}
+                          {(notificationFilter === "all" || notificationFilter === "announcements") && (
+                            announcements.map((a) => {
+                              const key = `ann_${a.id}`;
+                              const isUnread = !readNotificationKeys[key];
+                              const url = extractAnnouncementUrl(a.message);
+
+                              return (
+                                <div
+                                  key={a.id}
+                                  onClick={() => markSingleNotificationAsRead(key)}
+                                  className={`rounded-xl border p-3 transition ${
+                                    isUnread ? "border-lime-400/40 bg-white/[0.06]" : "border-white/10 bg-white/[0.02]"
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <h5 className="font-bold text-xs text-white">{a.title}</h5>
+                                    <span className="text-[10px] text-slate-500 shrink-0 font-mono">
+                                      {new Date(a.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1.5 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                    {renderAnnouncementMessage(a.message)}
+                                  </div>
+                                  {url && (
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#baff00] px-2.5 py-1 text-[11px] font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                                    >
+                                      <span>Open Link</span>
+                                      <span>↗</span>
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+
+                          {orders.length === 0 && announcements.length === 0 && notificationFilter === "orders" && (
+                            <div className="py-8 text-center text-xs text-slate-400">
+                              No orders dispatched yet. Placed orders will appear here with live updates.
+                            </div>
                           )}
                         </div>
-                      ))
+                      </div>
                     )}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* User Profile Dropdown Menu with Integrated Theme Selector */}
+            <div className="relative shrink-0" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-1 sm:px-2.5 sm:py-1.5 transition hover:border-[#baff00]/40 shrink-0 cursor-pointer"
+                title="User Profile Menu"
+                aria-label="User Profile and Settings"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#baff00] text-xs font-black text-[#07100f]">
+                  {currentUser?.name ? currentUser.name.trim().charAt(0).toUpperCase() : "U"}
+                </div>
+                <span className="hidden text-xs sm:text-sm font-bold text-white lg:block">
+                  {currentUser?.name ? currentUser.name.split(" ")[0] : "Account"}
+                </span>
+                <span className="text-[10px] text-slate-400">▼</span>
+              </button>
+
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-60 rounded-2xl border border-white/15 bg-[#0f191b] p-2 shadow-2xl z-50 backdrop-blur-2xl animate-in fade-in duration-150 space-y-1">
+                  <div className="px-3 py-2 border-b border-white/[0.08]">
+                    <p className="text-xs font-bold text-white truncate">
+                      {currentUser?.name || "Account"} {currentUser?.is_admin ? "(Administrator)" : ""}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">{currentUser?.email || ""}</p>
+                  </div>
+
+                  {/* Integrated 4-Theme Selection Matrix */}
+                  <div className="px-3 py-2 border-b border-white/[0.08]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Theme</span>
+                      <span className="text-[10px] text-slate-400">{currentThemeOption.name}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {THEME_OPTIONS.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            selectTheme(t.id);
+                          }}
+                          className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-bold transition cursor-pointer ${
+                            currentTheme === t.id
+                              ? "bg-white/15 text-white ring-1 ring-white/20"
+                              : "text-slate-400 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: t.dot }}
+                          />
+                          <span className="truncate">{t.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate("Account");
+                      setUserMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition cursor-pointer text-left"
+                  >
+                    <Icon name="user" size={15} />
+                    <span>My Account</span>
+                  </button>
+
+                  <a
+                    href="https://vexarosmm.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon name="globe" size={15} className="text-[#baff00]" />
+                      <span>Live Website</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500">↗</span>
+                  </a>
+
+                  <a
+                    href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-[#25d366] hover:bg-[#25d366]/10 transition cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon name="whatsapp" size={15} />
+                      <span>WhatsApp Channel</span>
+                    </div>
+                    <span className="text-[10px]">↗</span>
+                  </a>
+
+                  {currentUser?.is_admin && (
+                    <a
+                      href="/admin"
+                      className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[#cfff62] hover:bg-[#baff00]/20 transition cursor-pointer text-left"
+                    >
+                      <span>⚙</span>
+                      <span>Admin Control Center</span>
+                    </a>
+                  )}
+
+                  <div className="pt-1 border-t border-white/[0.08]">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await fetch("/api/auth/logout", { method: "POST", credentials: "include", cache: "no-store" });
+                          window.location.replace("/");
+                        } catch {}
+                      }}
+                      className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-rose-400 hover:bg-rose-500/10 transition cursor-pointer text-left"
+                    >
+                      <Icon name="logout" size={15} />
+                      <span>Log Out</span>
+                    </button>
                   </div>
                 </div>
               )}
             </div>
-
-            <a
-              href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-[#25d366]/40 bg-[#25d366]/10 px-2.5 sm:px-3 py-2 text-xs font-bold text-[#25d366] transition hover:bg-[#25d366]/20 shrink-0"
-              title="Official WhatsApp Channel — Restocks & News"
-            >
-              <Icon name="whatsapp" size={15} />
-              <span className="hidden md:inline">Channel</span>
-            </a>
-
-            <a
-              href="https://vexo-smm-panel-7sln.vercel.app/"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/40 hover:text-[#baff00] shrink-0"
-              title="Open Live Website (vexo-smm-panel-7sln.vercel.app)"
-            >
-              <Icon name="globe" size={14} className="text-[#baff00]" />
-              <span>Live Site</span>
-            </a>
-
-            <button
-              onClick={() => navigate("Account")}
-              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-1 sm:px-3 sm:py-1.5 transition hover:border-[#baff00]/40 shrink-0"
-              title="My Account"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[#baff00]/60 bg-[#baff00]/10 text-xs font-black text-[#baff00]">
-                {currentUser?.name ? currentUser.name.trim().charAt(0).toUpperCase() : "U"}
-              </div>
-              <span className="hidden text-sm font-bold text-white lg:block">
-                {currentUser?.name ? currentUser.name.split(" ")[0] : "Account"}
-              </span>
-            </button>
           </div>
         </header>
 
         
 
         {/* Content */}
-        <section className="vexo-page-enter p-4 sm:p-6 lg:p-7 pb-28 lg:pb-7">
+        <section className="vexo-page-enter p-4 sm:p-6 lg:p-7 pb-36 lg:pb-8">
           <h1 className="sr-only">
             VEXARO SMM Panel | Best &amp; Cheapest SMM Panel in Pakistan for Instagram, TikTok, YouTube &amp; Facebook with SadaPay, Easypaisa &amp; JazzCash
           </h1>
@@ -1234,6 +1552,7 @@ export default function Home() {
               selectedCurrency={selectedCurrency}
               currencyRates={currencyRates}
               navigate={navigate}
+              buyAgainPrefill={buyAgainPrefill}
               onCelebrateBonus={() => setBonusCelebration({ amount: bonusBalancePkr || 50, claimKey: "manual_celebrate" })}
             />
           )}
@@ -1252,7 +1571,11 @@ export default function Home() {
           )}
 
           {activePage === "Orders" && (
-            <OrdersPage orders={orders} onOrdersUpdated={handleOrdersUpdated} />
+            <OrdersPage
+              orders={orders}
+              onOrdersUpdated={handleOrdersUpdated}
+              onBuyAgain={handleBuyAgain}
+            />
           )}
 
           {activePage === "Subscriptions & Tools" && (
@@ -1277,6 +1600,11 @@ export default function Home() {
               deposits={deposits}
               sadaPayNumber={sadaPayNumber}
               sadaPayTitle={sadaPayTitle}
+              binanceUid={binanceUid}
+              binanceName={binanceName}
+              binanceUsdtAddress={binanceUsdtAddress}
+              binanceNetwork={binanceNetwork}
+              liveForexUsdRate={liveForexUsdRate}
               onWalletUpdated={(balancePkr, nextDeposits) => {
                 setWalletBalancePkr(balancePkr);
                 setDeposits(nextDeposits);
@@ -1333,7 +1661,7 @@ export default function Home() {
       {/* Mobile Bottom Navigation Bar */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-white/10 bg-[#0b1418]/95 px-2 py-2 backdrop-blur-lg pb-safe lg:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-white/10 bg-[#0b1418]/95 px-2 py-2 backdrop-blur-lg pb-safe md:hidden"
       >
         <button
           onClick={() => navigate("Dashboard")}
@@ -1441,10 +1769,33 @@ function Dashboard({
   onOrderService: (serviceId: number | string) => void;
 }) {
   const [todayLabel, setTodayLabel] = useState("");
+  const [dismissedBonusBanner, setDismissedBonusBanner] = useState(false);
+  const [dismissedLiveBanner, setDismissedLiveBanner] = useState(() => {
+    try {
+      return sessionStorage.getItem("vexo_dismissed_live_banner") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+
   const totalAvailablePkr = walletBalancePkr + bonusBalancePkr;
 
   useEffect(() => {
     setTodayLabel(new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
+
+    let isMounted = true;
+    fetch("/api/support/tickets", { cache: "no-store", credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && Array.isArray(data.tickets)) {
+          setSupportTickets(data.tickets);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const completed = orders.filter((order) => order.status.toLowerCase() === "completed").length;
@@ -1456,6 +1807,59 @@ function Dashboard({
     .filter((order) => order.status.toLowerCase() === "completed")
     .reduce((sum, order) => sum + (Number(order.charge) || 0), 0);
 
+  // VIP Loyalty Tier Computation
+  const vipTier = useMemo(() => {
+    if (totalSpent >= 75000) {
+      return {
+        name: "VIP Elite",
+        nextTier: "Max Tier",
+        progressPercent: 100,
+        perk: "10% Bonus + Dedicated VIP Account Manager",
+        remaining: 0,
+        badgeClass: "bg-[#baff00]/20 text-[#baff00] border-[#baff00]/40 shadow-[0_0_12px_rgba(186,255,0,0.3)]",
+      };
+    }
+    if (totalSpent >= 25000) {
+      const remaining = 75000 - totalSpent;
+      const progressPercent = Math.min(100, Math.round(((totalSpent - 25000) / 50000) * 100));
+      return {
+        name: "Gold Member",
+        nextTier: "VIP Elite",
+        progressPercent,
+        perk: "5% Deposit Bonus + Priority Queue Dispatch",
+        remaining,
+        badgeClass: "bg-yellow-400/20 text-yellow-300 border-yellow-400/30",
+      };
+    }
+    if (totalSpent >= 5000) {
+      const remaining = 25000 - totalSpent;
+      const progressPercent = Math.min(100, Math.round(((totalSpent - 5000) / 20000) * 100));
+      return {
+        name: "Silver Member",
+        nextTier: "Gold Member",
+        progressPercent,
+        perk: "2% Extra Bonus Credit on all deposits",
+        remaining,
+        badgeClass: "bg-slate-300/20 text-slate-200 border-slate-300/30",
+      };
+    }
+    const remaining = 5000 - totalSpent;
+    const progressPercent = Math.min(100, Math.round((totalSpent / 5000) * 100));
+    return {
+      name: "Bronze Member",
+      nextTier: "Silver Member",
+      progressPercent,
+      perk: "Standard Automated Wholesale Rates",
+      remaining,
+      badgeClass: "bg-amber-600/20 text-amber-300 border-amber-600/30",
+    };
+  }, [totalSpent]);
+
+  // Open support tickets count
+  const activeTicketsCount = supportTickets.filter(
+    (t) => !["resolved", "closed"].includes(t.status?.toLowerCase() || "")
+  ).length;
+
   const popularServices = [
     services.find((s) => s.platform === "Instagram" && s.category.toLowerCase().includes("follower")),
     services.find((s) => s.platform === "TikTok" && s.category.toLowerCase().includes("view")),
@@ -1464,36 +1868,80 @@ function Dashboard({
 
   const recentOrders = orders.slice(0, 6);
 
+  const handleDismissLiveBanner = () => {
+    setDismissedLiveBanner(true);
+    try {
+      sessionStorage.setItem("vexo_dismissed_live_banner", "1");
+    } catch {}
+  };
+
   return (
-    <div className="mx-auto max-w-[1280px] space-y-7">
-      {/* Promotional Bonus Reminder Banner */}
-      {bonusBalancePkr > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-[#baff00]/35 bg-gradient-to-r from-[#baff00]/15 via-[#baff00]/5 to-transparent p-4 shadow-lg shadow-[#baff00]/5">
+    <div className="mx-auto max-w-[1280px] space-y-6 sm:space-y-7">
+      {/* High-Contrast Promotional Bonus Notice */}
+      {bonusBalancePkr > 0 && !dismissedBonusBanner && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950/40 p-3.5 sm:p-4 text-emerald-100 shadow-sm backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#baff00] text-xl shadow-[0_0_16px_rgba(186,255,0,0.3)]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300 text-base">
               🎁
             </span>
-            <div>
-              <p className="text-xs font-black text-white sm:text-sm">
-                ₨{bonusBalancePkr.toFixed(2)} Promotional Bonus Credit Available
-              </p>
-              <p className="text-[11px] text-slate-300">
-                Non-withdrawable welcome promo. Automatically deducted first on your next purchase!
-              </p>
-            </div>
+            <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed">
+              You have <strong className="font-extrabold text-white underline decoration-emerald-400 underline-offset-2">₨{bonusBalancePkr.toFixed(2)}</strong> bonus credit available. It will be automatically deducted first on your next purchase.
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate("New Order")}
-            className="shrink-0 rounded-xl bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer"
-          >
-            Use Bonus Now →
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => navigate("New Order")}
+              className="rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer shadow-sm"
+            >
+              Order Now →
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissedBonusBanner(true)}
+              className="text-slate-400 hover:text-white p-1 text-xs cursor-pointer rounded-lg hover:bg-white/10 transition"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
-      {/* 1. Clean Dashboard Welcome Card */}
-      <div className="antigravity-card rounded-xl p-5 sm:p-6 relative overflow-hidden">
+      {/* 1. Live Platform Announcements Banner / Box (Dismissible) */}
+      {!dismissedLiveBanner && (
+        <div className="rounded-2xl border border-[#baff00]/30 bg-gradient-to-r from-[#0d2218]/90 via-[#0a1818]/90 to-[#0e2118]/90 p-3.5 sm:p-4.5 shadow-[0_0_25px_rgba(186,255,0,0.06)] backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#baff00]/15 border border-[#baff00]/35 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#baff00] shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
+              ⚡ System Update
+            </span>
+            <p className="text-xs sm:text-sm text-white font-medium leading-relaxed truncate">
+              Instagram Followers API speed increased to 5k/day | New SadaPay 0% fee gateway verified &amp; online | Instant Binance Pay active.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => navigate("Add Funds")}
+              className="rounded-xl bg-[#baff00] px-3.5 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer"
+            >
+              Deposit Funds →
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissLiveBanner}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              title="Dismiss system banner"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Clean Dashboard Welcome Card */}
+      <div className="antigravity-card rounded-2xl p-5 sm:p-6 relative">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
@@ -1522,55 +1970,81 @@ function Dashboard({
         </div>
       </div>
 
-      {/* 2. Top 4 Antigravity Floating Telemetry Stat Cards */}
+      {/* 3. Top 4 Overview Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <Stat
           title="Total Orders"
           value={String(orders.length)}
-          subtitle="Lifetime automated dispatches"
           icon="cart"
         />
         <Stat
           title="Wallet Balance"
           value={formatWalletBalance(selectedCurrency, currencyRates, totalAvailablePkr)}
-          subtitle={
-            bonusBalancePkr > 0
-              ? `₨${walletBalancePkr.toFixed(2)} Real + ₨${bonusBalancePkr.toFixed(2)} Bonus Credit`
-              : `₨${walletBalancePkr.toLocaleString()} PKR available to spend`
-          }
           icon="wallet"
         />
         <Stat
           title="In Queue / Active"
           value={String(active)}
-          subtitle="Processing &amp; in-transit orders"
           icon="clock"
         />
         <Stat
           title="Total Spent"
           value={`₨${totalSpent.toFixed(2)}`}
-          subtitle="Completed purchases value"
           icon="star"
         />
       </div>
 
-      {/* 3. Main Two-Column Layout */}
+      {/* 4. API Engine Live Metrics Bar */}
+      <div className="antigravity-card rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-400 border border-cyan-400/20">
+            <Icon name="bolt" size={17} />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-bold text-white">API Engine Live Metrics</h3>
+              <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-extrabold text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981] animate-pulse" />
+                99.98% Operational
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">Automated High-Speed Dispatch Network</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 text-xs text-slate-300">
+          <div className="rounded-xl bg-white/[0.03] border border-white/5 px-3 py-1.5 flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Avg Start:</span>
+            <span className="font-bold text-[#baff00]">&lt; 15 Mins</span>
+          </div>
+          <div className="rounded-xl bg-white/[0.03] border border-white/5 px-3 py-1.5 flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Provider Network:</span>
+            <span className="font-bold text-cyan-400">400+ Active APIs</span>
+          </div>
+          <div className="rounded-xl bg-white/[0.03] border border-white/5 px-3 py-1.5 flex items-center gap-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400">24h Velocity:</span>
+            <span className="font-bold text-white">1,480+ Dispatches Today</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Main Two-Column Layout */}
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_340px] items-start">
         {/* Left Column: Command Actions & Recent Orders */}
         <div className="min-w-0 space-y-7">
-          {/* Quick Command Center */}
-          <div className="antigravity-card rounded-xl p-5 sm:p-6 relative overflow-hidden">
+          {/* Quick Command Center with standardized padding & no clipped borders */}
+          <div className="antigravity-card rounded-2xl p-5 sm:p-6 relative">
             <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">
-                  Fast Command Center
+                <h3 className="text-base sm:text-lg font-bold text-white">
+                  Quick Command Center
                 </h3>
                 <p className="mt-0.5 text-xs text-slate-400">
-                  One-tap instant telemetry shortcuts
+                  One-tap instant shortcuts
                 </p>
               </div>
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#baff00] bg-[#baff00]/10 border border-[#baff00]/25 rounded-full px-3 py-1">
-                4 Operations
+              <span className="text-[10px] font-bold text-slate-300 bg-white/[0.06] border border-white/10 rounded-full px-2.5 py-0.5">
+                4 Actions
               </span>
             </div>
 
@@ -1585,10 +2059,10 @@ function Dashboard({
                   key={cmd.label}
                   type="button"
                   onClick={() => navigate(cmd.target)}
-                  className={`group rounded-xl p-4 text-left transition-all duration-200 cursor-pointer border relative overflow-hidden ${
+                  className={`group rounded-xl p-4 text-left transition-all duration-200 cursor-pointer border flex flex-col justify-between h-[104px] ${
                     cmd.primary
-                      ? "bg-gradient-to-b from-[#baff00]/15 to-white/[0.03] border-[#baff00]/50 shadow-[0_4px_20px_rgba(186,255,0,0.18)] hover:border-[#baff00]"
-                      : "bg-white/[0.03] border-white/5 hover:bg-white/[0.06] hover:border-white/20"
+                      ? "bg-gradient-to-b from-[#baff00]/12 via-[#baff00]/5 to-transparent border-[#baff00]/40 shadow-[0_4px_16px_rgba(186,255,0,0.12)] hover:border-[#baff00] hover:shadow-[0_4px_20px_rgba(186,255,0,0.22)]"
+                      : "bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20"
                   }`}
                 >
                   <span className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
@@ -1598,19 +2072,21 @@ function Dashboard({
                   }`}>
                     <Icon name={cmd.icon} size={18} />
                   </span>
-                  <p className="mt-3 text-xs font-black text-white group-hover:text-[#baff00] transition-colors">
-                    {cmd.label}
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-medium truncate">
-                    {cmd.desc}
-                  </p>
+                  <div>
+                    <p className="text-xs font-black text-white group-hover:text-[#baff00] transition-colors leading-tight">
+                      {cmd.label}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
+                      {cmd.desc}
+                    </p>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Recent Orders Telemetry Matrix */}
-          <div className="antigravity-card rounded-xl p-5 sm:p-6 relative overflow-hidden">
+          {/* Recent Orders Table */}
+          <div className="antigravity-card rounded-2xl p-5 sm:p-6 relative">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/[0.08]">
               <div className="flex items-center gap-3">
                 <span className="relative flex h-2.5 w-2.5">
@@ -1618,8 +2094,8 @@ function Dashboard({
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#baff00]" />
                 </span>
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">
-                    Recent Orders Telemetry
+                  <h3 className="text-base sm:text-lg font-bold text-white">
+                    Recent Orders
                   </h3>
                   <p className="mt-0.5 text-xs text-slate-400">
                     Latest automated social growth dispatches
@@ -1630,17 +2106,17 @@ function Dashboard({
               <button
                 type="button"
                 onClick={() => navigate("Orders")}
-                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-bold text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] hover:border-[#baff00] transition-all cursor-pointer flex items-center gap-1.5"
+                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>View All Orders</span>
                 <Icon name="arrow" size={13} />
               </button>
             </div>
 
-            <div className="mt-4 overflow-x-auto -mx-6 px-6 no-scrollbar">
+            <div className="mt-4 overflow-x-auto -mx-5 sm:-mx-6 px-5 sm:px-6 no-scrollbar">
               <table className="w-full min-w-[650px] text-left text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.06] text-[10px] font-black uppercase tracking-[0.18em] text-[#baff00]">
+                  <tr className="border-b border-white/[0.08] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     <th className="pb-3 pr-4">Order ID</th>
                     <th className="pb-3 pr-4">Service</th>
                     <th className="pb-3 pr-4">Target Link</th>
@@ -1681,7 +2157,7 @@ function Dashboard({
                         <StatusPill status={order.status} />
                       </td>
                       <td className="py-3.5 text-right font-black text-[#baff00]">
-                        ₨{order.charge.toFixed(4)}
+                        ₨{Number(order.charge).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -1694,7 +2170,7 @@ function Dashboard({
                             <Icon name="cart" size={24} />
                           </div>
                           <p className="text-sm font-bold text-slate-300">
-                            No telemetry records yet
+                            No order records yet
                           </p>
                           <p className="text-xs text-slate-500">
                             Dispatch your first order to track live delivery, speed, and status here.
@@ -1716,23 +2192,23 @@ function Dashboard({
           </div>
         </div>
 
-        {/* Right Rail: Floating Widgets */}
+        {/* Right Rail: Standardized Cards & New Feature Widgets */}
         <aside className="space-y-6">
           {/* Live Space Wallet Card */}
-          <div className="antigravity-card rounded-[32px] p-6 space-y-5 relative overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8),0_10px_35px_rgba(186,255,0,0.08)]">
+          <div className="antigravity-card rounded-2xl p-5 sm:p-6 space-y-5 relative">
             <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08]">
               <div className="flex items-center gap-2">
                 <span className="flex h-2 w-2 rounded-full bg-[#baff00] shadow-[0_0_8px_#baff00] animate-pulse" />
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">
-                  Live Wallet
+                <h3 className="text-base font-bold text-white">
+                  Live Wallet Summary
                 </h3>
               </div>
-              <span className="text-[10px] font-bold text-[#baff00] bg-[#baff00]/10 px-2.5 py-0.5 rounded-full border border-[#baff00]/25">
+              <span className="text-[10px] font-bold text-slate-300 bg-white/[0.06] px-2.5 py-0.5 rounded-full border border-white/10">
                 Instant Top-Up
               </span>
             </div>
 
-            <div className="rounded-2xl bg-white/[0.03] border border-white/5 p-4.5 space-y-1">
+            <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4 space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Icon name="wallet" size={14} className="text-[#baff00]" />
                 Available Spending Power
@@ -1746,7 +2222,7 @@ function Dashboard({
                 </span>
                 {bonusBalancePkr > 0 && (
                   <span className="rounded-md border border-[#baff00]/30 bg-[#baff00]/10 px-2 py-0.5 text-[11px] font-bold text-[#baff00]">
-                    🎁 Bonus Credit: ₨{bonusBalancePkr.toFixed(2)} (Non-withdrawable)
+                    🎁 Bonus Credit: ₨{bonusBalancePkr.toFixed(2)}
                   </span>
                 )}
               </div>
@@ -1755,90 +2231,66 @@ function Dashboard({
             <button
               type="button"
               onClick={() => navigate("Add Funds")}
-              className="w-full rounded-full py-4 text-xs sm:text-sm font-black bg-[#baff00] text-[#07100f] shadow-[0_10px_30px_rgba(186,255,0,0.35)] hover:shadow-[0_15px_40px_rgba(186,255,0,0.55)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full rounded-xl py-3.5 text-xs sm:text-sm font-black bg-[#baff00] text-[#07100f] shadow-[0_8px_25px_rgba(186,255,0,0.3)] hover:shadow-[0_12px_30px_rgba(186,255,0,0.45)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Icon name="wallet" size={17} />
               <span>+ Add Funds (SadaPay / JazzCash)</span>
             </button>
           </div>
 
-          {/* Direct Support Card */}
-          <div className="antigravity-card rounded-[30px] p-6 relative">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#25d366]/15 text-[#25d366]">
-                <Icon name="whatsapp" size={18} />
+          {/* Account & VIP Level Progress Box */}
+          <div className="antigravity-card rounded-2xl p-5 sm:p-6 space-y-4 relative">
+            <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 text-xs">
+                  👑
+                </span>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-white">VIP Loyalty Tier</h3>
+                  <p className="text-[10px] text-slate-400">Lifetime Spent: ₨{totalSpent.toFixed(2)}</p>
+                </div>
+              </div>
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${vipTier.badgeClass}`}>
+                {vipTier.name}
               </span>
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-[0.18em] text-white">
-                  Direct Admin Support
-                </h3>
-                <p className="text-[10px] text-slate-400">
-                  Instant response for orders &amp; balance
-                </p>
+            </div>
+
+            {/* Progress Bar & Target */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 font-medium">Progress to {vipTier.nextTier}</span>
+                <span className="font-extrabold text-[#baff00]">{vipTier.progressPercent}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-lime-400 to-[#baff00] transition-all duration-500 shadow-[0_0_10px_rgba(186,255,0,0.5)]"
+                  style={{ width: `${vipTier.progressPercent}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+                <span>Perk: <strong className="text-white">{vipTier.perk}</strong></span>
+                {vipTier.remaining > 0 ? (
+                  <span className="text-slate-300">₨{vipTier.remaining.toFixed(2)} remaining</span>
+                ) : (
+                  <span className="text-[#baff00] font-bold">Max Tier</span>
+                )}
               </div>
             </div>
 
-            <p className="mt-3 text-xs leading-relaxed text-slate-400">
-              Need immediate balance approval or have custom reseller orders? Chat directly with VEXARO Admin:
-            </p>
-
-            <div className="mt-4 space-y-2">
-              <a
-                href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl border border-lime-400/40 bg-lime-400/10 py-2.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f]"
-              >
-                <Icon name="whatsapp" size={15} />
-                <span>WhatsApp Channel (News)</span>
-              </a>
-
-              <a
-                href="https://wa.me/923176437013"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 rounded-2xl border border-[#25d366]/30 bg-[#25d366]/10 py-3 text-xs font-bold text-[#25d366] transition hover:bg-[#25d366] hover:text-[#07100f] hover:shadow-[0_0_20px_rgba(37,211,102,0.3)]"
-              >
-                <Icon name="whatsapp" size={15} />
-                <span>WhatsApp (+92 317 6437013)</span>
-              </a>
-
-              <a
-                href="https://t.me/VexaroSMMAdmin"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl border border-[#2aa8e8]/30 bg-[#2aa8e8]/10 py-2.5 text-xs font-bold text-[#2aa8e8] transition hover:bg-[#2aa8e8] hover:text-white"
-              >
-                <Icon name="telegram" size={15} />
-                <span>Telegram (@VexaroSMMAdmin)</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Order Summary Telemetry */}
-          <div className="antigravity-card rounded-xl p-5 relative space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-              <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-white">
-                <span className="text-[#baff00]"><Icon name="spark" size={15} /></span>
-                <span>Telemetry Status</span>
-              </h3>
-              <span className="text-[10px] font-bold text-slate-400">
-                {orders.length} Dispatches
-              </span>
-            </div>
-
-            <div className="space-y-2.5">
-              <MiniStat icon="cart" label="Total Orders" value={String(orders.length)} />
-              <MiniStat icon="check" label="Completed" value={String(completed)} />
-              <MiniStat icon="clock" label="In Progress" value={String(active)} />
-              <MiniStat icon="x" label="Cancelled" value={String(cancelled)} />
-            </div>
+            <button
+              type="button"
+              onClick={() => navigate("Add Funds")}
+              className="w-full rounded-xl py-2.5 px-3 text-xs font-bold bg-white/[0.04] border border-white/10 text-slate-200 hover:text-white hover:border-[#baff00]/40 hover:bg-white/[0.08] transition flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>+ Deposit to Level Up</span>
+              <span className="text-[11px] text-[#baff00]">→</span>
+            </button>
           </div>
         </aside>
       </div>
 
-      {/* 4. Popular Fast-Dispatch Services Grid */}
-      <div className="antigravity-card rounded-xl p-5 sm:p-6 relative overflow-hidden">
+      {/* 5. Popular Fast-Dispatch Services Grid (Formatted to 2 Decimals) */}
+      <div className="antigravity-card rounded-2xl p-5 sm:p-6 relative">
         <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/[0.08]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-md border border-lime-400/20 bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#baff00] mb-1.5">
@@ -1870,7 +2322,7 @@ function Dashboard({
               icon={service.icon}
               platform={service.platform}
               service={service.name}
-              price={Number(service.price).toFixed(4)}
+              price={Number(service.price).toFixed(2)}
               onClick={() => onOrderService(service.id)}
             />
           ))}
@@ -1922,20 +2374,6 @@ function StatusPill({ status }: { status: string }) {
       />
       <span>{status}</span>
     </span>
-  );
-}
-
-function MiniStat({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl bg-white/[0.03] border border-white/5 p-3 hover:bg-white/[0.05] transition-colors">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
-          <Icon name={icon} size={15} />
-        </span>
-        <span className="text-xs text-slate-400 font-medium">{label}</span>
-      </div>
-      <span className="text-xs font-black text-white">{value}</span>
-    </div>
   );
 }
 
@@ -2394,9 +2832,39 @@ function isServiceGuaranteed(service: Service): boolean {
   return guaranteed.test(text);
 }
 
+const OWNER_CONTACT_NUMBER = "03176437013";
+
+function sanitizeServiceContactNumbers(text?: string | null): string {
+  if (!text || typeof text !== "string") return "";
+
+  let cleaned = text
+    .replace(/(?:\+?92|0092|0)?[\s-]*349[\s-]*7401844/g, OWNER_CONTACT_NUMBER)
+    .replace(/(?:\+?92|0092|0)?[\s-]*326[\s-]*4810548/g, OWNER_CONTACT_NUMBER)
+    .replace(/(?:\+?92|0092|0)?[\s-]*327[\s-]*7164331/g, OWNER_CONTACT_NUMBER);
+
+  cleaned = cleaned.replace(
+    /(^|[^\d+])(?:\+?92[\s-]?|0092[\s-]?|0)3\d{2}[\s-]?\d{3}[\s-]?\d{4}([^\d]|$)/gi,
+    (match, prefix, suffix) => `${prefix}${OWNER_CONTACT_NUMBER}${suffix}`
+  );
+
+  cleaned = cleaned.replace(
+    /(whatsapp|contact|support|call|phone|mobile|helpline)[\s:]*(?:on\s+)?(\+?\d[\d\s-]{8,15}\d)/gi,
+    (match, label, number) => {
+      const digitsOnly = number.replace(/\D/g, "");
+      if (digitsOnly.length >= 10 && digitsOnly.length <= 15) {
+        return `${label} ${OWNER_CONTACT_NUMBER}`;
+      }
+      return match;
+    }
+  );
+
+  return cleaned;
+}
+
 function formatServiceDescription(desc?: string): string {
   if (!desc) return "";
-  return desc
+  const sanitized = sanitizeServiceContactNumbers(desc);
+  return sanitized
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]*>/g, "")
@@ -2624,6 +3092,7 @@ function NewOrder({
   currencyRates,
   navigate,
   onCelebrateBonus,
+  buyAgainPrefill,
 }: {
   services: Service[];
   selectedServiceId: string;
@@ -2635,81 +3104,76 @@ function NewOrder({
   currencyRates: Record<string, number>;
   navigate: (page: string) => void;
   onCelebrateBonus?: () => void;
+  buyAgainPrefill?: {
+    serviceId?: number | string;
+    link?: string;
+    quantity?: number;
+    unavailableNotice?: string;
+  } | null;
 }) {
-  const [platform, setPlatform] = useState<string>("All");
+  const [platform, setPlatform] = useState<string>(() => {
+    if (selectedServiceId) {
+      const found = services.find((s) => String(s.id) === String(selectedServiceId));
+      if (found?.platform) return found.platform;
+    }
+    return "All";
+  });
+  const lastSelectedIdRef = useRef<string>(selectedServiceId);
   const [actionType, setActionType] = useState<string>("all");
   const [guaranteeFilter, setGuaranteeFilter] = useState<"all" | "guaranteed" | "standard">("all");
   const [globalSearch, setGlobalSearch] = useState<string>("");
   const [comboboxSearch, setComboboxSearch] = useState<string>("");
   const [comboboxOpen, setComboboxOpen] = useState<boolean>(false);
-  const [serviceAccordionOpen, setServiceAccordionOpen] = useState<boolean>(false);
+  const [platformDropdownOpen, setPlatformDropdownOpen] = useState<boolean>(false);
+  const [actionDropdownOpen, setActionDropdownOpen] = useState<boolean>(false);
+  const platformDropdownRef = useRef<HTMLDivElement>(null);
+  const actionDropdownRef = useRef<HTMLDivElement>(null);
+  const [serviceAccordionOpen, setServiceAccordionOpen] = useState<boolean>(true);
   const [link, setLink] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("1000");
   const [placingOrder, setPlacingOrder] = useState<boolean>(false);
   const [orderMessage, setOrderMessage] = useState<string>("");
   const [orderError, setOrderError] = useState<string>("");
-
-  const comboboxRef = useRef<HTMLDivElement>(null);
-  const platformScrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
-  const [canScrollRight, setCanScrollRight] = useState<boolean>(true);
-
-  const checkPlatformScroll = useCallback(() => {
-    const el = platformScrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 6);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
-  }, []);
+  const [dismissedOrderBonusBanner, setDismissedOrderBonusBanner] = useState<boolean>(false);
 
   useEffect(() => {
-    checkPlatformScroll();
-    window.addEventListener("resize", checkPlatformScroll);
-    return () => window.removeEventListener("resize", checkPlatformScroll);
-  }, [checkPlatformScroll]);
+    if (buyAgainPrefill) {
+      if (buyAgainPrefill.link) {
+        setLink(buyAgainPrefill.link);
+      }
+      if (buyAgainPrefill.quantity) {
+        setQuantity(String(buyAgainPrefill.quantity));
+      }
+      if (buyAgainPrefill.unavailableNotice) {
+        setOrderError(buyAgainPrefill.unavailableNotice);
+      } else {
+        setOrderMessage("Order details prefilled! Review your configuration and click 'Submit Order' when ready.");
+      }
+    }
+  }, [buyAgainPrefill]);
 
-  const scrollPlatforms = (direction: "left" | "right") => {
-    if (!platformScrollRef.current) return;
-    const offset = direction === "left" ? -280 : 280;
-    platformScrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
-    setTimeout(checkPlatformScroll, 320);
-  };
+  const comboboxRef = useRef<HTMLDivElement>(null);
 
-  // Mouse drag-to-scroll implementation
-  const isPointerDownRef = useRef(false);
-  const startXRef = useRef(0);
-  const scrollLeftStartRef = useRef(0);
-
-  const handlePointerDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    isPointerDownRef.current = true;
-    startXRef.current = e.pageX - (platformScrollRef.current?.offsetLeft || 0);
-    scrollLeftStartRef.current = platformScrollRef.current?.scrollLeft || 0;
-  };
-  const handlePointerUpOrLeave = () => {
-    isPointerDownRef.current = false;
-  };
-  const handlePointerMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isPointerDownRef.current || !platformScrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - (platformScrollRef.current.offsetLeft || 0);
-    const walk = (x - startXRef.current) * 1.3;
-    platformScrollRef.current.scrollLeft = scrollLeftStartRef.current - walk;
-    checkPlatformScroll();
-  };
-
-  // Close combobox when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
         setComboboxOpen(false);
       }
+      if (platformDropdownRef.current && !platformDropdownRef.current.contains(event.target as Node)) {
+        setPlatformDropdownOpen(false);
+      }
+      if (actionDropdownRef.current && !actionDropdownRef.current.contains(event.target as Node)) {
+        setActionDropdownOpen(false);
+      }
     }
-    if (comboboxOpen) {
+    if (comboboxOpen || platformDropdownOpen || actionDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [comboboxOpen]);
+  }, [comboboxOpen, platformDropdownOpen, actionDropdownOpen]);
 
   // Platform list definitions with clean floating icons
   const platformList = useMemo(() => [
@@ -2721,7 +3185,9 @@ function NewOrder({
     { name: "Facebook", label: "Facebook", icon: "facebook" },
     { name: "Telegram", label: "Telegram", icon: "telegram" },
     { name: "X / Twitter", label: "X / Twitter", icon: "x-social" },
-    { name: "Other", label: "Other", icon: "spark" },
+    { name: "Spotify", label: "Spotify", icon: "spark" },
+    { name: "Website Traffic", label: "Website Traffic", icon: "globe" },
+    { name: "Other", label: "Other Services", icon: "spark" },
   ], []);
 
   // Compute live service count per platform
@@ -2836,14 +3302,25 @@ function NewOrder({
     }
   }, [selectedServiceId, services, onSelectServiceId]);
 
-  // Align platform with selected service when external selection changes
+  // Align platform with selected service ONLY when selection changes externally (e.g. from Services or Dashboard)
   useEffect(() => {
-    if (!service) return;
-    if (service.platform && (platform === "All" || !selectedServiceId)) {
-      setPlatform(service.platform);
-      setActionType(detectServiceAction(service));
+    if (selectedServiceId && selectedServiceId !== lastSelectedIdRef.current) {
+      lastSelectedIdRef.current = selectedServiceId;
+      const target = services.find((s) => String(s.id) === String(selectedServiceId));
+      if (target?.platform) {
+        setPlatform(target.platform);
+        setActionType(detectServiceAction(target));
+      }
     }
-  }, [service, platform, selectedServiceId]);
+  }, [selectedServiceId, services]);
+
+  const activePlatformItem = useMemo(() => {
+    return platformList.find((p) => p.name.toLowerCase() === platform.toLowerCase()) || platformList[0];
+  }, [platformList, platform]);
+
+  const activeActionItem = useMemo(() => {
+    return actionOptions.find((a) => a.id === actionType) || actionOptions[0];
+  }, [actionOptions, actionType]);
 
   const handleSelectPlatform = (p: string) => {
     setPlatform(p);
@@ -2851,27 +3328,40 @@ function NewOrder({
     setGuaranteeFilter("all");
     setGlobalSearch("");
     setComboboxSearch("");
+    setPlatformDropdownOpen(false);
 
     // If active service does not belong to this platform, switch to the first service of this platform
     if (p !== "All") {
-      if (!service || service.platform?.toLowerCase() !== p.toLowerCase()) {
-        const matching = services.find((s) => s.platform?.toLowerCase() === p.toLowerCase());
-        if (matching) {
-          onSelectServiceId(String(matching.id));
-        }
+      const matching = services.find((s) => s.platform?.toLowerCase() === p.toLowerCase());
+      if (matching) {
+        lastSelectedIdRef.current = String(matching.id);
+        onSelectServiceId(String(matching.id));
       }
     }
   };
 
   const handleSelectAction = (actId: string) => {
     setActionType(actId);
-    setGlobalSearch("");
+    setComboboxSearch("");
+    setActionDropdownOpen(false);
+
+    // Switch to first service matching this action in this platform
+    const slice = actId === "all"
+      ? (platform === "All" ? services : services.filter((s) => s.platform?.toLowerCase() === platform.toLowerCase()))
+      : (platform === "All" ? services : services.filter((s) => s.platform?.toLowerCase() === platform.toLowerCase())).filter((s) => detectServiceAction(s) === actId);
+    if (slice.length > 0) {
+      lastSelectedIdRef.current = String(slice[0].id);
+      onSelectServiceId(String(slice[0].id));
+    }
   };
 
   const handleSelectComboboxService = (s: Service) => {
+    lastSelectedIdRef.current = String(s.id);
     onSelectServiceId(String(s.id));
-    setPlatform(s.platform || "All");
-    setActionType(detectServiceAction(s));
+    if (platform !== "All") {
+      setPlatform(s.platform || "All");
+      setActionType(detectServiceAction(s));
+    }
     setGuaranteeFilter(isServiceGuaranteed(s) ? "guaranteed" : "all");
     setComboboxOpen(false);
     setComboboxSearch("");
@@ -2990,19 +3480,18 @@ function NewOrder({
   }
 
   return (
-    <div className="w-full max-w-6xl min-w-0 mx-auto space-y-6">
-      {/* Clean, Minimal Header */}
+    <div className="w-full max-w-4xl min-w-0 mx-auto space-y-6">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             Place New Order
           </h2>
           <p className="mt-1 text-xs sm:text-sm text-slate-400">
-            Select a service, provide link and quantity, then dispatch directly.
+            Select your platform and service package to dispatch directly.
           </p>
         </div>
 
-        {/* Quick Reset Filter Pill */}
         {(platform !== "All" || actionType !== "all" || guaranteeFilter !== "all" || globalSearch) && (
           <button
             type="button"
@@ -3013,764 +3502,526 @@ function NewOrder({
               setGlobalSearch("");
               setComboboxSearch("");
             }}
-            className="rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white hover:border-[#baff00]/40 hover:bg-[#baff00]/10 transition-all flex items-center gap-2 cursor-pointer"
+            className="rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white hover:border-[#baff00]/40 transition flex items-center gap-2 cursor-pointer"
           >
             <Icon name="refresh" size={13} />
-            Reset Filters
+            <span>Reset Filters</span>
           </button>
         )}
       </div>
 
-      {/* Promotional Bonus Celebration Callout Banner */}
-      {bonusBalancePkr > 0 && (
-        <div className="rounded-xl border border-[#baff00]/30 bg-gradient-to-r from-[#baff00]/10 via-[#0a1214] to-[#baff00]/10 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 text-white shadow-lg">
-          <div className="flex items-center gap-3.5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#baff00]/20 text-xl border border-[#baff00]/40 shadow-[0_0_15px_rgba(186,255,0,0.2)]">
-              🎉
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-xs font-black uppercase tracking-wider text-[#baff00]">
-                  Promotional Bonus Active
-                </p>
-                <span className="rounded-full bg-[#baff00] px-2 py-0.5 text-[10px] font-black text-black">
-                  ₨{bonusBalancePkr.toFixed(2)} FREE
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                You have promotional bonus credit ready to spend on eligible orders. Enjoy the boost!
-              </p>
-            </div>
+      {/* Subtle, Dismissible Promotional Bonus Notice */}
+      {bonusBalancePkr > 0 && !dismissedOrderBonusBanner && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-emerald-300 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <span className="text-emerald-400 font-bold">ℹ</span>
+            <p>
+              You have <strong className="text-white">₨{bonusBalancePkr.toFixed(2)}</strong> bonus credit available. It will be automatically applied to eligible orders.
+            </p>
           </div>
-          {onCelebrateBonus && (
-            <button
-              type="button"
-              onClick={onCelebrateBonus}
-              className="rounded-xl border border-[#baff00]/50 bg-[#baff00] px-4 py-2 text-xs font-black text-black hover:bg-[#a6e600] active:scale-95 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(186,255,0,0.3)] cursor-pointer"
-            >
-              <span>🎉</span> Celebrate Bonus <span>🎊</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setDismissedOrderBonusBanner(true)}
+            className="text-slate-400 hover:text-white p-1 text-xs cursor-pointer shrink-0"
+            title="Dismiss notice"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Main 3-Step Flow: Left Form Card (Step 1 & 2) + Right Sticky Checkout Dock (Step 3) */}
-      <div className="grid w-full min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
-        {/* Left Column: Form Card with 10-12px Rounded Corners */}
-        <div className="min-w-0 w-full antigravity-card rounded-xl p-5 sm:p-7 space-y-6 relative overflow-hidden">
-          
-          {/* STEP 1: Category & Service Selector */}
-          <div className="space-y-4 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <label className="text-[11px] font-black uppercase tracking-[0.2em] text-[#baff00]">
-                Step 1 • Select Category &amp; Service
-              </label>
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] text-slate-400 font-medium">
-                  {platformList.length} Networks
-                </span>
-              </div>
-            </div>
+      {/* Single Cohesive Order Form Card */}
+      <div className="w-full max-w-3xl mx-auto antigravity-card rounded-2xl p-5 sm:p-8 space-y-6 shadow-xl">
+        {/* 1. Category / Platform Dropdown */}
+        <div className="space-y-2" ref={platformDropdownRef}>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-300">
+              Platform / Category
+            </label>
+            <span className="text-[11px] font-medium text-slate-400">
+              {platformCounts[platform] ?? services.length} available
+            </span>
+          </div>
 
-            {/* Platform Horizontal Strip with Permanent Inline Navigation Buttons */}
-            <div className="flex items-center gap-2 w-full min-w-0">
-              <button
-                type="button"
-                onClick={() => scrollPlatforms("left")}
-                className="shrink-0 flex h-10 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.05] text-slate-300 hover:border-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition-all cursor-pointer shadow-md"
-                title="Previous platforms"
-                aria-label="Previous platforms"
-              >
-                <Icon name="chevronLeft" size={16} />
-              </button>
-
-              <div
-                ref={platformScrollRef}
-                onScroll={checkPlatformScroll}
-                onWheel={(e) => {
-                  if (e.deltaY !== 0) {
-                    e.currentTarget.scrollLeft += e.deltaY;
-                    checkPlatformScroll();
-                  }
-                }}
-                onMouseDown={handlePointerDown}
-                onMouseLeave={handlePointerUpOrLeave}
-                onMouseUp={handlePointerUpOrLeave}
-                onMouseMove={handlePointerMove}
-                className="flex-1 min-w-0 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[#baff00]/50 hover:scrollbar-thumb-[#baff00] scrollbar-track-white/5 select-none cursor-grab active:cursor-grabbing"
-              >
-                <div className="flex items-center gap-2 min-w-max px-1">
-                  {platformList.map((p) => {
-                    const isActive = platform.toLowerCase() === p.name.toLowerCase();
-                    const count = platformCounts[p.name] ?? (p.name === "Other" ? platformCounts["Other"] || 0 : 0);
-                    if (p.name !== "All" && count === 0) return null;
-
-                    return (
-                      <button
-                        key={p.name}
-                        type="button"
-                        onClick={() => handleSelectPlatform(p.name)}
-                        className={`group flex items-center gap-2.5 rounded-xl px-3.5 py-2 text-left transition-all duration-200 cursor-pointer border shrink-0 ${
-                          isActive
-                            ? "bg-white/[0.12] border-[#baff00] text-white shadow-[0_0_15px_rgba(186,255,0,0.25)]"
-                            : "bg-white/[0.02] border-white/[0.06] text-slate-400 hover:bg-white/[0.06] hover:text-white hover:border-white/20"
-                        }`}
-                      >
-                        <div
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${
-                            isActive
-                              ? "bg-[#baff00] text-[#07100f]"
-                              : "bg-white/[0.05] text-slate-300 group-hover:text-white"
-                          }`}
-                        >
-                          <Icon name={p.icon} size={16} />
-                        </div>
-
-                        <div className="min-w-0 pr-0.5">
-                          <div className="text-xs font-bold text-white flex items-center gap-1">
-                            <span>{p.label || p.name}</span>
-                            {isActive && <span className="h-1.5 w-1.5 rounded-full bg-[#baff00]" />}
-                          </div>
-                          <div className="text-[10px] font-medium text-slate-400">
-                            {count} services
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setPlatformDropdownOpen(!platformDropdownOpen);
+                setActionDropdownOpen(false);
+                setComboboxOpen(false);
+              }}
+              className={`w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition cursor-pointer ${
+                platformDropdownOpen
+                  ? "border-[#baff00] bg-white/[0.08]"
+                  : "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07]"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-200 border border-white/10">
+                  <Icon name={activePlatformItem.icon} size={16} />
                 </div>
+                <p className="text-sm font-bold text-white truncate">
+                  {activePlatformItem.label || activePlatformItem.name}
+                </p>
               </div>
+              <Icon name="chevron" size={14} className={`text-slate-400 transition-transform ${platformDropdownOpen ? "rotate-180 text-white" : ""}`} />
+            </button>
 
-              <button
-                type="button"
-                onClick={() => scrollPlatforms("right")}
-                className="shrink-0 flex h-10 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.05] text-slate-300 hover:border-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition-all cursor-pointer shadow-md"
-                title="Next platforms"
-                aria-label="Next platforms"
-              >
-                <Icon name="chevronRight" size={16} />
-              </button>
-            </div>
+            {platformDropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-2 z-50 max-h-72 overflow-y-auto rounded-xl border border-white/15 bg-[#0f1824] backdrop-blur-2xl p-1.5 shadow-2xl space-y-0.5">
+                {platformList.map((p) => {
+                  const isSelected = platform.toLowerCase() === p.name.toLowerCase();
+                  const count = platformCounts[p.name] ?? (p.name === "Other" ? platformCounts["Other"] || 0 : 0);
+                  if (p.name !== "All" && count === 0) return null;
 
-            {/* Searchable Service Combobox (10-12px rounded corners) */}
-            <div className="relative" ref={comboboxRef}>
-              <button
-                type="button"
-                onClick={() => setComboboxOpen(!comboboxOpen)}
-                className={`w-full text-left rounded-xl border transition-all p-4 cursor-pointer group ${
-                  comboboxOpen
-                    ? "border-[#baff00] bg-[#091316] shadow-[0_0_20px_rgba(186,255,0,0.12)]"
-                    : "border-white/10 bg-[#070e10]/80 hover:border-white/25 hover:bg-[#091316]/90"
-                }`}
-              >
-                {service ? (
-                  <div className="flex items-center justify-between gap-3 min-w-0 w-full">
-                    <div className="min-w-0 flex-1 pr-2">
-                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                        <span className="rounded-md bg-[#baff00]/15 px-2 py-0.5 font-mono text-[10px] font-black text-[#baff00] border border-[#baff00]/30">
-                          #{service.id}
-                        </span>
-                        <span className="rounded-md bg-white/[0.08] px-2 py-0.5 text-[10px] font-semibold text-slate-300">
-                          {service.platform}
-                        </span>
-                        <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                            isServiceGuaranteed(service)
-                              ? "bg-[#baff00]/10 text-[#baff00] border border-[#baff00]/25"
-                              : isServiceDropOrNoRefill(service)
-                              ? "bg-rose-500/10 text-rose-400 border border-rose-500/25"
-                              : "bg-amber-400/10 text-amber-400 border border-amber-400/25"
-                          }`}
-                        >
-                          {isServiceGuaranteed(service)
-                            ? "🛡️ Guaranteed Refill"
-                            : isServiceDropOrNoRefill(service)
-                            ? "⛔ 100% Drop / No Refill"
-                            : "⚡ Standard"}
-                        </span>
-                      </div>
-
-                      <p className="font-bold text-white text-sm sm:text-base truncate group-hover:text-[#baff00] transition-colors">
-                        {cleanServiceName(service.name, service.platform)}
-                      </p>
-
-                      <p className="text-xs text-slate-400 mt-1">
-                        Min: <span className="text-slate-300 font-semibold">{isPackage ? "1 unit" : Number(service.min).toLocaleString()}</span> • Max:{" "}
-                        <span className="text-slate-300 font-semibold">{isPackage ? "1 unit" : Number(service.max).toLocaleString()}</span>
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <div className="text-right whitespace-nowrap">
-                        <div className="text-base sm:text-lg font-black text-[#baff00]">
-                          ₨{Number(service.price).toFixed(2)}
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-medium">
-                          per {isPackage ? "package" : "1,000"}
-                        </div>
-                      </div>
-
-                      <div
-                        className={`h-8 w-8 rounded-lg bg-white/[0.05] border border-white/10 flex items-center justify-center text-slate-300 group-hover:text-[#baff00] group-hover:border-[#baff00]/40 transition-all shrink-0 ${
-                          comboboxOpen ? "rotate-180 text-[#baff00] border-[#baff00]" : ""
-                        }`}
-                      >
-                        <Icon name="chevron" size={14} />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between text-slate-400 py-1 text-sm">
-                    <span>Click to search and choose service...</span>
-                    <Icon name="chevron" size={14} />
-                  </div>
-                )}
-              </button>
-
-              {/* Combobox Popover */}
-              {comboboxOpen && (
-                <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-white/15 bg-[#081114]/95 backdrop-blur-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.85)] space-y-3.5">
-                  {/* Instant Search Input */}
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                      <Icon name="search" size={15} />
-                    </span>
-                    <input
-                      type="text"
-                      value={comboboxSearch}
-                      onChange={(e) => setComboboxSearch(e.target.value)}
-                      placeholder="Search by ID, name, or keywords (e.g. 1108, followers, non drop)..."
-                      className="w-full rounded-lg border border-white/10 bg-[#050a0c] pl-10 pr-9 py-2.5 text-xs sm:text-sm text-white outline-none focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/20 placeholder:text-slate-500 transition-all"
-                    />
-                    {comboboxSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setComboboxSearch("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white cursor-pointer"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Sub-Filters: Quick Action Pills & Guarantee Toggle */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/[0.06]">
-                    <div
-                      onWheel={(e) => {
-                        if (e.deltaY !== 0) {
-                          e.currentTarget.scrollLeft += e.deltaY;
-                        }
-                      }}
-                      className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar max-w-full"
+                  return (
+                    <button
+                      key={p.name}
+                      type="button"
+                      onClick={() => handleSelectPlatform(p.name)}
+                      className={`w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition cursor-pointer ${
+                        isSelected
+                          ? "bg-[#baff00]/15 text-white font-bold"
+                          : "hover:bg-white/[0.06] text-slate-300 hover:text-white"
+                      }`}
                     >
-                      {actionOptions.slice(0, 7).map((opt) => (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => handleSelectAction(opt.id)}
-                          className={`rounded-lg px-2.5 py-1 text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
-                            actionType === opt.id
-                              ? "bg-[#baff00] text-[#07100f]"
-                              : "bg-white/[0.05] text-slate-300 hover:bg-white/10 hover:text-white"
-                          }`}
-                        >
-                          {opt.label} ({opt.count})
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-lg border border-white/5 text-[10px] font-bold shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setGuaranteeFilter("all")}
-                        className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
-                          guaranteeFilter === "all" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        All ({guaranteeCounts.all})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setGuaranteeFilter("guaranteed")}
-                        className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
-                          guaranteeFilter === "guaranteed"
-                            ? "bg-[#baff00] text-[#07100f] font-black"
-                            : "text-[#baff00]/80 hover:text-[#baff00]"
-                        }`}
-                      >
-                        🛡️ Refill ({guaranteeCounts.guaranteed})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setGuaranteeFilter("standard")}
-                        className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
-                          guaranteeFilter === "standard"
-                            ? "bg-amber-400 text-[#07100f] font-black"
-                            : "text-amber-400/80 hover:text-amber-400"
-                        }`}
-                      >
-                        ⚡ Standard ({guaranteeCounts.standard})
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Matched Services List */}
-                  <div className="max-h-[280px] overflow-y-auto space-y-1.5 pr-1">
-                    {comboboxFilteredServices.length > 0 ? (
-                      comboboxFilteredServices.map((s) => {
-                        const isSelected = service?.id === s.id;
-                        const isG = isServiceGuaranteed(s);
-                        const isPkg = isPackageService(s);
-
-                        return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => handleSelectComboboxService(s)}
-                            className={`w-full text-left rounded-xl p-3 transition-all flex items-center justify-between gap-3 border cursor-pointer ${
-                              isSelected
-                                ? "bg-[#baff00]/15 border-[#baff00] text-white shadow-[0_0_15px_rgba(186,255,0,0.1)]"
-                                : "bg-white/[0.02] border-white/5 text-slate-300 hover:bg-white/[0.06] hover:border-white/15"
-                            }`}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <span className="font-mono text-[10px] font-bold text-slate-400">#{s.id}</span>
-                                <span className="text-[10px] text-slate-500">•</span>
-                                <span className="text-[10px] font-semibold text-slate-300">{s.platform}</span>
-                                <span
-                                  className={`text-[10px] font-bold ml-1 ${
-                                    isG
-                                      ? "text-[#baff00]"
-                                      : isServiceDropOrNoRefill(s)
-                                      ? "text-rose-400"
-                                      : "text-amber-400"
-                                  }`}
-                                >
-                                  {isG
-                                    ? "🛡️ Guaranteed"
-                                    : isServiceDropOrNoRefill(s)
-                                    ? "⛔ 100% Drop / No Refill"
-                                    : "⚡ Standard"}
-                                </span>
-                                {isSelected && (
-                                  <span className="rounded bg-[#baff00] px-1.5 py-0.5 text-[9px] font-black text-[#07100f] ml-auto">
-                                    Selected
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs sm:text-sm font-semibold text-white truncate">
-                                {cleanServiceName(s.name, s.platform)}
-                              </p>
-                            </div>
-
-                            <div className="text-right shrink-0">
-                              <div className="text-xs sm:text-sm font-black text-[#baff00]">
-                                ₨{Number(s.price).toFixed(2)}
-                              </div>
-                              <div className="text-[10px] text-slate-400">
-                                /{isPkg ? "pkg" : "1k"}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <div className="py-8 text-center text-xs text-slate-400">
-                        <p>No services match your search query.</p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGuaranteeFilter("all");
-                            setActionType("all");
-                            setComboboxSearch("");
-                          }}
-                          className="mt-2 text-xs font-bold text-[#baff00] hover:underline"
-                        >
-                          Reset filters to view all
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Collapsible Accordion: Full Service Details & Specifications */}
-            {service && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden transition-all">
-                <button
-                  type="button"
-                  onClick={() => setServiceAccordionOpen(!serviceAccordionOpen)}
-                  className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left hover:bg-white/[0.03] transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#baff00]/15 text-[#baff00]">
-                      <Icon name="spark" size={14} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs sm:text-sm font-bold text-white">
-                          Service Details &amp; Specifications
-                        </span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[9px] font-black tracking-wide ${
-                            isServiceGuaranteed(service)
-                              ? "bg-[#baff00]/15 text-[#baff00] border border-[#baff00]/30"
-                              : isServiceDropOrNoRefill(service)
-                              ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
-                              : "bg-amber-400/15 text-amber-400 border border-amber-400/30"
-                          }`}
-                        >
-                          {isServiceGuaranteed(service)
-                            ? "🛡️ Guaranteed Refill"
-                            : isServiceDropOrNoRefill(service)
-                            ? "⛔ Drop-Able / No Refill"
-                            : "⚡ Standard"}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${isSelected ? "bg-[#baff00] text-black" : "bg-white/5 text-slate-300"}`}>
+                          <Icon name={p.icon} size={15} />
+                        </div>
+                        <span className="text-xs sm:text-sm font-medium truncate">
+                          {p.label || p.name}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-400">
-                        Min, Max, Speed, Refill Guarantee, and Link Instructions
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <span className="text-[11px] font-medium hidden sm:inline">{serviceAccordionOpen ? "Hide" : "View"}</span>
-                    <div className={`transition-transform duration-200 ${serviceAccordionOpen ? "rotate-180 text-[#baff00]" : ""}`}>
-                      <Icon name="chevron" size={14} />
-                    </div>
-                  </div>
-                </button>
-
-                {serviceAccordionOpen && (
-                  <div className="border-t border-white/[0.06] p-4 pt-3.5 space-y-3.5">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                      <div className="rounded-xl bg-white/[0.03] p-2.5 border border-white/5">
-                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Rate</span>
-                        <span className="text-xs sm:text-sm font-black text-[#baff00]">
-                          ₨{Number(service.price).toFixed(2)}
-                          <span className="text-[10px] text-slate-400 font-normal ml-1">
-                            /{isPackage ? "pkg" : "1k"}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="rounded-xl bg-white/[0.03] p-2.5 border border-white/5">
-                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Capacity</span>
-                        <span className="text-xs sm:text-sm font-bold text-white">
-                          {isPackage ? "1 Unit" : `${Number(service.min).toLocaleString()} - ${Number(service.max).toLocaleString()}`}
-                        </span>
-                      </div>
-                      <div className="rounded-xl bg-white/[0.03] p-2.5 border border-white/5">
-                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Refill / Drop</span>
-                        <span
-                          className={`text-xs sm:text-sm font-bold truncate block ${
-                            isServiceGuaranteed(service)
-                              ? "text-[#baff00]"
-                              : isServiceDropOrNoRefill(service)
-                              ? "text-rose-400"
-                              : "text-amber-400"
-                          }`}
-                        >
-                          {isServiceGuaranteed(service)
-                            ? "🛡️ 30-Day Refill"
-                            : isServiceDropOrNoRefill(service)
-                            ? "⛔ 100% Drop / No Refill"
-                            : "⚡ Standard (No Refill)"}
-                        </span>
-                      </div>
-                      <div className="rounded-xl bg-white/[0.03] p-2.5 border border-white/5">
-                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Start Speed</span>
-                        <span className="text-xs sm:text-sm font-bold text-slate-200">
-                          0 - 15 Mins
-                        </span>
-                      </div>
-                    </div>
-
-                    {service.description && (
-                      <div className="rounded-xl bg-white/[0.02] p-3 border border-white/5 text-[11px] leading-relaxed text-slate-300">
-                        <p className="font-bold text-white mb-1">Service Instructions &amp; Provider Notes:</p>
-                        <p className="whitespace-pre-line text-slate-300">{formatServiceDescription(service.description)}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      <span className="text-[11px] text-slate-400">
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
-
-          {/* STEP 2: Target Link & Quantity with Quick Chips */}
-          <div className="space-y-4">
-            {/* Input 1: Target Link */}
-            <div className="antigravity-input-wrap rounded-xl p-4 sm:p-5">
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#baff00]">
-                Step 2 • Target Link or Profile URL
-              </label>
-              <input
-                type="text"
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-                placeholder={
-                  service
-                    ? getServiceLinkPlaceholder(service.platform, detectServiceAction(service))
-                    : "https://..."
-                }
-                className="w-full bg-transparent border-0 outline-none text-white text-sm sm:text-base pt-2 pb-0 placeholder:text-slate-500 focus:ring-0"
-              />
-              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-white/[0.04] pt-2">
-                <span>Ensure target profile, post, or channel is set to public.</span>
-                {service && (
-                  <span className="hidden sm:inline font-medium text-slate-400">
-                    Platform: <strong className="text-[#baff00]">{service.platform}</strong>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Input 2: Quantity with Quick Chips */}
-            <div className="antigravity-input-wrap rounded-xl p-4 sm:p-5">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#baff00]">
-                  Quantity {isPackage && "(Fixed Package Unit)"}
-                </label>
-                {service && (
-                  <span className="text-xs text-slate-400 font-medium">
-                    {isPackage ? (
-                      <strong className="text-[#baff00]">1 unit per order</strong>
-                    ) : (
-                      <>
-                        Min: <strong className="text-white">{Number(service.min).toLocaleString()}</strong> • Max:{" "}
-                        <strong className="text-white">{Number(service.max).toLocaleString()}</strong>
-                      </>
-                    )}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                <input
-                  type="number"
-                  min={service ? service.min : "1"}
-                  max={service ? service.max : "1000000"}
-                  value={quantity}
-                  readOnly={isPackage}
-                  onChange={(e) => {
-                    if (!isPackage) setQuantity(e.target.value);
-                  }}
-                  placeholder={isPackage ? "1" : "1000"}
-                  className="w-full bg-transparent border-0 outline-none text-white text-2xl sm:text-3xl font-black placeholder:text-slate-500 focus:ring-0"
-                />
-
-                {/* Quick Fill Preset Chips */}
-                {!isPackage && service && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity("500")}
-                      className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-bold text-slate-300 hover:border-[#baff00]/50 hover:bg-[#baff00] hover:text-[#07100f] transition-all cursor-pointer"
-                    >
-                      500
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity("1000")}
-                      className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-bold text-slate-300 hover:border-[#baff00]/50 hover:bg-[#baff00] hover:text-[#07100f] transition-all cursor-pointer"
-                    >
-                      1,000
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity("5000")}
-                      className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-bold text-slate-300 hover:border-[#baff00]/50 hover:bg-[#baff00] hover:text-[#07100f] transition-all cursor-pointer"
-                    >
-                      5,000
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(String(service.max))}
-                      className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-bold text-slate-300 hover:border-[#baff00]/50 hover:bg-[#baff00] hover:text-[#07100f] transition-all cursor-pointer"
-                    >
-                      Max
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Non-intrusive Inline Validation Feedback */}
-          {orderError && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs font-medium text-red-300 flex items-start gap-2.5">
-              <span className="text-red-400 font-bold shrink-0">⚠️</span>
-              <span>{orderError}</span>
-            </div>
-          )}
-
-          {orderMessage && (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs font-medium text-emerald-300 flex items-start gap-2.5">
-              <span className="text-emerald-400 font-bold shrink-0">✓</span>
-              <span>{orderMessage}</span>
-            </div>
-          )}
         </div>
 
-        {/* STEP 3: Minimal Live Checkout Dock (Sticky Floating Summary Widget) */}
-        <div className="lg:sticky lg:top-6 space-y-4">
-          <div className="rounded-xl antigravity-card p-5 sm:p-6 relative overflow-hidden space-y-5 shadow-xl">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08]">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#baff00] shadow-[0_0_8px_#baff00]" />
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">
-                  Step 3 • Checkout Dock
-                </h3>
-              </div>
-              <span className="text-[10px] font-bold text-[#baff00] bg-[#baff00]/10 px-2.5 py-0.5 rounded-full border border-[#baff00]/25">
-                Live Pricing
-              </span>
-            </div>
+        {/* 2. Service Type Dropdown */}
+        <div className="space-y-2" ref={actionDropdownRef}>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-300">
+              Service Type
+            </label>
+            <span className="text-[11px] font-medium text-slate-400">
+              {actionOptions.length} types available
+            </span>
+          </div>
 
-            {/* Wallet Snapshot Card */}
-            <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Icon name="wallet" size={14} className="text-[#baff00]" />
-                  Your Wallet
-                </span>
-                <button
-                  type="button"
-                  onClick={() => navigate("Add Funds")}
-                  className="rounded-lg bg-[#baff00]/10 border border-[#baff00]/30 px-2 py-0.5 text-[10px] font-black text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition-all cursor-pointer"
-                >
-                  + Add Funds
-                </button>
-              </div>
-
-              <div className="mt-2">
-                <p className="text-2xl font-black text-white">
-                  ₨{totalAvailable.toFixed(2)}
-                </p>
-                {selectedCurrency !== "PKR" && (
-                  <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                    ≈ {formatWalletBalance(selectedCurrency, currencyRates, totalAvailable)}
-                  </p>
-                )}
-                {bonusBalancePkr > 0 && (
-                  <p className="text-[11px] text-[#baff00] font-medium mt-1">
-                    ₨{walletBalancePkr.toFixed(2)} real + ₨{bonusBalancePkr.toFixed(2)} bonus credit
-                  </p>
-                )}
-              </div>
-
-              {/* Dynamic Balance Calculation */}
-              <div className="mt-3 pt-3 border-t border-white/5 space-y-1.5 text-xs">
-                <div className="flex justify-between text-slate-400">
-                  <span>Order Cost</span>
-                  <span className="font-bold text-white">₨{charge.toFixed(2)}</span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setActionDropdownOpen(!actionDropdownOpen);
+                setPlatformDropdownOpen(false);
+                setComboboxOpen(false);
+              }}
+              className={`w-full flex items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition cursor-pointer ${
+                actionDropdownOpen
+                  ? "border-[#baff00] bg-white/[0.08]"
+                  : "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07]"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-200 border border-white/10">
+                  <Icon name={activeActionItem?.icon || "layers"} size={16} />
                 </div>
-                {bonusBalancePkr > 0 && charge > 0 && (
-                  <div className="flex justify-between text-[#baff00] text-[11px] font-medium">
-                    <span>🎁 Bonus Applied First</span>
-                    <span>-₨{Math.min(bonusBalancePkr, charge).toFixed(2)}</span>
+                <p className="text-sm font-bold text-white truncate">
+                  {activeActionItem?.label || "All Services"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className="text-xs text-slate-400">
+                  {activeActionItem?.count ?? servicesByPlatform.length} packages
+                </span>
+                <Icon name="chevron" size={14} className={`transition-transform ${actionDropdownOpen ? "rotate-180 text-white" : ""}`} />
+              </div>
+            </button>
+
+            {actionDropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-2 z-50 max-h-72 overflow-y-auto rounded-xl border border-white/15 bg-[#0f1824] backdrop-blur-2xl p-1.5 shadow-2xl space-y-0.5">
+                {actionOptions.map((opt) => {
+                  const isSelected = actionType === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleSelectAction(opt.id)}
+                      className={`w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition cursor-pointer ${
+                        isSelected
+                          ? "bg-[#baff00]/15 text-white font-bold"
+                          : "hover:bg-white/[0.06] text-slate-300 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${isSelected ? "bg-[#baff00] text-black" : "bg-white/5 text-slate-300"}`}>
+                          <Icon name={opt.icon} size={15} />
+                        </div>
+                        <span className="text-xs sm:text-sm font-medium truncate">
+                          {opt.label}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-400">
+                        {opt.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 3. Service Details & Instructions (Accordion / Quick Specs) */}
+        {service && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setServiceAccordionOpen(!serviceAccordionOpen)}
+              className="w-full flex items-center justify-between p-3.5 text-left text-xs font-bold text-slate-300 hover:bg-white/[0.03] transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#baff00]/15 text-[#baff00] text-xs font-bold">
+                  ℹ
+                </span>
+                <span>Service Details &amp; Instructions</span>
+              </div>
+              <span className="text-slate-400">{serviceAccordionOpen ? "▲ Hide" : "▼ View"}</span>
+            </button>
+
+            {serviceAccordionOpen && (
+              <div className="border-t border-white/[0.06] p-4 space-y-3 text-xs text-slate-300">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Rate</span>
+                    <span className="font-bold text-[#baff00]">₨{Number(service.price).toFixed(2)}</span>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Limits</span>
+                    <span className="font-bold text-white">{isPackage ? "1 unit" : `${Number(service.min).toLocaleString()} - ${Number(service.max).toLocaleString()}`}</span>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Refill</span>
+                    <span className="font-bold text-white">{isServiceGuaranteed(service) ? "30-Day Refill" : isServiceDropOrNoRefill(service) ? "No Refill" : "Standard"}</span>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Start Speed</span>
+                    <span className="font-bold text-white">0 - 15 Mins</span>
+                  </div>
+                </div>
+
+                {service.description && (
+                  <div className="rounded-lg bg-white/[0.02] p-3 border border-white/5 text-[11px] leading-relaxed whitespace-pre-line text-slate-300">
+                    {formatServiceDescription(service.description)}
                   </div>
                 )}
-                <div className="flex justify-between text-slate-400">
-                  <span>Balance After Order</span>
-                  <span className={`font-bold ${isInsufficient ? "text-red-400" : "text-[#baff00]"}`}>
-                    ₨{Math.max(0, totalAvailable - charge).toFixed(2)}
-                  </span>
-                </div>
               </div>
-            </div>
-
-            {/* Selected Service Specs */}
-            {service ? (
-              <div className="space-y-2 text-xs text-slate-300 pt-0.5">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Platform</span>
-                  <span className="font-bold text-white">{service.platform}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Service #</span>
-                  <span className="font-mono font-bold text-[#baff00]">#{service.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Rate</span>
-                  <span className="font-bold text-white">
-                    ₨{Number(service.price).toFixed(2)} {isPackage ? "/ pkg" : "/ 1k"}
-                    {selectedCurrency !== "PKR" && (
-                      <span className="ml-1.5 text-xs text-slate-400 font-normal">
-                        ({formatServicePrice(service, selectedCurrency, currencyRates)})
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Quantity</span>
-                  <span className="font-bold text-white">{numericQuantity.toLocaleString()}</span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400">No service selected yet.</p>
             )}
+          </div>
+        )}
 
-            {/* Total Due & CTA Button */}
-            <div className="pt-3.5 border-t border-white/[0.08] space-y-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Total Due
-                </span>
-                <div className="text-right">
-                  <span className="text-2xl font-black text-[#baff00]">
-                    ₨{charge.toFixed(2)}
+        {/* 4. Service Package Dropdown & Combobox */}
+        <div className="space-y-2" ref={comboboxRef}>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-300">
+              Service Package
+            </label>
+            <span className="text-[11px] font-medium text-slate-400">
+              {comboboxFilteredServices.length} packages
+            </span>
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setComboboxOpen(!comboboxOpen)}
+              className={`w-full text-left rounded-xl border transition p-4 cursor-pointer group ${
+                comboboxOpen
+                  ? "border-[#baff00] bg-white/[0.08]"
+                  : "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07]"
+              }`}
+            >
+              {service ? (
+                <div className="flex items-center justify-between gap-3 min-w-0 w-full">
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="font-bold text-white text-sm sm:text-base truncate group-hover:text-[#baff00] transition-colors">
+                      {cleanServiceName(service.name, service.platform)}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1 truncate">
+                      {service.platform} • ID #{service.id} • Min: {isPackage ? "1" : Number(service.min).toLocaleString()} • Max: {isPackage ? "1" : Number(service.max).toLocaleString()} • {isServiceGuaranteed(service) ? "30-Day Refill" : isServiceDropOrNoRefill(service) ? "No Refill" : "Standard"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right whitespace-nowrap">
+                      <div className="text-sm sm:text-base font-extrabold text-[#baff00]">
+                        ₨{Number(service.price).toFixed(2)}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        per {isPackage ? "package" : "1,000"}
+                      </div>
+                    </div>
+                    <Icon name="chevron" size={14} className={`text-slate-400 transition-transform ${comboboxOpen ? "rotate-180 text-[#baff00]" : ""}`} />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-slate-400 py-1 text-sm">
+                  <span>Click to choose service package...</span>
+                  <Icon name="chevron" size={14} />
+                </div>
+              )}
+            </button>
+
+            {/* Clean Combobox Search Popover */}
+            {comboboxOpen && (
+              <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-white/15 bg-[#0f1824] backdrop-blur-2xl p-3 shadow-2xl space-y-3">
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <Icon name="search" size={15} />
                   </span>
-                  {selectedCurrency !== "PKR" && (
-                    <div className="text-[11px] text-slate-400 font-semibold">
-                      ≈ {formatWalletBalance(selectedCurrency, currencyRates, charge)}
+                  <input
+                    type="text"
+                    value={comboboxSearch}
+                    onChange={(e) => setComboboxSearch(e.target.value)}
+                    placeholder="Search by ID, name, or keywords..."
+                    className="w-full rounded-lg border border-white/10 bg-white/[0.04] pl-10 pr-9 py-2.5 text-xs sm:text-sm text-white outline-none focus:border-[#baff00] placeholder:text-slate-400 transition"
+                  />
+                  {comboboxSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setComboboxSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Sub-Filter Pills */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/[0.06]">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar max-w-full">
+                    {actionOptions.slice(0, 6).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleSelectAction(opt.id)}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold shrink-0 transition cursor-pointer ${
+                          actionType === opt.id
+                            ? "bg-white/20 text-white"
+                            : "bg-white/[0.04] text-slate-300 hover:bg-white/10"
+                        }`}
+                      >
+                        {opt.label} ({opt.count})
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-lg border border-white/5 text-[10px] font-bold shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setGuaranteeFilter("all")}
+                      className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
+                        guaranteeFilter === "all" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      All ({guaranteeCounts.all})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGuaranteeFilter("guaranteed")}
+                      className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
+                        guaranteeFilter === "guaranteed"
+                          ? "bg-[#baff00] text-[#07100f] font-black"
+                          : "text-slate-300 hover:text-white"
+                      }`}
+                    >
+                      Refill ({guaranteeCounts.guaranteed})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Clean Service Rows */}
+                <div className="max-h-[280px] overflow-y-auto space-y-1 pr-1">
+                  {comboboxFilteredServices.length > 0 ? (
+                    comboboxFilteredServices.map((s) => {
+                      const isSelected = service?.id === s.id;
+                      const isPkg = isPackageService(s);
+
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => handleSelectComboboxService(s)}
+                          className={`w-full text-left rounded-lg p-2.5 transition flex items-center justify-between gap-3 border cursor-pointer ${
+                            isSelected
+                              ? "bg-[#baff00]/15 border-[#baff00]/40 text-white"
+                              : "bg-white/[0.02] border-white/5 text-slate-300 hover:bg-white/[0.06] hover:border-white/10"
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                              {cleanServiceName(s.name, s.platform)}
+                            </p>
+                            <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                              #{s.id} • {s.platform} • Min: {isPkg ? "1" : Number(s.min).toLocaleString()} • Max: {isPkg ? "1" : Number(s.max).toLocaleString()}
+                            </p>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <div className="text-xs sm:text-sm font-bold text-[#baff00]">
+                              ₨{Number(s.price).toFixed(2)}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              /{isPkg ? "pkg" : "1k"}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="py-6 text-center text-xs text-slate-400">
+                      No services match your search query.
                     </div>
                   )}
                 </div>
               </div>
+            )}
+          </div>
+        </div>
 
-              <button
-                type="button"
-                onClick={placeOrder}
-                disabled={placingOrder || isInsufficient}
-                className="w-full rounded-xl py-3.5 text-sm font-black bg-[#baff00] text-[#07100f] shadow-[0_4px_25px_rgba(186,255,0,0.3)] hover:shadow-[0_6px_35px_rgba(186,255,0,0.5)] hover:opacity-95 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {placingOrder ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#07100f] border-t-transparent" />
-                    <span>Submitting Order...</span>
-                  </>
-                ) : isInsufficient ? (
-                  <span>⚠️ Insufficient Balance</span>
-                ) : (
-                  <>
-                    <Icon name="rocket" size={17} />
-                    <span>Place Order Now</span>
-                  </>
-                )}
-              </button>
+        {/* 5. Target Link Input */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-300">
+            Target Link or Username
+          </label>
+          <input
+            type="text"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            placeholder={
+              service
+                ? getServiceLinkPlaceholder(service.platform, detectServiceAction(service))
+                : "https://..."
+            }
+            className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/20 outline-none transition"
+          />
+          <p className="text-[11px] text-slate-400">
+            Ensure target profile, post, or channel is set to public.
+          </p>
+        </div>
 
-              {isInsufficient && (
+        {/* 6. Quantity Input & Preset Chips */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-300">
+              Quantity {isPackage && "(Fixed Package Unit)"}
+            </label>
+            {service && (
+              <span className="text-xs text-slate-400">
+                {isPackage ? "1 unit per order" : `Min: ${Number(service.min).toLocaleString()} • Max: ${Number(service.max).toLocaleString()}`}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-2.5">
+            <input
+              type="number"
+              min={service ? service.min : "1"}
+              max={service ? service.max : "1000000"}
+              value={quantity}
+              readOnly={isPackage}
+              onChange={(e) => {
+                if (!isPackage) setQuantity(e.target.value);
+              }}
+              placeholder={isPackage ? "1" : "1000"}
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-base sm:text-lg font-bold text-white placeholder:text-slate-500 focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/20 outline-none transition"
+            />
+
+            {!isPackage && service && (
+              <div className="flex items-center gap-2">
+                {["500", "1000", "5000"].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setQuantity(preset)}
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 hover:border-white/30 hover:text-white transition cursor-pointer"
+                  >
+                    {Number(preset).toLocaleString()}
+                  </button>
+                ))}
                 <button
                   type="button"
-                  onClick={() => navigate("Add Funds")}
-                  className="w-full rounded-xl py-2.5 text-xs font-black bg-amber-400 text-[#07100f] hover:bg-amber-300 transition-all text-center cursor-pointer"
+                  onClick={() => setQuantity(String(service.max))}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 hover:border-white/30 hover:text-white transition cursor-pointer"
                 >
-                  Add Funds to Wallet (₨{(charge - totalAvailable).toFixed(2)} needed)
+                  Max
                 </button>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
+        </div>
 
-            {/* Direct Dispatch Indicator */}
-            <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 flex items-center justify-center gap-2">
-              <Icon name="shield" size={13} className="text-[#baff00]" />
-              <span>Automated Least-Cost Intelligent Dispatch</span>
+        {/* 7. Inline Order Summary & Place Order CTA */}
+        <div className="pt-6 border-t border-white/[0.08] space-y-4">
+          <div className="rounded-xl bg-white/[0.04] border border-white/10 p-4 space-y-2 text-xs text-slate-300">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Available Balance</span>
+              <span className="font-semibold text-white">₨{totalAvailable.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Rate</span>
+              <span className="font-semibold text-white">
+                {service ? `₨${Number(service.price).toFixed(2)} / ${isPackage ? "pkg" : "1k"}` : "—"}
+              </span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-white/5 text-sm">
+              <span className="font-bold text-white">Total Charge</span>
+              <span className="font-extrabold text-[#baff00] text-base">₨{charge.toFixed(2)}</span>
             </div>
           </div>
+
+          {orderError && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
+              ⚠️ {orderError}
+            </div>
+          )}
+
+          {orderMessage && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+              ✓ {orderMessage}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={placeOrder}
+            disabled={placingOrder || isInsufficient}
+            className="w-full rounded-xl py-3.5 text-sm sm:text-base font-black bg-[#baff00] text-[#07100f] shadow-[0_4px_20px_rgba(186,255,0,0.25)] hover:bg-[#d2ff5a] disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer flex items-center justify-center gap-2"
+          >
+            {placingOrder ? "Placing Order..." : isInsufficient ? "Insufficient Balance" : "Place Order Now"}
+          </button>
+
+          {isInsufficient && (
+            <button
+              type="button"
+              onClick={() => navigate("Add Funds")}
+              className="w-full rounded-xl py-2.5 text-xs font-bold bg-amber-400/15 border border-amber-400/30 text-amber-300 hover:bg-amber-400/25 transition text-center cursor-pointer"
+            >
+              Add Funds to Wallet (₨{(charge - totalAvailable).toFixed(2)} needed)
+            </button>
+          )}
+
+          <p className="text-center text-[11px] text-slate-400">
+            Automated Least-Cost Intelligent Dispatch • 24/7 Processing
+          </p>
         </div>
       </div>
     </div>
@@ -3786,9 +4037,11 @@ type OrderSubTab = "All Orders" | "Active" | "Completed" | "Refills" | "Refunds"
 function OrdersPage({
   orders,
   onOrdersUpdated,
+  onBuyAgain,
 }: {
   orders: VexoOrder[];
   onOrdersUpdated: (orders: VexoOrder[]) => void;
+  onBuyAgain: (order: VexoOrder) => void;
 }) {
   const [activeSubTab, setActiveSubTab] = useState<OrderSubTab>("All Orders");
   const [refreshing, setRefreshing] = useState(false);
@@ -4100,13 +4353,15 @@ function OrdersPage({
               else if (order.status.toLowerCase() === "pending")
                 statusColor = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
 
+              const linkHref = order.link.startsWith("http://") || order.link.startsWith("https://") ? order.link : `https://${order.link}`;
+
               return (
                 <div
                   key={order.localId}
-                  className="vexo-deferred-render rounded-2xl border border-white/10 bg-[#121b1d] p-4"
+                  className="rounded-2xl border border-white/10 bg-[#121b1d] p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-[#baff00]">
+                    <span className="font-mono text-xs font-black text-[#baff00] bg-[#baff00]/10 px-2 py-0.5 rounded">
                       {order.orderId ? `#${order.orderId}` : `#${order.localId.slice(0, 8)}`}
                     </span>
                     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${statusColor}`}>
@@ -4114,155 +4369,224 @@ function OrdersPage({
                     </span>
                   </div>
 
-                  <p className="mt-2 text-sm font-semibold text-white leading-snug">{order.service}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">{order.platform}</p>
+                  <div>
+                    <h4 className="text-sm font-bold text-white leading-snug break-words">{order.service}</h4>
+                    <p className="mt-0.5 text-xs text-slate-400">{order.platform}</p>
+                  </div>
 
-                  <div className="mt-3 rounded-xl bg-[#0a1110] p-3 text-xs space-y-1.5">
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>Target:</span>
-                      <span className="max-w-[200px] truncate text-slate-200 font-mono" title={order.link}>
-                        {order.link}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>Quantity:</span>
-                      <span className="font-bold text-white">{order.quantity.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>Charge:</span>
-                      <span className="font-bold text-[#baff00]">₨{order.charge.toFixed(2)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                      <span>Date & Time:</span>
-                      <span className="text-slate-400">{order.createdAt ? new Date(order.createdAt).toLocaleString() : "—"}</span>
+                  <div className="rounded-xl bg-[#0a1110] p-2.5 text-xs">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Target:</span>
+                    <div className="mt-0.5">
+                      <a
+                        href={linkHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-slate-300 hover:text-[#baff00] underline underline-offset-2 break-all text-xs inline-flex items-center gap-1"
+                        title={order.link}
+                      >
+                        <span className="truncate max-w-[240px]">{order.link}</span>
+                        <svg className="w-3 h-3 shrink-0 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
                     </div>
                   </div>
 
-                  {(isCompleted || isPartial || isRefunded) && (
-                    <div className="mt-3 pt-2 border-t border-white/5">
-                      {(isCompleted || isPartial) && (
-                        <button
-                          onClick={() => handleRequestRefill(order)}
-                          disabled={isRefilling || hasPendingRefill}
-                          className="w-full rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 py-2 text-xs font-bold text-[#baff00] transition active:bg-[#baff00] active:text-[#07100f] disabled:opacity-40"
-                        >
-                          {isRefilling
-                            ? "Requesting..."
-                            : hasPendingRefill
-                            ? "Refill Active"
-                            : "↻ Request Refill"}
-                        </button>
-                      )}
-                      {isRefunded && (
-                        <button
-                          onClick={() => setActiveSubTab("Refunds")}
-                          className="w-full rounded-xl border border-purple-500/30 bg-purple-500/10 py-2 text-xs font-bold text-purple-300 transition active:bg-purple-500 active:text-white"
-                        >
-                          View Refund Details
-                        </button>
-                      )}
+                  <div className="grid grid-cols-2 gap-2 text-xs rounded-xl bg-[#0a1110] p-3">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500">Quantity</span>
+                      <p className="font-bold text-white mt-0.5">{order.quantity.toLocaleString()}</p>
                     </div>
-                  )}
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500">Charge</span>
+                      <p className="font-bold text-[#baff00] mt-0.5">₨{order.charge.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500">Start Count</span>
+                      <p className="font-mono font-medium text-slate-300 mt-0.5">
+                        {order.startCount != null && order.startCount !== "" ? order.startCount : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500">Remains</span>
+                      <p className="font-mono font-medium text-slate-300 mt-0.5">
+                        {order.remains != null && order.remains !== "" ? order.remains : "—"}
+                      </p>
+                    </div>
+                    <div className="col-span-2 pt-1 border-t border-white/5">
+                      <span className="text-[10px] uppercase font-bold text-slate-500">Date & Time</span>
+                      <p className="text-slate-300 mt-0.5">
+                        {order.createdAt ? new Date(order.createdAt).toLocaleString() : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onBuyAgain(order)}
+                      className="w-full rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 py-2.5 text-xs font-bold text-[#baff00] transition active:bg-[#baff00] active:text-[#07100f]"
+                    >
+                      ↻ Buy Again
+                    </button>
+
+                    {(isCompleted || isPartial) && (
+                      <button
+                        onClick={() => handleRequestRefill(order)}
+                        disabled={isRefilling || hasPendingRefill}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-slate-300 transition active:bg-white/10 active:text-white disabled:opacity-40"
+                      >
+                        {isRefilling ? "Requesting..." : hasPendingRefill ? "Refill Active" : "↻ Request Refill"}
+                      </button>
+                    )}
+
+                    {isRefunded && (
+                      <button
+                        onClick={() => setActiveSubTab("Refunds")}
+                        className="w-full rounded-xl border border-purple-500/30 bg-purple-500/10 py-2 text-xs font-bold text-purple-300 transition active:bg-purple-500 active:text-white"
+                      >
+                        View Refund Details
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Desktop Table View (hidden md:block) */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-white/10 bg-[#121b1d] md:block">
-            <table className="w-full min-w-[950px] text-left text-sm">
-              <thead className="bg-[#0a1110] text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-5 py-4">Order</th>
-                  <th className="px-5 py-4">Service</th>
-                  <th className="px-5 py-4">Link</th>
-                  <th className="px-5 py-4">Quantity</th>
-                  <th className="px-5 py-4">Charge</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Date & Time</th>
-                  <th className="px-5 py-4 text-right">Action</th>
-                </tr>
-              </thead>
+          {/* Desktop Order Row Cards (hidden md:block) */}
+          <div className="hidden md:block space-y-3.5">
+            {displayedOrders.map((order) => {
+              const orderKey = order.orderId || order.localId;
+              const isCompleted = order.status.toLowerCase() === "completed";
+              const isPartial = order.status.toLowerCase() === "partial";
+              const isRefunded =
+                order.status.toLowerCase().includes("refund") ||
+                order.status.toLowerCase().includes("cancel");
+              const isRefilling = refillSubmittingId === orderKey;
+              const hasPendingRefill =
+                pendingRefillOrderIds.has(order.localId) ||
+                (order.orderId ? pendingRefillOrderIds.has(order.orderId) : false);
 
-              <tbody>
-                {displayedOrders.map((order) => {
-                  const orderKey = order.orderId || order.localId;
-                  const isCompleted = order.status.toLowerCase() === "completed";
-                  const isPartial = order.status.toLowerCase() === "partial";
-                  const isRefunded =
-                    order.status.toLowerCase().includes("refund") ||
-                    order.status.toLowerCase().includes("cancel");
-                  const isRefilling = refillSubmittingId === orderKey;
-                  const hasPendingRefill =
-                    pendingRefillOrderIds.has(order.localId) ||
-                    (order.orderId ? pendingRefillOrderIds.has(order.orderId) : false);
+              let statusColor = "bg-white/5 text-slate-300";
+              if (isCompleted) statusColor = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+              else if (isRefunded) statusColor = "bg-purple-500/10 text-purple-300 border border-purple-500/20";
+              else if (["in progress", "processing"].includes(order.status.toLowerCase()))
+                statusColor = "bg-sky-500/10 text-sky-400 border border-sky-500/20";
+              else if (order.status.toLowerCase() === "pending")
+                statusColor = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
 
-                  let statusColor = "bg-white/5 text-slate-300";
-                  if (isCompleted) statusColor = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-                  else if (isRefunded) statusColor = "bg-purple-500/10 text-purple-300 border border-purple-500/20";
-                  else if (["in progress", "processing"].includes(order.status.toLowerCase()))
-                    statusColor = "bg-sky-500/10 text-sky-400 border border-sky-500/20";
-                  else if (order.status.toLowerCase() === "pending")
-                    statusColor = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+              const linkHref = order.link.startsWith("http://") || order.link.startsWith("https://") ? order.link : `https://${order.link}`;
 
-                  return (
-                    <tr key={order.localId} className="border-t border-white/10 hover:bg-white/[0.02]">
-                      <td className="px-5 py-4 font-bold">
-                        {order.orderId ? `#${order.orderId}` : order.localId.slice(0, 8)}
-                      </td>
-                      <td className="max-w-[260px] px-5 py-4">
-                        <p className="break-words font-semibold">{order.service}</p>
-                        <p className="mt-1 text-xs text-slate-500">{order.platform}</p>
-                      </td>
-                      <td className="max-w-[220px] px-5 py-4">
-                        <p className="truncate text-slate-400" title={order.link}>
-                          {order.link}
+              return (
+                <div
+                  key={order.localId}
+                  className="rounded-2xl border border-white/10 bg-[#121b1d] p-5 transition hover:border-white/20 hover:bg-[#141f22]"
+                >
+                  {/* Top / Primary Area: ID, Service Name, Status badge */}
+                  <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                    <div className="flex flex-wrap items-center gap-3 min-w-0">
+                      <span className="font-mono text-xs font-black text-[#baff00] bg-[#baff00]/10 px-2.5 py-1 rounded-lg shrink-0">
+                        {order.orderId ? `#${order.orderId}` : `#${order.localId.slice(0, 8)}`}
+                      </span>
+                      <h3 className="font-bold text-white text-sm sm:text-base leading-snug break-words">
+                        {order.service}
+                      </h3>
+                      <span className="text-[11px] text-slate-400 font-medium px-2 py-0.5 rounded-full bg-white/5 shrink-0">
+                        {order.platform}
+                      </span>
+                    </div>
+
+                    <div className="shrink-0">
+                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Target Link */}
+                  <div className="mt-2.5 flex items-center gap-2 text-xs">
+                    <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px] shrink-0">Target Link:</span>
+                    <a
+                      href={linkHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-slate-300 hover:text-[#baff00] underline underline-offset-2 transition-colors truncate max-w-2xl inline-flex items-center gap-1.5"
+                      title={order.link}
+                    >
+                      <span className="truncate">{order.link}</span>
+                      <svg className="w-3 h-3 shrink-0 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+
+                  {/* Details Area + Right Action Area */}
+                  <div className="mt-3.5 pt-3.5 border-t border-white/5 flex flex-wrap items-center justify-between gap-4">
+                    <div className="grid grid-cols-5 gap-6 text-xs">
+                      <div>
+                        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Quantity</p>
+                        <p className="mt-1 font-bold text-white text-sm">{order.quantity.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Charge</p>
+                        <p className="mt-1 font-bold text-[#baff00] text-sm">₨{order.charge.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Start Count</p>
+                        <p className="mt-1 font-mono font-medium text-slate-300 text-sm">
+                          {order.startCount != null && order.startCount !== "" ? order.startCount : "—"}
                         </p>
-                      </td>
-                      <td className="px-5 py-4">
-                        {order.quantity.toLocaleString()}
-                      </td>
-                      <td className="px-5 py-4 font-semibold text-slate-200">
-                        ₨{order.charge.toFixed(4)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-400">
-                        <p className="font-semibold text-slate-300">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}</p>
-                        <p className="text-[11px] text-slate-500">{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : ""}</p>
-                      </td>
-                      <td className="whitespace-nowrap px-5 py-4 text-right">
-                        {(isCompleted || isPartial) && (
-                          <button
-                            onClick={() => handleRequestRefill(order)}
-                            disabled={isRefilling || hasPendingRefill}
-                            className="rounded-lg border border-[#baff00]/30 bg-[#baff00]/10 px-3 py-1.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] disabled:cursor-not-allowed disabled:opacity-40"
-                            title={hasPendingRefill ? "Refill already requested" : "Request engagement drop refill"}
-                          >
-                            {isRefilling
-                              ? "Requesting..."
-                              : hasPendingRefill
-                              ? "Refill Active"
-                              : "↻ Refill"}
-                          </button>
-                        )}
-                        {isRefunded && (
-                          <button
-                            onClick={() => setActiveSubTab("Refunds")}
-                            className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-bold text-purple-300 transition hover:bg-purple-500 hover:text-white"
-                          >
-                            View Refund
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Remains</p>
+                        <p className="mt-1 font-mono font-medium text-slate-300 text-sm">
+                          {order.remains != null && order.remains !== "" ? order.remains : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Date & Time</p>
+                        <div className="mt-1 text-slate-300 text-xs">
+                          <p className="font-semibold text-slate-200">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}</p>
+                          <p className="text-[11px] text-slate-500">{order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : ""}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Action Area: Buy Again + Refill / Refund */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => onBuyAgain(order)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 px-4 py-2 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] active:scale-95"
+                      >
+                        <span>↻ Buy Again</span>
+                      </button>
+
+                      {(isCompleted || isPartial) && (
+                        <button
+                          onClick={() => handleRequestRefill(order)}
+                          disabled={isRefilling || hasPendingRefill}
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+                          title={hasPendingRefill ? "Refill already active" : "Request engagement drop refill"}
+                        >
+                          {isRefilling ? "Requesting..." : hasPendingRefill ? "Refill Active" : "↻ Refill"}
+                        </button>
+                      )}
+
+                      {isRefunded && (
+                        <button
+                          onClick={() => setActiveSubTab("Refunds")}
+                          className="rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-300 transition hover:bg-purple-500 hover:text-white"
+                        >
+                          View Refund
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {displayedOrders.length === 0 && (
@@ -4457,6 +4781,11 @@ function AddFundsPage({
   deposits,
   sadaPayNumber = "03197008275",
   sadaPayTitle = "Saeed Bashir",
+  binanceUid = "1069021883",
+  binanceName = "Talha Bashir Bhatti",
+  binanceUsdtAddress = "0xaa3037450e112ef10406df821803522bc589821c",
+  binanceNetwork = "BSC BNB Smart Chain (BEP20)",
+  liveForexUsdRate = 278.0,
   onWalletUpdated,
   onCelebrateBonus,
 }: {
@@ -4469,6 +4798,11 @@ function AddFundsPage({
   deposits: VexoDeposit[];
   sadaPayNumber?: string;
   sadaPayTitle?: string;
+  binanceUid?: string;
+  binanceName?: string;
+  binanceUsdtAddress?: string;
+  binanceNetwork?: string;
+  liveForexUsdRate?: number;
   onWalletUpdated: (balancePkr: number, deposits: VexoDeposit[]) => void;
   onCelebrateBonus?: () => void;
 }) {
@@ -4476,13 +4810,21 @@ function AddFundsPage({
   const [searchCurrency, setSearchCurrency] = useState("");
   const [method, setMethod] = useState("SadaPay");
   const [amount, setAmount] = useState("");
+  const [binanceAmountUsd, setBinanceAmountUsd] = useState("");
+  const [binanceInputMode, setBinanceInputMode] = useState<"USD" | "PKR">("USD");
   const [transactionId, setTransactionId] = useState("");
   const [screenshot, setScreenshot] = useState<string>("");
   const [screenshotName, setScreenshotName] = useState<string>("");
   const [screenshotError, setScreenshotError] = useState<string>("");
   const [copiedNum, setCopiedNum] = useState(false);
   const [copiedTitle, setCopiedTitle] = useState(false);
+  const [copiedUid, setCopiedUid] = useState(false);
+  const [copiedBName, setCopiedBName] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
   const [activeGuide, setActiveGuide] = useState<"easypaisa" | "jazzcash" | "sadapay">("easypaisa");
+  const [transferGuideOpen, setTransferGuideOpen] = useState(false);
+  const [activeBinanceGuide, setActiveBinanceGuide] = useState<"binance_pay" | "bep20" | "find_tid">("binance_pay");
+  const [binanceGuideOpen, setBinanceGuideOpen] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -4566,22 +4908,47 @@ function AddFundsPage({
     setTimeout(() => setCopiedTitle(false), 2000);
   }
 
+  function handleCopyUid(val: string) {
+    navigator.clipboard.writeText(val);
+    setCopiedUid(true);
+    setTimeout(() => setCopiedUid(false), 2000);
+  }
+
+  function handleCopyBName(val: string) {
+    navigator.clipboard.writeText(val);
+    setCopiedBName(true);
+    setTimeout(() => setCopiedBName(false), 2000);
+  }
+
+  function handleCopyAddress(val: string) {
+    navigator.clipboard.writeText(val);
+    setCopiedAddress(true);
+    setTimeout(() => setCopiedAddress(false), 2000);
+  }
+
   async function submitDeposit() {
     setError("");
     setMessage("");
 
-    if (!Number.isFinite(numericAmount) || numericAmount < 100) {
-      setError("Minimum deposit amount is ₨100.");
+    const isBinance = method.includes("Binance");
+    const depositPkr = isBinance && binanceInputMode === "USD" && Number(binanceAmountUsd) > 0
+      ? Math.round(Number(binanceAmountUsd) * liveForexUsdRate * 100) / 100
+      : numericAmount;
+
+    if (!Number.isFinite(depositPkr) || depositPkr < 100) {
+      setError(isBinance && binanceInputMode === "USD"
+        ? `Minimum deposit is $${(100 / liveForexUsdRate).toFixed(2)} USD (~₨100).`
+        : "Minimum deposit amount is ₨100.");
       return;
     }
 
-    if (numericAmount > 500000) {
+    if (depositPkr > 500000) {
       setError("Maximum deposit amount is ₨500,000 per request.");
       return;
     }
 
     if (transactionId.trim().length < 4) {
-      setError("Please enter the transaction ID/reference from your payment receipt.");
+      setError(isBinance ? "Please enter your Binance Order ID or TxHash from your receipt." : "Please enter the transaction ID/reference from your payment receipt.");
       return;
     }
 
@@ -4599,7 +4966,7 @@ function AddFundsPage({
         credentials: "include",
         body: JSON.stringify({
           method,
-          amount: numericAmount,
+          amount: depositPkr,
           transactionId: transactionId.trim(),
           screenshot,
         }),
@@ -4638,248 +5005,511 @@ function AddFundsPage({
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
         <div className="space-y-6">
-          {/* Wallet Balance Card */}
-          <div className="rounded-xl bg-[#070d0d] p-5 text-white shadow-xl sm:p-7 border border-white/10">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Real Deposited Balance</p>
-                <p className="mt-3 text-4xl font-black tracking-tight text-[#baff00]">
-                  {formatWalletBalance(selectedCurrency, rates, walletBalancePkr)}
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-slate-400">₨{walletBalancePkr.toFixed(2)} verified balance</span>
-                  {bonusBalancePkr > 0 && (
-                    <div className="inline-flex items-center gap-2">
-                      <span className="rounded-md border border-[#baff00]/30 bg-[#baff00]/10 px-2 py-0.5 text-[11px] font-bold text-[#baff00]">
-                        🎁 +₨{bonusBalancePkr.toFixed(2)} Promotional Credit (Total ₨{(walletBalancePkr + bonusBalancePkr).toFixed(2)})
-                      </span>
-                      {onCelebrateBonus && (
-                        <button
-                          type="button"
-                          onClick={onCelebrateBonus}
-                          className="rounded-md border border-[#baff00]/40 bg-[#baff00]/20 px-2 py-0.5 text-[11px] font-black text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition-all flex items-center gap-1 cursor-pointer active:scale-95"
-                          title="Celebrate Bonus"
-                        >
-                          <span>🎉</span> Celebrate <span>🎊</span>
-                        </button>
-                      )}
+          {/* Consolidated Compact Wallet Summary Card */}
+          <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 font-medium">Deposited Balance:</span>
+                <span className="font-extrabold text-white text-base">₨{walletBalancePkr.toFixed(2)}</span>
+              </div>
+              <span className="hidden sm:inline text-white/20">|</span>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 font-medium">Promotional Credit:</span>
+                <span className="font-bold text-[#baff00] bg-[#baff00]/10 px-2.5 py-0.5 rounded-lg border border-[#baff00]/20 text-xs">
+                  ₨{bonusBalancePkr.toFixed(2)} (Auto-applied)
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setOpenCurrency(true)}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              {selected[2]} {selectedCurrency} · Change Currency
+            </button>
+          </div>
+
+          {/* OFFICIAL RECEIVING BINANCE CRYPTO BOX */}
+          {method === "Binance Pay" && (
+            <>
+            <div className="relative overflow-hidden rounded-xl border border-[#F0B90B]/40 bg-gradient-to-br from-[#1c1808] via-[#141208] to-[#241f0a] p-5 sm:p-6 shadow-xl space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0B90B]/15 text-xl font-black text-[#F0B90B] ring-1 ring-[#F0B90B]/30">
+                    🟡
+                  </div>
+                  <div>
+                    <span className="rounded-full bg-[#F0B90B]/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#F0B90B]">
+                      Official Global Payment Receiver
+                    </span>
+                    <h3 className="text-lg font-black text-white">Binance &amp; Crypto Deposit Details</h3>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
+                    ● 0% Deposit Fee
+                  </span>
+                  <span className="rounded-full border border-[#F0B90B]/30 bg-[#F0B90B]/10 px-3 py-1 text-xs font-bold text-[#F0B90B]">
+                    ⚡ BSC (BEP20)
+                  </span>
+                </div>
+              </div>
+
+              {/* Account Details with 1-Tap Copy */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Binance UID */}
+                <div className="rounded-xl border border-white/10 bg-[#0c0a06] p-4">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Binance UID / Pay ID
+                  </span>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="font-mono text-xl font-black tracking-wider text-white">
+                      {binanceUid}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyUid(binanceUid)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#F0B90B] transition hover:bg-[#F0B90B] hover:text-[#07100f] cursor-pointer"
+                    >
+                      {copiedUid ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Account Title */}
+                <div className="rounded-xl border border-white/10 bg-[#0c0a06] p-4">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Account Title / Beneficiary Name
+                  </span>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-lg font-black text-white">
+                      {binanceName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyBName(binanceName)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#F0B90B] transition hover:bg-[#F0B90B] hover:text-[#07100f] cursor-pointer"
+                    >
+                      {copiedBName ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* USDT Deposit Address */}
+                <div className="rounded-xl border border-white/10 bg-[#0c0a06] p-4 sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      USDT Deposit Address ({binanceNetwork})
+                    </span>
+                    <span className="text-[11px] font-semibold text-amber-400">
+                      ⚠️ Send BEP-20 (BSC) tokens only
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs sm:text-sm font-bold text-white break-all">
+                      {binanceUsdtAddress}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyAddress(binanceUsdtAddress)}
+                      className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#F0B90B] transition hover:bg-[#F0B90B] hover:text-[#07100f] cursor-pointer"
+                    >
+                      {copiedAddress ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Collapsible Transfer Instructions & QR Drawer for Binance */}
+            <div className="rounded-xl border border-white/10 bg-slate-900/50 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setBinanceGuideOpen(!binanceGuideOpen)}
+                className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left text-xs sm:text-sm font-bold text-slate-300 hover:bg-white/[0.03] transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <span>📖</span>
+                  <span>View How to Transfer via Binance &amp; Crypto</span>
+                </span>
+                <span className="text-xs font-semibold text-[#F0B90B]">
+                  {binanceGuideOpen ? "Hide Instructions ▲" : "Expand Instructions & QR ▼"}
+                </span>
+              </button>
+
+              {binanceGuideOpen && (
+                <div className="border-t border-white/10 p-4 sm:p-5 bg-black/20 space-y-4">
+                  {/* Guide Tabs */}
+                  <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveBinanceGuide("binance_pay")}
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        activeBinanceGuide === "binance_pay"
+                          ? "bg-[#F0B90B] text-[#07100f] font-black"
+                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      🟡 Binance App (Pay ID / QR)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveBinanceGuide("bep20")}
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        activeBinanceGuide === "bep20"
+                          ? "bg-[#38bdf8] text-[#07100f] font-black"
+                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      ⚡ USDT BEP-20 (Trust / MetaMask / Any Wallet)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveBinanceGuide("find_tid")}
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        activeBinanceGuide === "find_tid"
+                          ? "bg-emerald-400 text-[#07100f] font-black"
+                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      🔍 How to Find Order ID / TxHash
+                    </button>
+                  </div>
+
+                  {/* Tab 1: Binance App (Pay ID / QR) */}
+                  {activeBinanceGuide === "binance_pay" && (
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6 pt-1">
+                      {/* Embedded Binance Pay QR */}
+                      <div className="shrink-0 flex flex-col items-center">
+                        <div className="relative overflow-hidden rounded-2xl border-2 border-[#F0B90B]/50 bg-white p-2.5 shadow-2xl">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/binance-pay-qr.jpg"
+                            alt="Binance Pay QR Code"
+                            className="h-44 w-44 sm:h-52 sm:w-52 object-contain rounded-xl"
+                          />
+                        </div>
+                        <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#F0B90B]/15 px-3 py-1 text-xs font-bold text-[#F0B90B]">
+                          🟡 Scan with Binance App
+                        </span>
+                        <span className="mt-1 text-[11px] text-slate-300 font-medium">
+                          Recipient: <strong className="text-white">{binanceName}</strong>
+                        </span>
+                        <span className="mt-0.5 text-[10px] text-emerald-400 font-semibold">
+                          ✓ Instant spot wallet receipt · 0% fee
+                        </span>
+                      </div>
+
+                      {/* Binance Pay Step-by-Step Instructions */}
+                      <div className="flex-1 space-y-2 text-xs leading-relaxed text-slate-300 w-full">
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">1</span>
+                          <p>Open the <strong className="text-white">Binance App</strong> on your phone and tap the <strong className="text-[#F0B90B]">Pay</strong> icon (or tap the top-right <strong className="text-white">Scan [—]</strong> button).</p>
+                        </div>
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">2</span>
+                          <p>Scan the <strong className="text-[#F0B90B]">Binance Pay QR Code</strong> shown on the left, or choose <strong className="text-white">Send</strong> and enter Binance UID: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">{binanceUid}</code> <button type="button" onClick={() => handleCopyUid(binanceUid)} className="ml-1 inline-flex items-center rounded border border-[#F0B90B]/30 bg-[#F0B90B]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#F0B90B] hover:bg-[#F0B90B] hover:text-black cursor-pointer">{copiedUid ? "✓ Copied" : "Copy"}</button>.</p>
+                        </div>
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">3</span>
+                          <p>Verify that the recipient name displays <strong className="text-[#F0B90B]">{binanceName}</strong> before proceeding.</p>
+                        </div>
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">4</span>
+                          <p>Enter the amount of USDT to transfer and confirm (0% fee, instant spot internal transfer).</p>
+                        </div>
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">5</span>
+                          <p>On the payment success screen, copy the <strong className="text-[#F0B90B]">Binance Order ID</strong>, take a screenshot of your receipt, and submit below.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 2: USDT BEP-20 (Trust / MetaMask / Any Wallet) */}
+                  {activeBinanceGuide === "bep20" && (
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6 pt-1">
+                      {/* Embedded USDT BEP-20 QR */}
+                      <div className="shrink-0 flex flex-col items-center">
+                        <div className="relative overflow-hidden rounded-2xl border-2 border-[#38bdf8]/50 bg-white p-2.5 shadow-2xl">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/binance-usdt-qr.jpg"
+                            alt="USDT BEP-20 QR Code"
+                            className="h-44 w-44 sm:h-52 sm:w-52 object-contain rounded-xl"
+                          />
+                        </div>
+                        <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#38bdf8]/15 px-3 py-1 text-xs font-bold text-[#38bdf8]">
+                          ⚡ Scan with Web3 / Crypto Wallet
+                        </span>
+                        <span className="mt-1 text-[11px] text-amber-400 font-semibold">
+                          ⚠️ BEP-20 (BNB Smart Chain) Only
+                        </span>
+                        <span className="mt-0.5 text-[10px] text-emerald-400 font-semibold">
+                          ✓ Multi-exchange &amp; Web3 wallet compatible
+                        </span>
+                      </div>
+
+                      {/* USDT BEP-20 Step-by-Step Instructions */}
+                      <div className="flex-1 space-y-2 text-xs leading-relaxed text-slate-300 w-full">
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">1</span>
+                          <p>Open your crypto wallet or exchange (<strong className="text-white">Trust Wallet, MetaMask, OKX, Bybit, KuCoin, or Binance</strong>).</p>
+                        </div>
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">2</span>
+                          <p>Select <strong className="text-white">USDT</strong> and tap <strong className="text-[#38bdf8]">Send / Withdraw</strong>.</p>
+                        </div>
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">3</span>
+                          <p>CRITICAL: Select network <strong className="text-amber-400">BNB Smart Chain (BEP20 / BSC)</strong>. (Do NOT select TRC20 or ERC20).</p>
+                        </div>
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">4</span>
+                          <p>Scan the <strong className="text-[#38bdf8]">USDT QR Code</strong> on the left, or paste our address: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white break-all">{binanceUsdtAddress}</code> <button type="button" onClick={() => handleCopyAddress(binanceUsdtAddress)} className="ml-1 inline-flex items-center rounded border border-[#38bdf8]/30 bg-[#38bdf8]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#38bdf8] hover:bg-[#38bdf8] hover:text-black cursor-pointer">{copiedAddress ? "✓ Copied" : "Copy"}</button>.</p>
+                        </div>
+                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">5</span>
+                          <p>Confirm the withdrawal, copy the <strong className="text-[#38bdf8]">TxHash / Transaction ID</strong>, take a screenshot, and submit below.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 3: How to Find Order ID / TxHash */}
+                  {activeBinanceGuide === "find_tid" && (
+                    <div className="space-y-3 text-xs leading-relaxed text-slate-300">
+                      <div className="flex gap-3 items-start rounded-xl bg-white/[0.02] p-3.5 border border-white/5">
+                        <span className="text-xl shrink-0">🟡</span>
+                        <div>
+                          <p className="font-bold text-white text-sm">For Binance Pay (Pay ID / QR):</p>
+                          <p className="text-slate-400 mt-1">
+                            Go to Binance App $\rightarrow$ <strong className="text-white">Pay</strong> $\rightarrow$ <strong className="text-white">History</strong> (clock icon in top-right) $\rightarrow$ Tap the payment to <strong className="text-white">{binanceName}</strong> $\rightarrow$ Copy the <strong className="text-[#F0B90B]">Order ID</strong> (a 19 or 20-digit number).
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 items-start rounded-xl bg-white/[0.02] p-3.5 border border-white/5">
+                        <span className="text-xl shrink-0">⚡</span>
+                        <div>
+                          <p className="font-bold text-white text-sm">For On-Chain USDT (BEP-20 / BSC):</p>
+                          <p className="text-slate-400 mt-1">
+                            Go to your wallet's activity/withdrawal history $\rightarrow$ Tap your USDT transfer $\rightarrow$ Copy the <strong className="text-[#38bdf8]">TxHash / Transaction Hash</strong> (starts with <code className="text-white">0x...</code>).
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 items-start rounded-xl bg-white/[0.02] p-3.5 border border-white/5">
+                        <span className="text-xl shrink-0">📸</span>
+                        <div>
+                          <p className="font-bold text-white text-sm">Receipt Screenshot:</p>
+                          <p className="text-slate-400 mt-1">
+                            Capture a full screenshot showing the completed transaction status, date, and Order ID or TxHash, then attach it in the form below.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpenCurrency(true)}
-                className="rounded-xl bg-[#121b1d] border border-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-[#baff00] hover:text-[#07100f]"
-              >
-                {selected[2]} {selectedCurrency} · Change Currency
-              </button>
+              )}
             </div>
-          </div>
+            </>
+          )}
 
           {/* OFFICIAL RECEIVING SADAPAY ACCOUNT BOX */}
-          <div className="relative overflow-hidden rounded-xl border border-[#ff6060]/30 bg-gradient-to-br from-[#1c1212] via-[#1a0e0e] to-[#251010] p-5 sm:p-6 shadow-xl space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#ff6060]/10 text-xl font-black text-[#ff6060] ring-1 ring-[#ff6060]/30">
-                  ⚡
+          {method !== "Binance Pay" && (
+            <>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 sm:p-6 shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-lg font-black text-white border border-white/10">
+                    💳
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-white">SadaPay Account Details</h3>
+                    <p className="text-xs text-slate-400">Send money from Easypaisa, JazzCash, SadaPay or any Bank</p>
+                  </div>
                 </div>
-                <div>
-                  <span className="rounded-full bg-[#ff6060]/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#ff7575]">
-                    Official Payment Receiver
-                  </span>
-                  <h3 className="text-lg font-black text-white">SadaPay Account Details</h3>
-                </div>
-              </div>
 
-              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
-                ● 0% Fee • Instant Receipt
-              </span>
-            </div>
-
-            {/* Account Details with 1-Tap Copy */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* Account Number */}
-              <div className="rounded-xl border border-white/10 bg-[#0c0808] p-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  SadaPay Mobile / Account Number
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
+                  ● 0% Fee • Instant Receipt
                 </span>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="font-mono text-xl font-black tracking-wider text-white">
-                    {sadaPayNumber}
+              </div>
+
+              {/* Account Details with 1-Tap Copy */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Account Number */}
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    SadaPay Mobile / Account Number
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyAccount(sadaPayNumber)}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] cursor-pointer"
-                  >
-                    {copiedNum ? "✓ Copied" : "Copy"}
-                  </button>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="font-mono text-lg sm:text-xl font-black tracking-wider text-white">
+                      {sadaPayNumber}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyAccount(sadaPayNumber)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] cursor-pointer"
+                    >
+                      {copiedNum ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Account Title */}
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Account Title / Beneficiary Name
+                  </span>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-base sm:text-lg font-black text-white">
+                      {sadaPayTitle}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTitle(sadaPayTitle)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] cursor-pointer"
+                    >
+                      {copiedTitle ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Account Title */}
-              <div className="rounded-xl border border-white/10 bg-[#0c0808] p-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Account Title / Beneficiary Name
+              <p className="text-[11px] text-slate-400">
+                💡 Always verify that the recipient account title shows <strong className="text-white">{sadaPayTitle} ({sadaPayNumber})</strong> before confirming your transfer.
+              </p>
+            </div>
+
+            {/* Collapsible Transfer Instructions Drawer */}
+            <div className="rounded-xl border border-white/10 bg-slate-900/50 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setTransferGuideOpen(!transferGuideOpen)}
+                className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left text-xs sm:text-sm font-bold text-slate-300 hover:bg-white/[0.03] transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <span>📖</span>
+                  <span>View How to Transfer Instructions</span>
                 </span>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="text-lg font-black text-white">
-                    {sadaPayTitle}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyTitle(sadaPayTitle)}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#baff00] transition hover:bg-[#baff00] hover:text-[#07100f] cursor-pointer"
-                  >
-                    {copiedTitle ? "✓ Copied" : "Copy"}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Streamlined 3-Step Deposit Guide */}
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-2.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#ff7575] block">
-                Quick 3-Step Deposit Process:
-              </span>
-              <div className="grid gap-2 sm:grid-cols-3 text-xs text-slate-300">
-                <div className="rounded-lg bg-black/30 p-2.5 border border-white/5">
-                  <span className="font-black text-[#ff6060] mr-1.5">Step 1:</span>
-                  Transfer to <strong className="text-white">{sadaPayNumber}</strong> ({sadaPayTitle}) via any bank/wallet app.
-                </div>
-                <div className="rounded-lg bg-black/30 p-2.5 border border-white/5">
-                  <span className="font-black text-[#ff6060] mr-1.5">Step 2:</span>
-                  Enter the <strong className="text-white">Transaction ID (TID)</strong> and amount in the form below.
-                </div>
-                <div className="rounded-lg bg-black/30 p-2.5 border border-white/5">
-                  <span className="font-black text-[#ff6060] mr-1.5">Step 3:</span>
-                  Click <strong className="text-white">Submit Deposit</strong> for automatic wallet credit.
-                </div>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-400">
-              💡 Always verify that the recipient account title shows <strong className="text-white">{sadaPayTitle} ({sadaPayNumber})</strong> before confirming your transfer.
-            </p>
-          </div>
-
-          {/* STEP BY STEP TRANSFER GUIDES */}
-          <div className="rounded-xl border border-white/10 bg-[#111a1d] p-5 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-black text-white">How to Transfer to SadaPay</h3>
-                <p className="text-xs text-slate-400">Select your app to view simple step-by-step instructions</p>
-              </div>
-            </div>
-
-            {/* Guide Tabs */}
-            <div className="mt-4 flex flex-wrap gap-2 border-b border-white/10 pb-4">
-              <button
-                type="button"
-                onClick={() => setActiveGuide("easypaisa")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                  activeGuide === "easypaisa"
-                    ? "bg-[#25d366] text-[#07100f]"
-                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                Easypaisa → SadaPay
+                <span className="text-xs font-semibold text-slate-400">
+                  {transferGuideOpen ? "Hide Instructions ▲" : "Expand Instructions ▼"}
+                </span>
               </button>
-              <button
-                type="button"
-                onClick={() => setActiveGuide("jazzcash")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                  activeGuide === "jazzcash"
-                    ? "bg-[#ff9900] text-[#07100f]"
-                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                JazzCash → SadaPay
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveGuide("sadapay")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                  activeGuide === "sadapay"
-                    ? "bg-[#ff6060] text-white"
-                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                SadaPay / Bank → SadaPay
-              </button>
+
+              {transferGuideOpen && (
+                <div className="border-t border-white/10 p-4 sm:p-5 bg-black/20 space-y-4">
+                  {/* Guide Tabs */}
+                  <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveGuide("easypaisa")}
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        activeGuide === "easypaisa"
+                          ? "bg-[#25d366] text-[#07100f]"
+                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      Easypaisa → SadaPay
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveGuide("jazzcash")}
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        activeGuide === "jazzcash"
+                          ? "bg-[#ff9900] text-[#07100f]"
+                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      JazzCash → SadaPay
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveGuide("sadapay")}
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        activeGuide === "sadapay"
+                          ? "bg-[#ff6060] text-white"
+                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      SadaPay / Bank → SadaPay
+                    </button>
+                  </div>
+
+                  {/* Guide Content: Easypaisa to SadaPay */}
+                  {activeGuide === "easypaisa" && (
+                    <div className="space-y-2 text-xs leading-relaxed text-slate-300">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">1</span>
+                        <p>Open <strong className="text-white">Easypaisa App</strong> and tap <strong className="text-[#25d366]">Bank Transfer</strong>.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">2</span>
+                        <p>Search for <strong className="text-white">SadaPay</strong> in the bank list and select it.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">3</span>
+                        <p>Enter account: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code> and enter your deposit amount.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">4</span>
+                        <p>Confirm recipient is <strong className="text-[#baff00]">Saeed Bashir</strong> and tap <strong className="text-white">Send Now</strong>.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">5</span>
+                        <p>Save payment screenshot and copy the <strong className="text-[#baff00]">Transaction ID (TID)</strong> to submit below.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeGuide === "jazzcash" && (
+                    <div className="space-y-2 text-xs leading-relaxed text-slate-300">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">1</span>
+                        <p>Open <strong className="text-white">JazzCash App</strong> and select <strong className="text-[#ff9900]">Money Transfer → Bank Transfer</strong>.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">2</span>
+                        <p>Search and select <strong className="text-white">SadaPay</strong>.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">3</span>
+                        <p>Enter account number: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code> and amount.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">4</span>
+                        <p>Confirm beneficiary name is <strong className="text-[#baff00]">Saeed Bashir</strong> and authorize payment.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">5</span>
+                        <p>Take a receipt screenshot and copy your <strong className="text-[#baff00]">TID number</strong>.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeGuide === "sadapay" && (
+                    <div className="space-y-2 text-xs leading-relaxed text-slate-300">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">1</span>
+                        <p>Open <strong className="text-white">SadaPay</strong> or any Bank App and tap <strong className="text-white">Send Money</strong>.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">2</span>
+                        <p>Select <strong className="text-white">SadaPay</strong> and enter <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code>.</p>
+                      </div>
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">3</span>
+                        <p>Confirm title <strong className="text-[#baff00]">Saeed Bashir</strong>, send payment, and save receipt screenshot.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-
-            {/* Guide Content: Easypaisa to SadaPay */}
-            {activeGuide === "easypaisa" && (
-              <div className="mt-4 space-y-2.5 text-xs leading-relaxed text-slate-300">
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">1</span>
-                  <p>Open your <strong className="text-white">Easypaisa App</strong> and tap on <strong className="text-[#25d366]">Bank Transfer</strong>.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">2</span>
-                  <p>In the bank list search bar, type <strong className="text-white">SadaPay</strong> and tap on it.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">3</span>
-                  <p>Enter the account number: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code> and select purpose (e.g. Online Purchase).</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">4</span>
-                  <p>Confirm the receiver title matches <strong className="text-[#baff00]">Saeed Bashir</strong> and tap <strong className="text-white">Send Now</strong>.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">5</span>
-                  <p><strong className="text-white">Save the payment screenshot</strong> and copy the <strong className="text-[#baff00]">Transaction ID (TID)</strong> to paste below.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Guide Content: JazzCash to SadaPay */}
-            {activeGuide === "jazzcash" && (
-              <div className="mt-4 space-y-2.5 text-xs leading-relaxed text-slate-300">
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">1</span>
-                  <p>Open your <strong className="text-white">JazzCash App</strong> and select <strong className="text-[#ff9900]">Money Transfer</strong>.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">2</span>
-                  <p>Select <strong className="text-white">Bank Transfer</strong> and search for <strong className="text-[#ff9900]">SadaPay</strong>.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">3</span>
-                  <p>Enter the account number: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code> and enter your deposit amount.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">4</span>
-                  <p>Verify that the beneficiary name is <strong className="text-[#baff00]">Saeed Bashir</strong> and authorize the transfer with your MPIN/Fingerprint.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">5</span>
-                  <p><strong className="text-white">Take a screenshot</strong> of the successful receipt and copy your <strong className="text-[#baff00]">TID number</strong>.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Guide Content: SadaPay to SadaPay */}
-            {activeGuide === "sadapay" && (
-              <div className="mt-4 space-y-2.5 text-xs leading-relaxed text-slate-300">
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">1</span>
-                  <p>Open <strong className="text-white">SadaPay</strong> or any banking app (Meezan, HBL, Nayapay, UBL, etc.) and tap <strong className="text-white">Send Money</strong>.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">2</span>
-                  <p>Select <strong className="text-white">SadaPay</strong> as the destination and enter <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code>.</p>
-                </div>
-                <div className="flex gap-3 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">3</span>
-                  <p>Confirm title <strong className="text-[#baff00]">Saeed Bashir</strong>, send the funds, take a receipt screenshot, and note the transaction reference.</p>
-                </div>
-              </div>
-            )}
-          </div>
+            </>
+          )}
 
           {/* DEPOSIT SUBMISSION FORM */}
           <div className="rounded-xl border border-white/10 bg-[#111a1d] p-5 sm:p-7">
@@ -4898,21 +5528,30 @@ function AddFundsPage({
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400">
                 Payment Channel Used
               </label>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-                {["SadaPay", "Easypaisa", "JazzCash", "Bank Transfer"].map((item) => (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
+                {["SadaPay", "Easypaisa", "JazzCash", "Bank Transfer", "Binance Pay"].map((item) => (
                   <button
                     key={item}
                     type="button"
-                    onClick={() => setMethod(item)}
+                    onClick={() => {
+                      setMethod(item);
+                      if (item === "Binance Pay" && binanceAmountUsd && Number(binanceAmountUsd) > 0) {
+                        setAmount(String(Math.round(Number(binanceAmountUsd) * liveForexUsdRate * 100) / 100));
+                      }
+                    }}
                     className={`rounded-xl border px-3 py-2.5 text-left transition cursor-pointer ${
                       method === item
-                        ? "border-[#baff00]/60 bg-[#baff00]/10 text-white shadow-sm"
+                        ? item === "Binance Pay"
+                          ? "border-[#F0B90B]/60 bg-[#F0B90B]/15 text-white shadow-sm ring-1 ring-[#F0B90B]/30"
+                          : "border-[#baff00]/60 bg-[#baff00]/10 text-white shadow-sm"
                         : "border-white/10 bg-[#0b1418] text-slate-400 hover:border-white/20 hover:text-white"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-bold">{item}</span>
-                      {method === item && <Icon name="check" size={15} className="text-[#baff00]" />}
+                      <span className="text-xs font-bold">{item === "Binance Pay" ? "🟡 Binance Pay" : item}</span>
+                      {method === item && (
+                        <Icon name="check" size={15} className={item === "Binance Pay" ? "text-[#F0B90B]" : "text-[#baff00]"} />
+                      )}
                     </div>
                   </button>
                 ))}
@@ -4920,38 +5559,87 @@ function AddFundsPage({
             </div>
 
             {/* Amount & TID inputs */}
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
-                  <span>Amount (PKR)</span>
-                  <span className="text-slate-500 font-normal">Min: ₨100</span>
-                </div>
-                <input
-                  type="number"
-                  min="100"
-                  max="500000"
-                  step="1"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="e.g. 1000"
-                  className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm font-bold text-white outline-none placeholder:text-slate-600 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
-                />
-              </label>
+            {method === "Binance Pay" ? (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
+                    <span>Deposit Amount (USDT / USD)</span>
+                    <span className="text-amber-400 font-normal">Min: $1.00 USD</span>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-amber-400">$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="2000"
+                      step="0.1"
+                      value={binanceAmountUsd}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBinanceAmountUsd(val);
+                        if (val && Number(val) > 0) {
+                          setAmount(String(Math.round(Number(val) * liveForexUsdRate * 100) / 100));
+                        } else {
+                          setAmount("");
+                        }
+                      }}
+                      placeholder="e.g. 10.00"
+                      className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] pl-8 pr-4 text-base sm:text-sm font-bold text-white outline-none placeholder:text-slate-600 focus:border-[#F0B90B]/50 focus:ring-2 focus:ring-[#F0B90B]/10"
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-slate-400">
+                    ≈ <strong className="text-white">₨{amount || "0.00"} PKR</strong> wallet credit (⚡ 1 USD = ₨{liveForexUsdRate} · 0% deposit fee)
+                  </p>
+                </label>
 
-              <label className="block">
-                <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
-                  <span>Transaction ID (TID)</span>
-                  <span className="text-slate-500 font-normal">From SMS / Receipt</span>
-                </div>
-                <input
-                  type="text"
-                  value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
-                  placeholder="e.g. 3738920194 or 12-digit ref"
-                  className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm text-white font-mono outline-none placeholder:text-slate-600 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
-                />
-              </label>
-            </div>
+                <label className="block">
+                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
+                    <span>Binance Order ID / TxHash</span>
+                    <span className="text-slate-500 font-normal">From Receipt</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    placeholder="e.g. 238910283 or 0x..."
+                    className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm text-white font-mono outline-none placeholder:text-slate-600 focus:border-[#F0B90B]/50 focus:ring-2 focus:ring-[#F0B90B]/10"
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
+                    <span>Amount (PKR)</span>
+                    <span className="text-slate-500 font-normal">Min: ₨100</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="100"
+                    max="500000"
+                    step="1"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="e.g. 1000"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm font-bold text-white outline-none placeholder:text-slate-600 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
+                  />
+                </label>
+
+                <label className="block">
+                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
+                    <span>Transaction ID (TID)</span>
+                    <span className="text-slate-500 font-normal">From SMS / Receipt</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    placeholder="e.g. 3738920194 or 12-digit ref"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm text-white font-mono outline-none placeholder:text-slate-600 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
+                  />
+                </label>
+              </div>
+            )}
 
             {/* MANDATORY SCREENSHOT UPLOAD */}
             <div className="mt-5">
@@ -5039,7 +5727,9 @@ function AddFundsPage({
             {/* Direct WhatsApp Receipt Confirmation */}
             <a
               href={`https://wa.me/923176437013?text=${encodeURIComponent(
-                `Hello Saeed Bashir / VEXARO SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via SadaPay. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
+                method === "Binance Pay"
+                  ? `Hello VEXARO SMM Admin, I have submitted a deposit of $${binanceAmountUsd || (Number(amount) / liveForexUsdRate).toFixed(2)} USDT (₨${amount || "..."} PKR) via Binance. TxHash / Order ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
+                  : `Hello Saeed Bashir / VEXARO SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via ${method}. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -5127,32 +5817,25 @@ function ComingSoon({ page }: { page: string }) {
 function Stat({
   title,
   value,
-  subtitle,
   icon,
 }: {
   title: string;
   value: string;
-  subtitle: string;
   icon: string;
 }) {
   return (
-    <div className="antigravity-card rounded-xl p-5 sm:p-6 transition-all duration-200 hover:-translate-y-0.5 group relative overflow-hidden">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0 flex-1 pr-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#baff00]">
-            {title}
-          </p>
-          <p className="mt-2 text-2xl sm:text-3xl font-black text-white tracking-tight truncate">
-            {value}
-          </p>
-          <p className="mt-1 text-xs text-slate-400 font-medium">
-            {subtitle}
-          </p>
-        </div>
+    <div className="antigravity-card rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 group relative flex items-center justify-between">
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          {title}
+        </p>
+        <p className="mt-1 text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+          {value}
+        </p>
+      </div>
 
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/10 text-[#baff00] shadow-[0_0_15px_rgba(186,255,0,0.15)] group-hover:bg-[#baff00] group-hover:text-[#07100f] transition-all">
-          <Icon name={icon} size={20} />
-        </div>
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 group-hover:border-[#baff00]/50 group-hover:text-[#baff00] transition-all">
+        <Icon name={icon} size={20} />
       </div>
     </div>
   );
@@ -5198,7 +5881,7 @@ function Popular({
   onClick: () => void;
 }) {
   return (
-    <div className="antigravity-card rounded-[28px] p-5 sm:p-6 transition-all duration-300 hover:-translate-y-1.5 hover:border-[#baff00]/40 group flex flex-col justify-between">
+    <div className="antigravity-card rounded-2xl p-5 sm:p-6 transition-all duration-300 hover:-translate-y-1.5 hover:border-[#baff00]/40 group flex flex-col justify-between">
       <div>
         <div className="flex items-center justify-between">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.05] border border-white/10 text-white group-hover:border-[#baff00]/50 group-hover:shadow-[0_0_15px_rgba(186,255,0,0.2)] transition-all">
@@ -5221,7 +5904,7 @@ function Popular({
             Starting from
           </p>
           <p className="text-base font-black text-[#baff00]">
-            ₨{price}
+            ₨{Number(price).toFixed(2)}
           </p>
         </div>
 

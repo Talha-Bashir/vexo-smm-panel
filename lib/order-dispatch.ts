@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { getRegisteredProviders, submitProviderOrder, ProviderConfig } from "@/lib/providers";
 import { addRizviOrder } from "@/lib/rizvi";
+import { getCachedProviderBalances, selectFundedProviderCandidate } from "@/lib/balance-routing";
 
 export interface FailoverAttempt {
   providerId: string;
@@ -23,6 +24,11 @@ export interface DispatchResult {
   error?: string;
 }
 
+export interface DispatchOptions {
+  preferredProviderId?: string;
+  maxAllowedCostUsd?: number;
+}
+
 /**
  * Dispatches an order to the cheapest/active provider with automatic failover.
  * If the primary provider fails (insufficient provider balance, provider offline, etc.),
@@ -31,7 +37,8 @@ export interface DispatchResult {
 export async function dispatchOrderWithFailover(
   serviceIdentifier: string,
   link: string,
-  quantity: number
+  quantity: number,
+  options?: DispatchOptions
 ): Promise<DispatchResult> {
   const serviceIdStr = String(serviceIdentifier).trim();
 
@@ -109,22 +116,68 @@ export async function dispatchOrderWithFailover(
   // 3. Multi-Provider Least-Cost Routing & Failover
   const providers = await getRegisteredProviders();
   const provMap = new Map<string, ProviderConfig>(providers.map((p) => [p.id, p]));
+  const balances = await getCachedProviderBalances();
 
-  const candidateList: Array<{ providerId: string; remoteServiceId: string; rank: number }> = [];
+  const queue = Array.isArray(routedRow.fallback_queue) ? routedRow.fallback_queue : [];
+  const candidateList: Array<{ providerId: string; remoteServiceId: string; rank: number; rateUsd?: number }> = [];
   const seenProviders = new Set<string>();
 
-  // Primary: Active designated provider
-  if (routedRow.active_provider_id && routedRow.active_remote_service_id) {
+  // Determine top priority candidate:
+  // If caller specified preferredProviderId, prioritize it
+  // Otherwise, use selectFundedProviderCandidate to pick the lowest-cost funded provider
+  let primaryCandidate: { providerId: string; remoteServiceId: string; rateUsd?: number } | null = null;
+
+  if (options?.preferredProviderId) {
+    const fromQueue = queue.find((q: any) => q.providerId === options.preferredProviderId);
+    if (fromQueue) {
+      primaryCandidate = {
+        providerId: fromQueue.providerId,
+        remoteServiceId: fromQueue.remoteServiceId,
+        rateUsd: Number(fromQueue.rateUsd || 0),
+      };
+    } else if (routedRow.active_provider_id === options.preferredProviderId) {
+      primaryCandidate = {
+        providerId: String(routedRow.active_provider_id),
+        remoteServiceId: String(routedRow.active_remote_service_id),
+        rateUsd: Number(routedRow.base_rate_usd || 0),
+      };
+    }
+  }
+
+  if (!primaryCandidate && routedRow.auto_route !== false) {
+    const funded = selectFundedProviderCandidate(
+      queue,
+      String(routedRow.active_provider_id || ""),
+      String(routedRow.active_remote_service_id || ""),
+      Number(routedRow.base_rate_usd || 0),
+      balances
+    );
+    primaryCandidate = {
+      providerId: funded.candidate.providerId,
+      remoteServiceId: funded.candidate.remoteServiceId,
+      rateUsd: funded.candidate.rateUsd,
+    };
+  }
+
+  if (primaryCandidate && primaryCandidate.providerId && primaryCandidate.remoteServiceId) {
+    candidateList.push({
+      providerId: primaryCandidate.providerId,
+      remoteServiceId: primaryCandidate.remoteServiceId,
+      rateUsd: primaryCandidate.rateUsd,
+      rank: 1,
+    });
+    seenProviders.add(primaryCandidate.providerId);
+  } else if (routedRow.active_provider_id && routedRow.active_remote_service_id) {
     candidateList.push({
       providerId: String(routedRow.active_provider_id),
       remoteServiceId: String(routedRow.active_remote_service_id),
+      rateUsd: Number(routedRow.base_rate_usd || 0),
       rank: 1,
     });
     seenProviders.add(String(routedRow.active_provider_id));
   }
 
-  // Fallback queue (Ranks 2, 3, 4)
-  const queue = Array.isArray(routedRow.fallback_queue) ? routedRow.fallback_queue : [];
+  // Fallback queue (remaining providers in ascending rate order)
   for (const item of queue) {
     const pId = String(item.providerId || "");
     const rId = String(item.remoteServiceId || "");
@@ -132,6 +185,7 @@ export async function dispatchOrderWithFailover(
       candidateList.push({
         providerId: pId,
         remoteServiceId: rId,
+        rateUsd: Number(item.rateUsd || 0),
         rank: candidateList.length + 1,
       });
       seenProviders.add(pId);
@@ -147,6 +201,22 @@ export async function dispatchOrderWithFailover(
       continue;
     }
 
+    // Margin Protection check:
+    // If this candidate's rate exceeds the maximum allowed wholesale cost, skip it
+    if (options?.maxAllowedCostUsd != null && candidate.rateUsd != null && candidate.rateUsd > options.maxAllowedCostUsd) {
+      console.warn(`[Order Dispatch Margin Protection] Skipping provider ${provider.name} (Rate $${candidate.rateUsd}/k exceeds max allowed wholesale cost $${options.maxAllowedCostUsd}/k)`);
+      failoverAttempts.push({
+        providerId: provider.id,
+        providerName: provider.name,
+        remoteServiceId: candidate.remoteServiceId,
+        rateUsd: candidate.rateUsd,
+        success: false,
+        error: `Skipped by Margin Protection: Provider cost ($${candidate.rateUsd}/k) exceeds retail pricing.`,
+        timestamp: new Date().toISOString(),
+      });
+      continue;
+    }
+
     try {
       console.log(`[Order Dispatch] Attempting provider ${provider.name} (Service ID: ${candidate.remoteServiceId})...`);
       const res = await submitProviderOrder(provider, candidate.remoteServiceId, link, quantity);
@@ -156,6 +226,7 @@ export async function dispatchOrderWithFailover(
           providerId: provider.id,
           providerName: provider.name,
           remoteServiceId: candidate.remoteServiceId,
+          rateUsd: candidate.rateUsd,
           success: true,
           orderId: res.orderId,
           timestamp: new Date().toISOString(),
@@ -182,6 +253,7 @@ export async function dispatchOrderWithFailover(
         providerId: provider.id,
         providerName: provider.name,
         remoteServiceId: candidate.remoteServiceId,
+        rateUsd: candidate.rateUsd,
         success: false,
         error: errMsg,
         timestamp: new Date().toISOString(),

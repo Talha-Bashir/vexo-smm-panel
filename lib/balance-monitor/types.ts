@@ -30,6 +30,8 @@ export interface BalanceMonitorSummary {
     name: string;
     status: "ok" | "error";
     balance?: string;
+    balanceRaw?: number;
+    currency?: string;
     alertLevel: AlertLevel;
     notificationSent: boolean;
     error?: string;

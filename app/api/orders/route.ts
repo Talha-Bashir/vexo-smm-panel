@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/request-user";
 import { db } from "@/lib/db";
 import { ensureWalletSchema } from "@/lib/wallet";
-import { getRizviOrderStatus } from "@/lib/rizvi";
+import { syncOrders } from "@/lib/order-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +15,17 @@ export async function GET() {
 
     await ensureWalletSchema();
 
+    // Automatically synchronize active non-final orders for this user
+    try {
+      await syncOrders({ userId: user.id, limit: 10, minAgeSeconds: 10 });
+    } catch (syncErr) {
+      console.warn("[OrdersAPI] Auto-sync non-fatal warning:", syncErr);
+    }
+
     const result = await db.query(
       `SELECT id, provider_order_id, service_id, service_name, platform, link,
               quantity, COALESCE(rate_pkr, rate, 0) AS rate_pkr, charge_pkr, status,
-              failure_reason, created_at, updated_at
+              failure_reason, start_count, remains, created_at, updated_at
        FROM vexo_orders
        WHERE user_id = $1
        ORDER BY created_at DESC
@@ -37,6 +44,8 @@ export async function GET() {
       rate: Number(r.rate_pkr),
       charge: Number(r.charge_pkr),
       status: r.status,
+      startCount: r.start_count != null && String(r.start_count).trim() !== "" ? String(r.start_count).trim() : null,
+      remains: r.remains != null && String(r.remains).trim() !== "" ? String(r.remains).trim() : null,
       failureReason: r.failure_reason,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
@@ -61,45 +70,14 @@ export async function POST() {
 
     await ensureWalletSchema();
 
-    // Select recent orders that can have updated status
-    const pendingResult = await db.query(
-      `SELECT id, provider_order_id, status
-       FROM vexo_orders
-       WHERE user_id = $1
-         AND provider_order_id IS NOT NULL
-         AND status IN ('Pending', 'Processing', 'In progress', 'In Progress')
-       ORDER BY created_at DESC
-       LIMIT 20`,
-      [user.id]
-    );
-
-    for (const row of pendingResult.rows) {
-      try {
-        const providerStatus = await getRizviOrderStatus(String(row.provider_order_id));
-        const statusObj = typeof providerStatus === "object" && providerStatus !== null
-          ? (providerStatus as Record<string, unknown>)
-          : null;
-
-        const newStatus = statusObj?.status ? String(statusObj.status).trim() : "";
-        if (newStatus && newStatus.toLowerCase() !== String(row.status).toLowerCase()) {
-          const normalized =
-            newStatus.charAt(0).toUpperCase() + newStatus.slice(1).toLowerCase();
-
-          await db.query(
-            `UPDATE vexo_orders SET status = $1, updated_at = NOW() WHERE id = $2`,
-            [normalized, row.id]
-          );
-        }
-      } catch (checkError) {
-        console.warn(`Could not sync status for order ${row.id}:`, checkError);
-      }
-    }
+    // Synchronize recent orders across all active providers with full refund handling
+    await syncOrders({ userId: user.id, limit: 20, minAgeSeconds: 0 });
 
     // Return the updated list
     const result = await db.query(
       `SELECT id, provider_order_id, service_id, service_name, platform, link,
               quantity, COALESCE(rate_pkr, rate, 0) AS rate_pkr, charge_pkr, status,
-              failure_reason, created_at, updated_at
+              failure_reason, start_count, remains, created_at, updated_at
        FROM vexo_orders
        WHERE user_id = $1
        ORDER BY created_at DESC
@@ -118,6 +96,8 @@ export async function POST() {
       rate: Number(r.rate_pkr),
       charge: Number(r.charge_pkr),
       status: r.status,
+      startCount: r.start_count != null && String(r.start_count).trim() !== "" ? String(r.start_count).trim() : null,
+      remains: r.remains != null && String(r.remains).trim() !== "" ? String(r.remains).trim() : null,
       failureReason: r.failure_reason,
       createdAt: r.created_at,
       updatedAt: r.updated_at,

@@ -7,6 +7,7 @@ import {
   ProviderConfig,
 } from "@/lib/providers";
 import { getLiveUsdToPkrRate } from "@/lib/exchange-rate";
+import { generateServiceDescription, sanitizeServiceDescription } from "@/lib/service-descriptions";
 
 const USD_TO_PKR = Number(process.env.USD_TO_PKR || "278.0");
 const DEFAULT_MARKUP = Number(process.env.VEXO_MARKUP || "0.07"); // 7% profit margin
@@ -24,17 +25,28 @@ export interface ServiceQuote {
   refill: boolean;
   cancel: boolean;
   isGuaranteed: boolean;
+  description?: string;
 }
 
-export function detectGuarantee(name: string, category: string, refillFlag?: boolean): boolean {
-  const text = `${name} ${category}`.toLowerCase();
+export function normalizeDashes(str: string): string {
+  return (str || "").replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-");
+}
 
-  // Exclude explicitly non-guaranteed or no-refill services
-  const noRefillPattern = /no refill|no-refill|drop 100%|drop: 100%|no guarantee|non-guaranteed|without refill|no drop 0%|drop high/i;
-  if (noRefillPattern.test(text)) {
+export const NO_REFILL_PATTERN =
+  /no[\s-]*refill|without[\s-]*refill|refill[\s:]*no|refill[\s:]*0|0%[\s-]*refill|drop[\s-]*100%|100%[\s-]*drop|drop[\s-]*able|dropable|high[\s-]*drop|drop[\s-]*high|no[\s-]*guarantee|non[\s-]*guaranteed|not[\s-]*guaranteed|can[\s-]*drop|drop[\s-]*possible/i;
+
+export function isDropOrNoRefill(name: string, category: string = "", description: string = ""): boolean {
+  const text = normalizeDashes(`${name} ${category} ${description}`);
+  return NO_REFILL_PATTERN.test(text);
+}
+
+export function detectGuarantee(name: string, category: string, refillFlag?: boolean, description?: string): boolean {
+  // CRITICAL: Any service marked drop-able, 100% drop, or no-refill is NEVER guaranteed.
+  if (isDropOrNoRefill(name, category, description)) {
     return false;
   }
 
+  const text = normalizeDashes(`${name} ${category}`);
   // Include guaranteed indicators
   const guaranteePattern = /refill|guarantee|guaranteed|non-drop|non drop|r30|r60|r90|r365|lifetime|permanent/i;
   return Boolean(refillFlag || guaranteePattern.test(text));
@@ -218,6 +230,7 @@ export async function syncAllProvidersAndRoute(): Promise<SyncStats> {
       cancel: boolean;
       isGuaranteed: boolean;
       groupKey: string;
+      description?: string;
     }> = [];
 
     for (const [providerId, rawServices] of providerServicesMap.entries()) {
@@ -235,11 +248,14 @@ export async function syncAllProvidersAndRoute(): Promise<SyncStats> {
         const rateUsd = Math.round(rawRate * 1000000) / 1000000;
         const min = Math.max(1, Math.min(Number(item.min || 1), 2000000000));
         const max = Math.max(min, Math.min(Number(item.max || 100000), 2147483647));
-        const refill = Boolean(item.refill);
+        const description = sanitizeServiceDescription(String(item.desc || item.description || "").trim());
+        const rawRefill = Boolean(item.refill);
+        const isDrop = isDropOrNoRefill(name, category, description);
+        const refill = isDrop ? false : rawRefill;
         const cancel = Boolean(item.cancel);
 
         const platform = detectPlatform(name, category);
-        const isGuaranteed = detectGuarantee(name, category, refill);
+        const isGuaranteed = isDrop ? false : detectGuarantee(name, category, refill, description);
         const groupKey = generateGroupKey(platform, name, category, type, min, max, isGuaranteed);
 
         allRawRows.push({
@@ -255,6 +271,7 @@ export async function syncAllProvidersAndRoute(): Promise<SyncStats> {
           cancel,
           isGuaranteed,
           groupKey,
+          description,
         });
       }
     }
@@ -266,13 +283,13 @@ export async function syncAllProvidersAndRoute(): Promise<SyncStats> {
       const params: unknown[] = [];
       let pIdx = 1;
       for (const r of batch) {
-        valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11})`);
-        params.push(r.providerId, r.remoteServiceId, r.name, r.type, r.category, r.rateUsd, r.min, r.max, r.refill, r.cancel, r.isGuaranteed, r.groupKey);
-        pIdx += 12;
+        valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12})`);
+        params.push(r.providerId, r.remoteServiceId, r.name, r.type, r.category, r.rateUsd, r.min, r.max, r.refill, r.cancel, r.isGuaranteed, r.groupKey, r.description);
+        pIdx += 13;
       }
       await client.query(
         `INSERT INTO vexo_provider_services
-         (provider_id, remote_service_id, name, type, category, rate_usd, min, max, refill, cancel, is_guaranteed, service_group_key)
+         (provider_id, remote_service_id, name, type, category, rate_usd, min, max, refill, cancel, is_guaranteed, service_group_key, description)
          VALUES ${valClauses.join(", ")}
          ON CONFLICT (provider_id, remote_service_id) DO UPDATE SET
            name = EXCLUDED.name,
@@ -285,6 +302,7 @@ export async function syncAllProvidersAndRoute(): Promise<SyncStats> {
            cancel = EXCLUDED.cancel,
            is_guaranteed = EXCLUDED.is_guaranteed,
            service_group_key = EXCLUDED.service_group_key,
+           description = EXCLUDED.description,
            updated_at = NOW()`,
         params
       );
@@ -322,7 +340,7 @@ export async function runLeastCostRouting(): Promise<number> {
   // 2. Fetch all raw services grouped by service_group_key
   const allServicesRes = await db.query(
     `SELECT ps.id, ps.provider_id, p.name as provider_name, ps.remote_service_id, ps.name, ps.type, ps.category,
-            ps.rate_usd, ps.min, ps.max, ps.refill, ps.cancel, ps.is_guaranteed, ps.service_group_key
+            ps.rate_usd, ps.min, ps.max, ps.refill, ps.cancel, ps.is_guaranteed, ps.service_group_key, ps.description
      FROM vexo_provider_services ps
      JOIN vexo_providers p ON p.id = ps.provider_id
      WHERE p.enabled = true AND ps.rate_usd > 0
@@ -347,6 +365,7 @@ export async function runLeastCostRouting(): Promise<number> {
       refill: Boolean(row.refill),
       cancel: Boolean(row.cancel),
       isGuaranteed: Boolean(row.is_guaranteed),
+      description: String(row.description || "").trim(),
     });
   }
 
@@ -448,15 +467,20 @@ export async function runLeastCostRouting(): Promise<number> {
     // Calculate retail PKR price with multiplier and markup
     const ratePkr = Math.round(baseRateUsd * liveUsdToPkr * rateMultiplier * 10000) / 10000;
 
+    // Check if the selected service is drop-able or no-refill
+    const isServiceDrop = isDropOrNoRefill(selectedQuote.name, selectedQuote.category, selectedQuote.description);
+    const finalGuaranteed = isServiceDrop ? false : isGuaranteed;
+    const finalRefill = isServiceDrop ? false : selectedQuote.refill;
+
     // Generate user-facing clean title
-    const cleanTitle = generateDisplayTitle(platform, groupKey, isGuaranteed, selectedQuote.name);
+    const cleanTitle = generateDisplayTitle(platform, groupKey, finalGuaranteed, selectedQuote.name);
 
     routedItems.push({
       cleanTitle,
       platform,
       category: String(selectedQuote.category || platform || "General").trim(),
       groupKey,
-      isGuaranteed,
+      isGuaranteed: finalGuaranteed,
       autoRoute,
       activeProviderId,
       activeRemoteServiceId,
@@ -465,12 +489,23 @@ export async function runLeastCostRouting(): Promise<number> {
       ratePkr,
       min: selectedQuote.min,
       max: selectedQuote.max,
-      refill: selectedQuote.refill,
+      refill: finalRefill,
       cancel: selectedQuote.cancel,
       enabled,
       popular,
       fallbackQueue,
       providerRatesObj,
+      description:
+        sanitizeServiceDescription(String(selectedQuote.description || "").trim()) ||
+        generateServiceDescription({
+          name: cleanTitle,
+          platform,
+          category: String(selectedQuote.category || platform || "General").trim(),
+          min: Number(selectedQuote.min || 10),
+          max: Number(selectedQuote.max || 100000),
+          isGuaranteed: finalGuaranteed,
+          refill: finalRefill,
+        }),
     });
   }
 
@@ -482,7 +517,7 @@ export async function runLeastCostRouting(): Promise<number> {
     const params: unknown[] = [];
     let pIdx = 1;
     for (const r of chunk) {
-      valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18})`);
+      valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18}, $${pIdx+19})`);
       params.push(
         r.cleanTitle,
         r.platform,
@@ -502,14 +537,15 @@ export async function runLeastCostRouting(): Promise<number> {
         r.enabled,
         r.popular,
         JSON.stringify(r.fallbackQueue),
-        JSON.stringify(r.providerRatesObj)
+        JSON.stringify(r.providerRatesObj),
+        r.description
       );
-      pIdx += 19;
+      pIdx += 20;
     }
 
     await db.query(
       `INSERT INTO vexo_routed_services
-       (name, platform, category, service_group_key, is_guaranteed, auto_route, active_provider_id, active_remote_service_id, base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel, enabled, popular, fallback_queue, provider_rates)
+       (name, platform, category, service_group_key, is_guaranteed, auto_route, active_provider_id, active_remote_service_id, base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel, enabled, popular, fallback_queue, provider_rates, description)
        VALUES ${valClauses.join(", ")}
        ON CONFLICT (service_group_key) DO UPDATE SET
          name = EXCLUDED.name,
@@ -527,6 +563,7 @@ export async function runLeastCostRouting(): Promise<number> {
          enabled = EXCLUDED.enabled,
          fallback_queue = EXCLUDED.fallback_queue,
          provider_rates = EXCLUDED.provider_rates,
+         description = EXCLUDED.description,
          updated_at = NOW()`,
       params
     );

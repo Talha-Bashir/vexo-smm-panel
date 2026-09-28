@@ -2,6 +2,8 @@ import { checkAllProviderBalances } from "./providers";
 import { processProviderAlert } from "./alerts";
 import { BalanceMonitorSummary, ProviderBalanceResult } from "./types";
 
+import { db } from "@/lib/db";
+
 export * from "./types";
 export * from "./telegram";
 export * from "./providers";
@@ -20,6 +22,18 @@ export async function runBalanceMonitoring(): Promise<BalanceMonitorSummary> {
 
   const processedResults: ProviderBalanceResult[] = [];
   for (const check of checkResults) {
+    if (check.success && check.balance !== undefined && !Number.isNaN(check.balance)) {
+      try {
+        await db.query(
+          `UPDATE vexo_providers
+           SET balance_usd = $1, last_sync_at = NOW()
+           WHERE id = $2`,
+          [check.balance, check.id]
+        );
+      } catch {
+        // Non-blocking
+      }
+    }
     const processed = await processProviderAlert(check);
     processedResults.push(processed);
   }
@@ -40,6 +54,8 @@ export async function runBalanceMonitoring(): Promise<BalanceMonitorSummary> {
       name: r.name,
       status: r.success ? "ok" : "error",
       balance: r.balance !== undefined ? `${r.currency || "USD"} ${r.balance.toFixed(2)}` : undefined,
+      balanceRaw: r.balance !== undefined ? r.balance : undefined,
+      currency: r.currency || "USD",
       alertLevel: r.alertLevel,
       notificationSent: r.notificationSent,
       error: r.error,

@@ -72,6 +72,11 @@ export default function Admin() {
   const [subAdmins, setSubAdmins] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [providerBalances, setProviderBalances] = useState<any[]>([]);
+  const [balancesLoading, setBalancesLoading] = useState(false);
+  const [balancesLastChecked, setBalancesLastChecked] = useState<string | null>(null);
+  const [balancesError, setBalancesError] = useState<string | null>(null);
+  const [syncingOrders, setSyncingOrders] = useState(false);
 
   async function api(url: string, init?: RequestInit) {
     const r = await fetch(url, { ...init, credentials: "include", cache: "no-store" });
@@ -80,10 +85,42 @@ export default function Admin() {
     return d;
   }
 
+  async function handleSyncAllOrders() {
+    setSyncingOrders(true);
+    try {
+      const res = await api("/api/cron/sync-orders", { method: "POST" });
+      await load();
+      alert(`✓ Order sync complete: ${res.totalChecked || 0} active orders checked, ${res.updatedCount || 0} updated.`);
+    } catch (e) {
+      alert("Order sync warning: " + (e instanceof Error ? e.message : "Sync failed"));
+    } finally {
+      setSyncingOrders(false);
+    }
+  }
+
+  async function fetchProviderBalances() {
+    setBalancesLoading(true);
+    setBalancesError(null);
+    try {
+      const res = await api("/api/admin/check-balances");
+      if (res?.providers) {
+        setProviderBalances(res.providers);
+        setBalancesLastChecked(new Date().toLocaleTimeString());
+      }
+    } catch (e) {
+      setBalancesError(e instanceof Error ? e.message : "Failed to load live balances");
+    } finally {
+      setBalancesLoading(false);
+    }
+  }
+
   async function load() {
     setError("");
     try {
-      if (tab === "Dashboard") setStats((await api("/api/admin/overview")).stats);
+      if (tab === "Dashboard") {
+        setStats((await api("/api/admin/overview")).stats);
+        fetchProviderBalances().catch(() => {});
+      }
       if (tab === "Users") setUsers((await api(`/api/admin/users?q=${encodeURIComponent(userQ)}`)).users);
       if (tab === "Deposits") setDeposits((await api("/api/admin/deposits")).deposits || []);
       if (tab === "Orders") setOrders((await api(`/api/admin/orders?q=${encodeURIComponent(orderQ)}&status=${encodeURIComponent(orderStatus)}`)).orders);
@@ -95,6 +132,7 @@ export default function Admin() {
         setServices(sData.services);
         setProviders(pData.providers || []);
         if (sData.usd_to_pkr) setUsdToPkr(Number(sData.usd_to_pkr));
+        fetchProviderBalances().catch(() => {});
       }
       if (tab === "Withdrawals") setWithdrawals((await api("/api/admin/referrals")).withdrawals);
       if (tab === "Tickets") setTickets((await api("/api/admin/tickets")).tickets);
@@ -405,9 +443,13 @@ export default function Admin() {
     <main className="min-h-screen bg-[#07100f] text-white">
       <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
         <header className="mb-5 flex flex-col gap-4 rounded-3xl border border-white/10 bg-[#0d171a] p-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-black uppercase tracking-[.25em] text-[#baff00]">VEXARO CONTROL CENTER</p>
+          <div className="flex items-center gap-4">
+            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_24px_rgba(186,255,0,0.3)] border border-[#baff00]/30">
+              <img src="/logo.png" alt="VEXARO" className="h-full w-full object-cover" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-black uppercase tracking-[.25em] text-[#baff00]">VEXARO CONTROL CENTER</p>
               {currentUser?.is_super_admin ? (
                 <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
                   👑 SUPER ADMIN
@@ -427,7 +469,22 @@ export default function Admin() {
                 : "Authorized management portal: manage your assigned orders, tickets, and tasks."}
             </p>
           </div>
-          <div className="flex gap-2">
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const order = ["dark", "light", "midnight", "purple"];
+                const cur = document.documentElement.getAttribute("data-theme") || "dark";
+                const next = order[(order.indexOf(cur) + 1) % order.length];
+                document.documentElement.setAttribute("data-theme", next);
+                try { localStorage.setItem("vexo_platform_theme", next); } catch {}
+              }}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm font-bold text-slate-300 hover:border-[#baff00]/40 hover:text-white transition"
+              title="Cycle Platform Theme (Dark / Light / Midnight / Purple)"
+            >
+              🎨 Switch Theme
+            </button>
             <a href="/" className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold hover:border-[#baff00]/40 transition">
               Open site
             </a>
@@ -460,7 +517,17 @@ export default function Admin() {
 
         {error && <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
 
-        {tab === "Dashboard" && <Dashboard stats={stats} setTab={setTab} />}
+        {tab === "Dashboard" && (
+          <Dashboard
+            stats={stats}
+            setTab={setTab}
+            balances={providerBalances}
+            balancesLoading={balancesLoading}
+            balancesLastChecked={balancesLastChecked}
+            balancesError={balancesError}
+            onRefreshBalances={fetchProviderBalances}
+          />
+        )}
         {tab === "Users" && <Users users={users} q={userQ} setQ={setUserQ} reload={load} wallet={wallet} grantBonus={grantBonus} resetPass={resetUserPassword} busy={busy} />}
         {tab === "Deposits" && (
           <DepositsAdmin
@@ -474,7 +541,19 @@ export default function Admin() {
             setFilter={setDepositFilter}
           />
         )}
-        {tab === "Orders" && <Orders orders={orders} q={orderQ} setQ={setOrderQ} status={orderStatus} setStatus={setOrderStatus} reload={load} update={updateOrderStatus} />}
+        {tab === "Orders" && (
+          <Orders
+            orders={orders}
+            q={orderQ}
+            setQ={setOrderQ}
+            status={orderStatus}
+            setStatus={setOrderStatus}
+            reload={load}
+            update={updateOrderStatus}
+            syncing={syncingOrders}
+            onSync={handleSyncAllOrders}
+          />
+        )}
         {tab === "Withdrawals" && <Withdrawals withdrawals={withdrawals} reload={load} update={updateWithdrawal} busy={busy} />}
         {tab === "Services" && (
           <Services
@@ -489,6 +568,11 @@ export default function Admin() {
             usdToPkr={usdToPkr}
             reload={load}
             api={api}
+            balances={providerBalances}
+            balancesLoading={balancesLoading}
+            balancesLastChecked={balancesLastChecked}
+            balancesError={balancesError}
+            onRefreshBalances={fetchProviderBalances}
           />
         )}
         {tab === "Subscriptions" && (
@@ -518,7 +602,185 @@ export default function Admin() {
   );
 }
 
-function Dashboard({ stats, setTab }: { stats: any; setTab: (t: Tab) => void }) {
+function parseNumericBalance(val: any): number | null {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "number") return Number.isFinite(val) ? val : null;
+  if (typeof val === "string") {
+    const cleaned = val.replace(/[^0-9.-]/g, "").trim();
+    if (!cleaned) return null;
+    const num = parseFloat(cleaned);
+    return Number.isFinite(num) ? num : null;
+  }
+  return null;
+}
+
+function ProviderBalancesWidget({
+  balances,
+  loading,
+  lastChecked,
+  error,
+  onRefresh,
+}: {
+  balances: any[];
+  loading: boolean;
+  lastChecked: string | null;
+  error: string | null;
+  onRefresh: () => void;
+}) {
+  const defaultList = [
+    { id: "pak_smm", name: "PAK SMM Panels", url: "paksmmpanels.com" },
+    { id: "smooth_smm", name: "Smooth SMM", url: "smoothsmm.com" },
+    { id: "am_smm", name: "AM SMM Panel", url: "amsmmpanel.com" },
+    { id: "pakistan_smm", name: "Pakistan SMM Panel", url: "pakistansmmpanel.pk" },
+    { id: "rizvi_smm", name: "Rizvi SMM Panels", url: "rizvismmpanels.com" },
+    { id: "ggsoma_bot", name: "GGSoma Partner Bot", url: "Partner API" },
+  ];
+
+  const balanceMap = useMemo(() => {
+    const map = new Map<string, any>();
+    balances.forEach((b) => map.set(b.id, b));
+    return map;
+  }, [balances]);
+
+  return (
+    <section className={card + " overflow-hidden p-5"}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚡</span>
+            <h3 className="text-base font-black text-white">Upstream Provider Balances</h3>
+            <span className="rounded-full bg-[#baff00]/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-[#cfff62]">
+              Live Monitor
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs text-slate-400">
+            Real-time balance monitoring across all 6 SMM providers with automated low-balance alerts.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {lastChecked && (
+            <span className="text-[11px] text-slate-400">
+              Checked: <span className="font-mono text-slate-300">{lastChecked}</span>
+            </span>
+          )}
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#baff00] px-3.5 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer"
+          >
+            {loading ? (
+              <>
+                <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-25" />
+                  <path d="M4 12a8 8 0 0 1 8-8" strokeWidth="4" className="opacity-75" />
+                </svg>
+                Checking...
+              </>
+            ) : (
+              <>
+                <span>↻</span>
+                Refresh Balances
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-300">
+          ⚠️ Balance Check Warning: {error}
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+        {defaultList.map((dp) => {
+          const live = balanceMap.get(dp.id);
+          const numBal = parseNumericBalance(live?.balanceRaw ?? live?.balance);
+
+          let badgeClass = "bg-white/5 text-slate-400";
+          let dotClass = "bg-slate-500";
+          let statusText = "WAITING";
+
+          if (loading && !live) {
+            statusText = "CHECKING...";
+            badgeClass = "bg-blue-500/10 text-blue-400";
+            dotClass = "bg-blue-400 animate-pulse";
+          } else if (live?.alertLevel === "CRITICAL") {
+            statusText = "CRITICAL (<$5)";
+            badgeClass = "bg-red-500/15 text-red-400 border border-red-500/30";
+            dotClass = "bg-red-400 animate-ping";
+          } else if (live?.alertLevel === "LOW") {
+            statusText = "LOW (<$15)";
+            badgeClass = "bg-amber-500/15 text-amber-300 border border-amber-500/30";
+            dotClass = "bg-amber-400";
+          } else if (live?.alertLevel === "NORMAL" || (numBal !== null && numBal > 15)) {
+            statusText = "NORMAL";
+            badgeClass = "bg-emerald-500/15 text-emerald-400";
+            dotClass = "bg-emerald-400";
+          } else if (live?.status === "error") {
+            statusText = "OFFLINE";
+            badgeClass = "bg-rose-500/10 text-rose-400";
+            dotClass = "bg-rose-500";
+          }
+
+          return (
+            <div
+              key={dp.id}
+              className="rounded-xl border border-white/5 bg-[#0b1418] p-3.5 flex flex-col justify-between transition hover:border-[#baff00]/30 min-w-0"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-1.5">
+                  <span className="text-xs font-black text-slate-200 line-clamp-1 leading-snug" title={dp.name}>
+                    {dp.name}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold shrink-0 ${badgeClass}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dotClass}`} />
+                    {statusText}
+                  </span>
+                </div>
+                <p className="mt-2 text-xl font-black text-white">
+                  {numBal !== null ? `$${numBal.toFixed(2)}` : live?.status === "error" ? "Error" : "—"}
+                  {numBal !== null && <span className="ml-1 text-[10px] font-normal text-slate-500">USD</span>}
+                </p>
+                {live?.status === "error" && live?.error && (
+                  <p className="mt-1 text-[10px] text-rose-400/90 line-clamp-1" title={live.error}>
+                    {live.error}
+                  </p>
+                )}
+              </div>
+              <div className="mt-2 border-t border-white/5 pt-2 flex items-center justify-between text-[10px] text-slate-500">
+                <span className="truncate font-mono">{dp.url}</span>
+                {live?.thresholds && (
+                  <span title={`Thresholds: Critical <$${live.thresholds.critical}, Low <$${live.thresholds.low}`}>
+                    &lt;${live.thresholds.low}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function Dashboard({
+  stats,
+  setTab,
+  balances,
+  balancesLoading,
+  balancesLastChecked,
+  balancesError,
+  onRefreshBalances,
+}: {
+  stats: any;
+  setTab: (t: Tab) => void;
+  balances: any[];
+  balancesLoading: boolean;
+  balancesLastChecked: string | null;
+  balancesError: string | null;
+  onRefreshBalances: () => void;
+}) {
   const [cleaning, setCleaning] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [cleanReport, setCleanReport] = useState<any>(null);
@@ -577,6 +839,16 @@ function Dashboard({ stats, setTab }: { stats: any; setTab: (t: Tab) => void }) 
             <p className="mt-3 text-2xl font-black">{b}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-5">
+        <ProviderBalancesWidget
+          balances={balances}
+          loading={balancesLoading}
+          lastChecked={balancesLastChecked}
+          error={balancesError}
+          onRefresh={onRefreshBalances}
+        />
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
@@ -1070,10 +1342,30 @@ function DepositsAdmin({
   );
 }
 
-function Orders({ orders, q, setQ, status, setStatus, reload, update }: { orders: any[]; q: string; setQ: (v: string) => void; status: string; setStatus: (v: string) => void; reload: () => void; update: (id: string, s: string) => void }) {
+function Orders({
+  orders,
+  q,
+  setQ,
+  status,
+  setStatus,
+  reload,
+  update,
+  syncing,
+  onSync,
+}: {
+  orders: any[];
+  q: string;
+  setQ: (v: string) => void;
+  status: string;
+  setStatus: (v: string) => void;
+  reload: () => void;
+  update: (id: string, s: string) => void;
+  syncing?: boolean;
+  onSync?: () => void;
+}) {
   return (
     <section className={card + " overflow-hidden"}>
-      <div className="flex flex-col gap-3 border-b border-white/10 p-5 md:flex-row">
+      <div className="flex flex-col gap-3 border-b border-white/10 p-5 md:flex-row md:items-center">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -1087,15 +1379,37 @@ function Orders({ orders, q, setQ, status, setStatus, reload, update }: { orders
             <option key={x}>{x}</option>
           ))}
         </select>
-        <button onClick={reload} className="rounded-xl bg-[#baff00] px-4 text-sm font-black text-[#07100f]">
+        <button onClick={reload} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/10 transition">
           Search
         </button>
+        {onSync && (
+          <button
+            onClick={onSync}
+            disabled={syncing}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#baff00] px-4 py-2.5 text-sm font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer"
+          >
+            {syncing ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-25" />
+                  <path d="M4 12a8 8 0 0 1 8-8" strokeWidth="4" className="opacity-75" />
+                </svg>
+                Syncing...
+              </>
+            ) : (
+              <>
+                <span>🔄</span>
+                Sync Orders Now
+              </>
+            )}
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-[1200px] w-full text-left">
           <thead className="bg-[#0b1418] text-xs uppercase text-slate-500">
             <tr>
-              {["Order", "User", "Service", "Qty", "Charge", "Status", "Date & Time", "Action"].map((x) => (
+              {["Order", "User", "Service", "Link", "Qty", "Charge", "Start", "Remains", "Status", "Date & Time", "Action"].map((x) => (
                 <th key={x} className="px-5 py-4">{x}</th>
               ))}
             </tr>
@@ -1108,12 +1422,33 @@ function Orders({ orders, q, setQ, status, setStatus, reload, update }: { orders
                   <p className="text-[10px] text-slate-500 font-mono">{o.id}</p>
                 </td>
                 <td className="px-5 py-4 text-sm">{o.email || "Guest"}</td>
-                <td className="max-w-[300px] px-5 py-4 text-sm">
-                  {o.serviceName}
+                <td className="max-w-[260px] px-5 py-4 text-sm">
+                  <div className="line-clamp-2" title={o.serviceName}>{o.serviceName}</div>
                   <p className="text-xs text-slate-500">ID {o.serviceId}</p>
+                </td>
+                <td className="max-w-[220px] px-5 py-4 text-xs">
+                  {o.link ? (
+                    <a
+                      href={o.link.startsWith("http") ? o.link : `https://${o.link}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate text-[#baff00] hover:underline"
+                      title={o.link}
+                    >
+                      {o.link}
+                    </a>
+                  ) : (
+                    <span className="text-slate-600">—</span>
+                  )}
                 </td>
                 <td className="px-5 py-4">{o.quantity.toLocaleString()}</td>
                 <td className="px-5 py-4 font-black">{money(o.chargePkr)}</td>
+                <td className="px-5 py-4 font-mono text-xs text-slate-300">
+                  {o.startCount != null && String(o.startCount).trim() !== "" ? o.startCount : "—"}
+                </td>
+                <td className="px-5 py-4 font-mono text-xs text-slate-300">
+                  {o.remains != null && String(o.remains).trim() !== "" ? o.remains : "—"}
+                </td>
                 <td className="px-5 py-4"><Badge>{o.status}</Badge></td>
                 <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-400">
                   <p className="font-semibold text-slate-300">{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</p>
@@ -1152,6 +1487,11 @@ function Services({
   usdToPkr,
   reload,
   api,
+  balances,
+  balancesLoading,
+  balancesLastChecked,
+  balancesError,
+  onRefreshBalances,
 }: {
   services: any[];
   setServices: React.Dispatch<React.SetStateAction<any[]>>;
@@ -1164,6 +1504,11 @@ function Services({
   usdToPkr: number;
   reload: () => Promise<void>;
   api: (url: string, init?: RequestInit) => Promise<any>;
+  balances: any[];
+  balancesLoading: boolean;
+  balancesLastChecked: string | null;
+  balancesError: string | null;
+  onRefreshBalances: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("All");
@@ -1194,20 +1539,6 @@ function Services({
       );
     });
   }, [services, search, selectedPlatform, autoRouteFilter]);
-
-  const defaultProviders = [
-    { id: "pak_smm", name: "PAK SMM Panels", url: "paksmmpanels.com", currency: "USD" },
-    { id: "smooth_smm", name: "Smooth SMM", url: "smoothsmm.com", currency: "USD" },
-    { id: "am_smm", name: "AM SMM Panel", url: "amsmmpanel.com", currency: "USD" },
-    { id: "pakistan_smm", name: "Pakistan SMM Panel", url: "pakistansmmpanel.pk", currency: "USD" },
-    { id: "rizvi_smm", name: "Rizvi SMM Panels", url: "rizvismmpanels.com", currency: "USD" },
-  ];
-
-  const providerMap = useMemo(() => {
-    const map = new Map();
-    providers.forEach((p) => map.set(p.id, p));
-    return map;
-  }, [providers]);
 
   async function handleBulkMultiplier() {
     const val = Number(bulkMult);
@@ -1241,33 +1572,13 @@ function Services({
   return (
     <div className="space-y-5">
       {/* 1. Live Upstream Provider Balance Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {defaultProviders.map((dp) => {
-          const live = providerMap.get(dp.id);
-          const bal = live ? Number(live.balanceUsd || 0) : 0;
-          const count = live ? Number(live.serviceCount || 0) : 0;
-          const isFunded = bal > 0.05;
-
-          return (
-            <div key={dp.id} className={card + " relative overflow-hidden p-5 transition hover:border-[#baff00]/30"}>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-slate-400">{dp.name}</span>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${isFunded ? "bg-emerald-500/10 text-emerald-400" : "bg-white/5 text-slate-400"}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${isFunded ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
-                  {isFunded ? "FUNDED" : "CONNECTED"}
-                </span>
-              </div>
-              <p className="mt-3 text-2xl font-black text-white">
-                ${bal.toFixed(4)} <span className="text-xs font-normal text-slate-500">{dp.currency}</span>
-              </p>
-              <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                <span>{count.toLocaleString()} services</span>
-                <span className="font-mono text-[10px] text-slate-500">{dp.url}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <ProviderBalancesWidget
+        balances={balances}
+        loading={balancesLoading}
+        lastChecked={balancesLastChecked}
+        error={balancesError}
+        onRefresh={onRefreshBalances}
+      />
 
       {/* 2. Rates Matrix Controls & Sync Bar */}
       <section className={card + " overflow-hidden"}>
@@ -2675,57 +2986,54 @@ function SubAdminsView({
 function AppearanceView() {
   const themes = [
     {
-      id: "cyber-lime",
-      name: "Cyber Lime (Default)",
-      desc: "Dark cosmic space background with luminous neon green accents.",
-      main: "#0a0b0e",
-      surface: "#12151c",
-      accent: "#c6ff00",
+      id: "dark",
+      name: "Cyber Dark (Default)",
+      desc: "Ultra-modern cosmic dark background with luminous neon green accents and high-contrast readability.",
+      main: "#070d0d",
+      surface: "#111a1d",
+      accent: "#baff00",
       accentText: "#07100f",
     },
     {
-      id: "midnight-blue",
-      name: "Midnight Neon Blue",
-      desc: "Deep oceanic navy background with high-impact electric cyan accents.",
-      main: "#0b0f19",
-      surface: "#111927",
-      accent: "#00e5ff",
-      accentText: "#05131a",
-    },
-    {
-      id: "cyber-crimson",
-      name: "Cyber Crimson",
-      desc: "Matte carbon dark background with vivid ruby crimson accents.",
-      main: "#0d090a",
-      surface: "#171012",
-      accent: "#ff2a5f",
+      id: "light",
+      name: "Clean Light",
+      desc: "Crisp modern minimalist light pearl background with pure white cards, dark slate text, and emerald green accents.",
+      main: "#f8fafc",
+      surface: "#ffffff",
+      accent: "#10b981",
       accentText: "#ffffff",
     },
     {
-      id: "royal-purple",
-      name: "Royal Purple Dusk",
-      desc: "Futuristic dark violet background with electric purple highlights.",
-      main: "#0c0a14",
-      surface: "#161324",
-      accent: "#a855f7",
-      accentText: "#ffffff",
-    },
-    {
-      id: "clean-slate",
-      name: "Clean Slate Minimal",
-      desc: "Modern minimalist slate background with crisp sky blue accents.",
-      main: "#0f172a",
-      surface: "#1e293b",
+      id: "midnight",
+      name: "Midnight Navy",
+      desc: "Deep atmospheric space navy background with midnight blue cards, sapphire glow, and sky blue accents.",
+      main: "#060b17",
+      surface: "#0c1529",
       accent: "#38bdf8",
-      accentText: "#0f172a",
+      accentText: "#031726",
+    },
+    {
+      id: "purple",
+      name: "Neon Purple",
+      desc: "Vibrant cyberpunk twilight violet background with royal purple cards and neon magenta-lavender accents.",
+      main: "#0a0614",
+      surface: "#140d29",
+      accent: "#c084fc",
+      accentText: "#1e0836",
     },
   ];
 
-  const [activeTheme, setActiveTheme] = useState("cyber-lime");
-  const [platformDefaultTheme, setPlatformDefaultTheme] = useState("cyber-lime");
+  const [activeTheme, setActiveTheme] = useState("dark");
+  const [platformDefaultTheme, setPlatformDefaultTheme] = useState("dark");
   const [profitMargin, setProfitMargin] = useState("7");
+  const [dollarOrderMarkup, setDollarOrderMarkup] = useState("7");
+  const [liveForexRate, setLiveForexRate] = useState<number>(278.0);
   const [sadaPayNum, setSadaPayNum] = useState("03197008275");
   const [sadaPayTitle, setSadaPayTitle] = useState("Saeed Bashir");
+  const [binanceUid, setBinanceUid] = useState("1069021883");
+  const [binanceName, setBinanceName] = useState("Talha Bashir Bhatti");
+  const [binanceUsdtAddress, setBinanceUsdtAddress] = useState("0xaa3037450e112ef10406df821803522bc589821c");
+  const [binanceNetwork, setBinanceNetwork] = useState("BSC BNB Smart Chain (BEP20)");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -2740,11 +3048,25 @@ function AppearanceView() {
         if (d.success && d.settings) {
           if (d.settings.platform_theme) setPlatformDefaultTheme(d.settings.platform_theme);
           if (d.settings.global_profit_margin) setProfitMargin(d.settings.global_profit_margin);
+          if (d.settings.dollar_order_markup) setDollarOrderMarkup(d.settings.dollar_order_markup);
           if (d.settings.sadapay_number) setSadaPayNum(d.settings.sadapay_number);
           if (d.settings.sadapay_title) setSadaPayTitle(d.settings.sadapay_title);
+          if (d.settings.binance_uid) setBinanceUid(d.settings.binance_uid);
+          if (d.settings.binance_name) setBinanceName(d.settings.binance_name);
+          if (d.settings.binance_usdt_address) setBinanceUsdtAddress(d.settings.binance_usdt_address);
+          if (d.settings.binance_network) setBinanceNetwork(d.settings.binance_network);
         }
       })
       .catch((e) => console.error("Failed to load settings:", e));
+
+    fetch("/api/rates")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.rates?.USD) {
+          setLiveForexRate(Math.round(Number(d.rates.USD) * 100) / 100);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   function handlePreview(themeId: string) {
@@ -2766,8 +3088,13 @@ function AppearanceView() {
         body: JSON.stringify({
           platform_theme: activeTheme,
           global_profit_margin: profitMargin,
+          dollar_order_markup: dollarOrderMarkup,
           sadapay_number: sadaPayNum,
           sadapay_title: sadaPayTitle,
+          binance_uid: binanceUid,
+          binance_name: binanceName,
+          binance_usdt_address: binanceUsdtAddress,
+          binance_network: binanceNetwork,
         }),
       });
       const data = await res.json();
@@ -2875,10 +3202,10 @@ function AppearanceView() {
         })}
       </div>
 
-      {/* Global Profit Margin & Payment Settings */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Global Profit Margin, Dollar Price & Payment Settings */}
+      <div className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6">
-          <h3 className="text-base font-black text-white">Global Pricing Margin Engine</h3>
+          <h3 className="text-base font-black text-white">Global Profit Margin</h3>
           <p className="mt-1 text-xs text-slate-400">
             Set the platform markup percentage applied over upstream provider rates.
           </p>
@@ -2895,10 +3222,52 @@ function AppearanceView() {
                 step="1"
                 value={profitMargin}
                 onChange={(e) => setProfitMargin(e.target.value)}
-                className="w-32 rounded-xl border border-white/10 bg-[#070d0d] px-4 py-2.5 text-sm font-black text-white focus:border-[#baff00] outline-none"
+                className="w-28 rounded-xl border border-white/10 bg-[#070d0d] px-4 py-2.5 text-sm font-black text-white focus:border-[#baff00] outline-none"
               />
               <span className="text-xs text-slate-400">
-                Current markup: <strong className="text-[#baff00]">+{profitMargin}%</strong> over wholesale API cost
+                Markup: <strong className="text-[#baff00]">+{profitMargin}%</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-black text-white">Dollar Exchange Rate ($ to PKR)</h3>
+              <p className="mt-1 text-xs text-slate-400">
+                Base dollar rate is continuously auto-checked from live global forex feeds (no manual fixed rate).
+              </p>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>1 USD = ~₨{liveForexRate} PKR (Live Auto)</span>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-white/5">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Dollar Markup on Orders (%)
+            </label>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Applied strictly to service pricing &amp; orders. Adding funds / deposits uses 0% pure live market rate so users are never penalized.
+            </p>
+            <div className="mt-2 flex items-center gap-3">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={dollarOrderMarkup}
+                onChange={(e) => setDollarOrderMarkup(e.target.value)}
+                className="w-28 rounded-xl border border-white/10 bg-[#070d0d] px-4 py-2.5 text-sm font-black text-white focus:border-[#baff00] outline-none"
+              />
+              <span className="text-xs text-slate-400">
+                Order Markup: <strong className="text-[#baff00]">+{dollarOrderMarkup}%</strong>
+                {" · "}Effective Order Rate: <strong className="text-white">₨{(liveForexRate * (1 + (Number(dollarOrderMarkup) || 0) / 100)).toFixed(2)}</strong>
               </span>
             </div>
           </div>
@@ -2931,6 +3300,79 @@ function AppearanceView() {
                 value={sadaPayTitle}
                 onChange={(e) => setSadaPayTitle(e.target.value)}
                 className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs font-bold text-white focus:border-[#baff00] outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#F0B90B]/30 bg-[#111a1d] p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0B90B]/15 text-lg font-black text-[#F0B90B] ring-1 ring-[#F0B90B]/30">
+                🟡
+              </div>
+              <div>
+                <span className="rounded-full bg-[#F0B90B]/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#F0B90B]">
+                  Global Crypto Receiver
+                </span>
+                <h3 className="text-base font-black text-white">Official Binance &amp; Crypto Receiving Account</h3>
+              </div>
+            </div>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
+              0% Fee • Spot Wallet
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            Account details and deposit addresses displayed to global customers on the Add Funds page.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Binance UID / Pay ID
+              </label>
+              <input
+                type="text"
+                value={binanceUid}
+                onChange={(e) => setBinanceUid(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs font-mono font-bold text-white focus:border-[#F0B90B] outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Beneficiary Name / Account Title
+              </label>
+              <input
+                type="text"
+                value={binanceName}
+                onChange={(e) => setBinanceName(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs font-bold text-white focus:border-[#F0B90B] outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                USDT Deposit Address
+              </label>
+              <input
+                type="text"
+                value={binanceUsdtAddress}
+                onChange={(e) => setBinanceUsdtAddress(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs font-mono text-white focus:border-[#F0B90B] outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Deposit Network
+              </label>
+              <input
+                type="text"
+                value={binanceNetwork}
+                onChange={(e) => setBinanceNetwork(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs font-bold text-white focus:border-[#F0B90B] outline-none"
               />
             </div>
           </div>

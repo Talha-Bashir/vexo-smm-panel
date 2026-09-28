@@ -67,7 +67,12 @@ async function fetchSmmV2Balance(provider: SmmV2ProviderDefinition, timeoutMs = 
   try {
     const res = await fetch(provider.apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
       body: body.toString(),
       cache: "no-store",
       signal: controller.signal,
@@ -75,6 +80,9 @@ async function fetchSmmV2Balance(provider: SmmV2ProviderDefinition, timeoutMs = 
 
     const text = await res.text();
     if (!res.ok) {
+      if (res.status === 403) {
+        throw new Error(`HTTP 403 Forbidden: ${provider.name} Cloudflare/firewall blocked request. Check API key or whitelist IP.`);
+      }
       throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
     }
 

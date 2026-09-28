@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/request-user";
 import { db } from "@/lib/db";
 import { ensureWalletSchema } from "@/lib/wallet";
-import { getRizviOrderStatus } from "@/lib/rizvi";
+import { syncOrders } from "@/lib/order-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -38,24 +38,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Order not found or unauthorized." }, { status: 404 });
     }
 
-    const result = await getRizviOrderStatus(orderId);
+    await syncOrders({ orderId, limit: 1, minAgeSeconds: 0 });
 
-    // If provider returned status, sync it back to the database record
-    const statusObj = typeof result === "object" && result !== null
-      ? (result as Record<string, unknown>)
-      : null;
+    const updatedRow = await db.query(
+      `SELECT id, provider_order_id, status, start_count, remains, updated_at
+       FROM vexo_orders
+       WHERE id = $1`,
+      [orderCheck.rows[0].id]
+    );
 
-    const newStatus = statusObj?.status ? String(statusObj.status).trim() : "";
-    if (newStatus && newStatus.toLowerCase() !== String(orderCheck.rows[0].status).toLowerCase()) {
-      const normalized =
-        newStatus.charAt(0).toUpperCase() + newStatus.slice(1).toLowerCase();
-      await db.query(
-        `UPDATE vexo_orders SET status = $1, updated_at = NOW() WHERE id = $2`,
-        [normalized, orderCheck.rows[0].id]
-      );
-    }
-
-    return NextResponse.json({ success: true, result });
+    return NextResponse.json({
+      success: true,
+      order: updatedRow.rows[0],
+    });
   } catch (error) {
     console.error("VEXO ORDER STATUS ERROR:", error);
 

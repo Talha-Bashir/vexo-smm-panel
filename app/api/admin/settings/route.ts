@@ -36,9 +36,14 @@ export async function POST(req: Request) {
     const allowedKeys = [
       "platform_theme",
       "global_profit_margin",
+      "dollar_order_markup",
       "usd_to_pkr",
       "sadapay_number",
       "sadapay_title",
+      "binance_uid",
+      "binance_name",
+      "binance_usdt_address",
+      "binance_network",
     ];
 
     const updated: Record<string, string> = {};

@@ -16,12 +16,15 @@ let lastFetchTimestamp = 0;
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache
 
 /**
- * Fetches the live USD to PKR exchange rate.
+ * Fetches the pure, auto-checked live USD to PKR exchange rate directly from global forex feeds.
+ * Never manually set or modified.
+ * USED STRICTLY FOR: Adding Funds / Deposits (0% markup guarantee for users).
+ * 
  * Primary source: https://open.er-api.com/v6/latest/PKR (1 / rates.USD)
  * Secondary source: https://api.exchangerate-api.com/v4/latest/USD (rates.PKR)
  * Fallback: process.env.USD_TO_PKR or 278.0
  */
-export async function getLiveUsdToPkrRate(): Promise<number> {
+export async function getLiveForexUsdRate(): Promise<number> {
   const now = Date.now();
   if (cachedUsdToPkr && (now - lastFetchTimestamp) < CACHE_TTL_MS) {
     return cachedUsdToPkr;
@@ -33,7 +36,7 @@ export async function getLiveUsdToPkrRate(): Promise<number> {
     const timeoutId = setTimeout(() => controller.abort(), 4000);
     const res = await fetch("https://open.er-api.com/v6/latest/PKR", {
       signal: controller.signal,
-      headers: { "User-Agent": "Vexo-SMM-Panel/1.0" },
+      headers: { "User-Agent": "VexaroSMM/1.0 (vexarosmm.com)" },
       cache: "no-store",
     });
     clearTimeout(timeoutId);
@@ -58,7 +61,7 @@ export async function getLiveUsdToPkrRate(): Promise<number> {
     const timeoutId = setTimeout(() => controller.abort(), 4000);
     const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD", {
       signal: controller.signal,
-      headers: { "User-Agent": "Vexo-SMM-Panel/1.0" },
+      headers: { "User-Agent": "VexaroSMM/1.0 (vexarosmm.com)" },
       cache: "no-store",
     });
     clearTimeout(timeoutId);
@@ -82,6 +85,45 @@ export async function getLiveUsdToPkrRate(): Promise<number> {
     return cachedUsdToPkr;
   }
   return DEFAULT_USD_TO_PKR;
+}
+
+/**
+ * Reads the Dollar Markup percentage for Orders from platform settings.
+ * Default is 7% (0.07).
+ * This markup is applied strictly to service prices & orders, NEVER to deposits/wallet funding.
+ */
+export async function getOrderDollarMarkupPercent(): Promise<number> {
+  try {
+    const { getPlatformSetting } = await import("@/lib/admin");
+    const markupStr = await getPlatformSetting("dollar_order_markup", "");
+    if (markupStr && Number(markupStr) >= 0) {
+      return Number(markupStr);
+    }
+    const globalMarginStr = await getPlatformSetting("global_profit_margin", "");
+    if (globalMarginStr && Number(globalMarginStr) >= 0) {
+      return Number(globalMarginStr);
+    }
+  } catch {
+    // Database query fallback
+  }
+  return DEFAULT_VEXO_MARKUP * 100; // 7%
+}
+
+/**
+ * Returns the live USD to PKR rate for Orders (auto-checked live forex).
+ */
+export async function getLiveUsdToPkrRate(): Promise<number> {
+  return getLiveForexUsdRate();
+}
+
+/**
+ * Returns the effective Dollar rate used for calculating order prices (Forex * (1 + markup%)).
+ */
+export async function getOrderDollarRate(): Promise<{ forexRate: number; markupPercent: number; effectiveRate: number }> {
+  const forexRate = await getLiveForexUsdRate();
+  const markupPercent = await getOrderDollarMarkupPercent();
+  const effectiveRate = Math.round(forexRate * (1 + markupPercent / 100) * 100) / 100;
+  return { forexRate, markupPercent, effectiveRate };
 }
 
 /**

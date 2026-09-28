@@ -93,6 +93,8 @@ export function ensureWalletSchema() {
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(120);
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS failure_reason TEXT;
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS provider_response JSONB;
+        ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS start_count VARCHAR(50);
+        ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS remains VARCHAR(50);
 
         CREATE TABLE IF NOT EXISTS vexo_order_refills (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

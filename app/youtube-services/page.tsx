@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexo-smm-panel-7sln.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
   title: "YouTube SMM Panel – Monetization Watch Time & Subscribers",
@@ -66,8 +66,8 @@ export default function ServiceLandingPage() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#070d0d]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00] text-lg font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.3)]">
-              V
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-[0_0_20px_rgba(186,255,0,0.35)] border border-[#baff00]/30">
+              <img src="/logo.png" alt="VEXARO SMM" className="h-full w-full object-cover" />
             </div>
             <div>
               <span className="text-xl font-black text-white">VEXARO SMM</span>
@@ -290,7 +290,7 @@ export default function ServiceLandingPage() {
           <p>© 2026 VEXARO SMM. All rights reserved.</p>
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <a href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline font-bold">WhatsApp Channel</a>
-            <a href="https://vexo-smm-panel-7sln.vercel.app/" target="_blank" rel="noreferrer" className="text-lime-400 hover:underline font-mono text-[11px]">vexo-smm-panel-7sln.vercel.app</a>
+            <a href="https://vexarosmm.com/" target="_blank" rel="noreferrer" className="text-lime-400 hover:underline font-mono text-[11px]">vexarosmm.com</a>
             <Link href="/" className="hover:text-[#baff00]">Home</Link>
             <Link href="/terms" className="hover:text-[#baff00]">Terms</Link>
             <Link href="/privacy" className="hover:text-[#baff00]">Privacy</Link>

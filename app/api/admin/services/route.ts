@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ensureProvidersSchema } from "@/lib/providers";
 import { logAdminActivity } from "@/lib/admin";
 import { getLiveUsdToPkrRate, calculateLivePricePkr } from "@/lib/exchange-rate";
+import { sanitizeServiceDescription } from "@/lib/service-descriptions";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function GET() {
       `SELECT id, name, platform, category, service_group_key, is_guaranteed,
               auto_route, active_provider_id, active_remote_service_id,
               base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel,
-              enabled, popular, fallback_queue, provider_rates, updated_at
+              enabled, popular, fallback_queue, provider_rates, updated_at, description
        FROM vexo_routed_services
        ORDER BY platform ASC, id ASC`
     );
@@ -40,6 +41,11 @@ export async function GET() {
         const mult = Number(row.rate_multiplier || 1.07);
         const liveRatePkr = calculateLivePricePkr(row.base_rate_usd, mult, liveUsdToPkr);
         const rateUsd = Math.round(Number(row.base_rate_usd) * mult * 10000) / 10000;
+        const normText = `${row.name} ${row.category || ""} ${row.description || ""}`.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-");
+        const isDrop = /no[\s-]*refill|without[\s-]*refill|refill[\s:]*no|refill[\s:]*0|0%[\s-]*refill|drop[\s-]*100%|100%[\s-]*drop|drop[\s-]*able|dropable|high[\s-]*drop|drop[\s-]*high|no[\s-]*guarantee|non[\s-]*guaranteed|not[\s-]*guaranteed|can[\s-]*drop|drop[\s-]*possible/i.test(normText);
+        const isGuaranteed = isDrop ? false : Boolean(row.is_guaranteed);
+        const isRefill = isDrop ? false : Boolean(row.refill);
+
         return {
           id: row.id,
           service: row.id,
@@ -47,7 +53,7 @@ export async function GET() {
           platform: row.platform,
           category: row.category,
           service_group_key: row.service_group_key,
-          is_guaranteed: Boolean(row.is_guaranteed),
+          is_guaranteed: isGuaranteed,
           auto_route: Boolean(row.auto_route),
           active_provider_id: row.active_provider_id,
           active_remote_service_id: row.active_remote_service_id,
@@ -57,12 +63,14 @@ export async function GET() {
           rate_pkr: liveRatePkr,
           min: Number(row.min || 1),
           max: Number(row.max || 100000),
-          refill: Boolean(row.refill),
+          refill: isRefill,
           cancel: Boolean(row.cancel),
           enabled: Boolean(row.enabled),
           popular: Boolean(row.popular),
           fallback_queue: row.fallback_queue || [],
           provider_rates: row.provider_rates || {},
+          description: sanitizeServiceDescription(row.description || ""),
+          desc: sanitizeServiceDescription(row.description || ""),
           updated_at: row.updated_at,
         };
       }),

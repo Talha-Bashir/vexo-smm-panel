@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+  devIndicators: false,
   // Allow ngrok tunnel origins during development
   allowedDevOrigins: [
     "barman-naming-spectrum.ngrok-free.dev",
