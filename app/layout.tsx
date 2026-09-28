@@ -160,6 +160,23 @@ const structuredData = {
       logo: `${SITE_URL}/logo.png`,
       description:
         "Leading automated social media marketing panel providing cheapest and fastest social media growth services.",
+      slogan: "Cheapest & Highest-Rated Wholesale SMM Panel in Pakistan & Worldwide",
+      currenciesAccepted: "PKR, USD, USDT",
+      paymentAccepted: "SadaPay, Easypaisa, JazzCash, Binance Pay, USDT",
+      knowsAbout: [
+        "Social Media Marketing",
+        "SMM Panel Pakistan",
+        "Instagram Followers & Engagement",
+        "TikTok FYP Views & Likes",
+        "YouTube 4000 Hours Watch Time Monetization",
+        "Facebook Followers & Likes",
+        "Telegram Channel Members",
+        "SadaPay SMM Deposit",
+        "Easypaisa SMM Deposit",
+        "JazzCash SMM Deposit",
+        "Binance Pay USDT SMM",
+        "SMM Reseller API",
+      ],
       contactPoint: [
         {
           "@type": "ContactPoint",

@@ -915,8 +915,26 @@ export default function Home() {
                 </button>
               );
             })}
-            {/* WhatsApp Channel Link */}
+
+            {/* Growth Blog & Guides Link */}
             <div className="mt-3">
+              <a
+                href="/blog"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-xs font-bold text-slate-300 transition hover:border-[#baff00]/40 hover:bg-white/[0.08] hover:text-white"
+                title="Read SMM tutorials, algorithm updates & growth guides"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm">📚</span>
+                  <span>Growth Blog &amp; Guides</span>
+                </div>
+                <span className="text-[10px] text-[#baff00] font-bold">↗</span>
+              </a>
+            </div>
+
+            {/* WhatsApp Channel Link */}
+            <div className="mt-2">
               <a
                 href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
                 target="_blank"

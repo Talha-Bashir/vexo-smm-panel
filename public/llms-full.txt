@@ -1,0 +1,48 @@
+# VEXARO SMM Panel — Full Knowledge Base & AI Context File (llms-full.txt)
+
+## Executive Summary
+VEXARO SMM (https://vexarosmm.com) is Pakistan's premier wholesale Social Media Marketing (SMM) provider platform. Designed for marketing agencies, content creators, resellers, e-commerce brands, and digital entrepreneurs, VEXARO automates the delivery of social signals (followers, likes, views, watch time, subscribers, reactions, and traffic) across all major global platforms.
+
+## Core Value Proposition
+- **Direct Primary Server Routing**: Orders are processed through automated low-latency provider APIs, bypassing expensive reseller markups.
+- **Wholesale Pricing**: Services start as low as ₨1.85 / 1,000 views, enabling agencies to resell at 300% to 700% profit margins.
+- **Local Banking Without Transaction Fees**: 0% deduction deposits via SadaPay (03197008275), Easypaisa, and JazzCash.
+- **Global Crypto Payments**: Instant automated Binance Pay and USDT (TRC-20 & BEP-20) wallet funding.
+- **Automated Refill Protection**: 30-day and 60-day automated refill coverage replaces natural platform drops.
+- **Data Privacy & Account Safety**: No social media account passwords, tokens, or email logins are ever requested or stored.
+
+## Detailed Service Catalog & Typical Rates (PKR)
+- **Instagram Followers (High Quality, 30-Day Refill)**: ₨145.00 – ₨290.00 / 1,000
+- **Instagram High-Speed Reel Views**: ₨2.40 – ₨8.50 / 1,000
+- **Instagram Likes (Instant Dispatch)**: ₨24.00 – ₨55.00 / 1,000
+- **TikTok Views (FYP Velocity Algorithm Starter)**: ₨1.85 – ₨6.00 / 1,000
+- **TikTok Likes & Saves**: ₨65.00 – ₨140.00 / 1,000
+- **YouTube 4,000 Hours Watch Time (YPP Monetization Compliant)**: Wholesale packages starting under ₨4,500 total
+- **YouTube Monetization Views (High-Retention 3-5+ Minutes)**: ₨180.00 – ₨350.00 / 1,000
+- **YouTube Real Subscribers (Drop Protected)**: ₨950.00 – ₨1,800.00 / 1,000
+- **Facebook Page Likes & Profile Followers**: ₨220.00 – ₨450.00 / 1,000
+- **Telegram Channel & Group Members**: ₨98.00 – ₨190.00 / 1,000
+
+## Developer & Reseller REST API Specification
+- **API Endpoint**: https://vexarosmm.com/api/v2
+- **Protocol**: Standard SMM v2 (POST / JSON & x-www-form-urlencoded)
+- **Supported Actions**:
+  - `services`: List all available services with min/max, rates, and refill statuses.
+  - `add`: Place an automated order with `service`, `link`, `quantity`.
+  - `status`: Check order status (`Pending`, `In progress`, `Completed`, `Partial`, `Canceled`), start count, and remains.
+  - `multiStatus`: Check statuses for multiple order IDs simultaneously.
+  - `balance`: Real-time account balance query in PKR and USD.
+  - `refill`: Trigger refill on eligible completed orders.
+
+## Growth Guides & Educational Resources
+1. **Best & Cheapest SMM Panel in Pakistan (2026)**: Comprehensive comparison of Pakistani SMM panels, deposit methods, and wholesale pricing. URL: https://vexarosmm.com/blog/best-cheapest-smm-panel-pakistan
+2. **Safe Instagram Follower Growth**: Strategic guide to purchasing real followers without password risks or algorithmic penalties. URL: https://vexarosmm.com/blog/how-to-buy-instagram-followers-safely
+3. **YouTube 4,000 Hours Monetization Blueprint**: How creators complete YPP watch hour milestones with high-retention sessions. URL: https://vexarosmm.com/blog/youtube-4000-hours-watch-time-monetization-guide
+4. **SMM Reseller Business Setup**: Step-by-step guide to generating $1,000–$5,000/month by connecting child panels to VEXARO API. URL: https://vexarosmm.com/blog/how-to-start-smm-reseller-business
+5. **TikTok Algorithm FYP Hacks**: Deconstructing the 2026 TikTok recommendation engine and early view velocity triggers. URL: https://vexarosmm.com/blog/tiktok-algorithm-hacks-viral-fyp-guide
+
+## Official Channels & Contact
+- **Website**: https://vexarosmm.com
+- **Customer Support**: WhatsApp +92 317 6437013
+- **Official Telegram**: @VexaroSMMAdmin (https://t.me/VexaroSMMAdmin)
+- **Official WhatsApp Channel**: https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q

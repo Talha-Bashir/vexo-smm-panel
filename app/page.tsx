@@ -546,6 +546,10 @@ export default function LandingPage() {
             <a href="#updates" className="transition hover:text-[#baff00]">
               Updates
             </a>
+            <Link href="/blog" className="transition hover:text-[#baff00] text-emerald-300 font-bold flex items-center gap-1">
+              <span>Blog</span>
+              <span className="flex h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
+            </Link>
             <Link href="/dashboard" className="transition hover:text-[#baff00]">
               API Docs
             </Link>
@@ -699,6 +703,14 @@ export default function LandingPage() {
               >
                 System Updates
               </a>
+              <Link
+                href="/blog"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1 hover:text-[#baff00] text-[#baff00] font-bold flex items-center justify-between"
+              >
+                <span>Growth Blog &amp; Guides</span>
+                <span className="text-[10px] bg-[#baff00]/20 text-[#baff00] rounded-full px-2 py-0.5 font-bold">New</span>
+              </Link>
               <Link
                 href="/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
@@ -1614,6 +1626,12 @@ export default function LandingPage() {
                 Resellers &amp; API
               </h4>
               <ul className="mt-3 space-y-2">
+                <li>
+                  <Link href="/blog" className="hover:text-[#baff00] transition text-[#baff00] font-bold flex items-center gap-1.5">
+                    <span>Growth Blog &amp; Guides</span>
+                    <span className="text-[9px] bg-[#baff00]/20 px-1.5 py-0.5 rounded font-extrabold">NEW</span>
+                  </Link>
+                </li>
                 <li>
                   <Link href="/dashboard" className="hover:text-[#baff00] transition">
                     REST API Documentation
