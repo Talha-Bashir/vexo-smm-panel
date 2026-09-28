@@ -51,6 +51,23 @@ const jsonLd = {
       "@type": "FAQPage",
       mainEntity: [{"@type":"Question","name":"Can I add members to private Telegram channels?","acceptedAnswer":{"@type":"Answer","text":"Yes, we support both public usernames (@channel) and private invite links (t.me/+hash)."}},{"@type":"Question","name":"Do you offer auto-views for future Telegram posts?","acceptedAnswer":{"@type":"Answer","text":"Yes, our automated post view services can automatically add views to your next 5, 10, or 20 posts as you publish them."}},{"@type":"Question","name":"Is there any risk of channel ban?","acceptedAnswer":{"@type":"Answer","text":"Zero risk. Delivery is throttled to mimic organic channel growth without triggering Telegram spam filters."}}],
     },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": SITE_URL,
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Telegram Services",
+          "item": `${SITE_URL}/telegram-services`,
+        },
+      ],
+    },
   ],
 };
 
@@ -67,7 +84,7 @@ export default function ServiceLandingPage() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-3">
             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-[0_0_20px_rgba(186,255,0,0.35)] border border-[#baff00]/30">
-              <img src="/logo.png" alt="VEXARO SMM" className="h-full w-full object-cover" />
+              <img src="/logo.png" alt="VEXARO SMM - Telegram Channel Members & Post Views Panel" className="h-full w-full object-cover" />
             </div>
             <div>
               <span className="text-xl font-black text-white">VEXARO SMM</span>
@@ -83,6 +100,12 @@ export default function ServiceLandingPage() {
               className="text-xs font-semibold text-slate-300 hover:text-white transition"
             >
               Home
+            </Link>
+            <Link
+              href="/blog"
+              className="text-xs font-semibold text-slate-300 hover:text-[#baff00] transition"
+            >
+              Blog & Guides
             </Link>
             <a
               href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
@@ -238,6 +261,57 @@ export default function ServiceLandingPage() {
           </div>
         </section>
 
+        {/* Featured Growth Guides & Tutorials */}
+        <section className="mt-16 sm:mt-24 border-t border-white/10 pt-16">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <span className="text-xs font-black uppercase tracking-wider text-[#baff00]">Learn & Grow</span>
+              <h2 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-white">
+                Telegram Growth Guides & Community Strategies
+              </h2>
+            </div>
+            <Link href="/blog" className="text-xs font-bold text-[#baff00] hover:underline flex items-center gap-1">
+              View All 6 Guides →
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <Link
+              href="/blog/how-to-start-smm-reseller-business"
+              className="group rounded-2xl border border-white/10 bg-[#0d1618] p-5 hover:border-[#baff00]/40 transition space-y-2.5 block"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-2xl select-none">💼</span>
+                <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-bold text-[#baff00]">Reseller Blueprint</span>
+              </div>
+              <h3 className="text-base font-bold text-white group-hover:text-[#baff00] transition">
+                How to Start a Profitable SMM Reseller Business with API in 2026
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                Learn how crypto community managers and signal providers scale their Telegram channels with automated member growth.
+              </p>
+              <span className="text-[11px] font-semibold text-[#baff00] block pt-1">Read Complete Guide →</span>
+            </Link>
+
+            <Link
+              href="/blog/free-signup-bonus-smm-panel-pakistan"
+              className="group rounded-2xl border border-white/10 bg-[#0d1618] p-5 hover:border-[#baff00]/40 transition space-y-2.5 block"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-2xl select-none">🎁</span>
+                <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-bold text-[#baff00]">Exclusive Bonus</span>
+              </div>
+              <h3 className="text-base font-bold text-white group-hover:text-[#baff00] transition">
+                Free Signup Bonus SMM Panel in Pakistan: Claim ₨50 Free Balance
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                Use your instant ₨50 welcome bonus to test Telegram channel post views or subscribers before adding funds.
+              </p>
+              <span className="text-[11px] font-semibold text-[#baff00] block pt-1">Claim Free Bonus →</span>
+            </Link>
+          </div>
+        </section>
+
         {/* Other Services Navigation */}
         <section className="mt-16 sm:mt-24 border-t border-white/10 pt-16">
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
@@ -292,6 +366,7 @@ export default function ServiceLandingPage() {
             <a href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline font-bold">WhatsApp Channel</a>
             <a href="https://vexarosmm.com/" target="_blank" rel="noreferrer" className="text-lime-400 hover:underline font-mono text-[11px]">vexarosmm.com</a>
             <Link href="/" className="hover:text-[#baff00]">Home</Link>
+            <Link href="/blog" className="hover:text-[#baff00]">Blog</Link>
             <Link href="/terms" className="hover:text-[#baff00]">Terms</Link>
             <Link href="/privacy" className="hover:text-[#baff00]">Privacy</Link>
           </div>

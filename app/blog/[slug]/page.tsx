@@ -146,7 +146,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-[0_0_20px_rgba(186,255,0,0.35)] border border-[#baff00]/30 group-hover:border-[#baff00]/60 transition-all duration-300">
-              <img src="/logo.png" alt="VEXARO SMM" className="h-full w-full object-cover" />
+              <img src="/logo.png" alt="VEXARO SMM - Pakistan's #1 Social Media Marketing Panel" className="h-full w-full object-cover" />
             </div>
             <div>
               <span className="text-xl sm:text-2xl font-black text-white group-hover:text-[#baff00] transition">
@@ -374,6 +374,36 @@ export default async function BlogPostPage({ params }: PageProps) {
             </div>
           </div>
         )}
+
+        {/* Explore Official Services */}
+        <section className="mt-12 rounded-2xl border border-white/10 bg-[#0c1416] p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+              Explore Official VEXARO SMM Services
+            </h4>
+            <span className="text-[11px] text-[#baff00] font-semibold">Wholesale Rates in PKR</span>
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            <Link href="/tiktok-services" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:border-[#baff00] hover:text-white transition">
+              TikTok SMM Services
+            </Link>
+            <Link href="/instagram-services" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:border-[#baff00] hover:text-white transition">
+              Instagram SMM Services
+            </Link>
+            <Link href="/youtube-services" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:border-[#baff00] hover:text-white transition">
+              YouTube SMM Services
+            </Link>
+            <Link href="/facebook-services" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:border-[#baff00] hover:text-white transition">
+              Facebook SMM Services
+            </Link>
+            <Link href="/telegram-services" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:border-[#baff00] hover:text-white transition">
+              Telegram SMM Services
+            </Link>
+            <Link href="/smm-panel" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:border-[#baff00] hover:text-white transition">
+              Cheapest SMM Panel
+            </Link>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
@@ -381,7 +411,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="relative h-6 w-6 rounded-md overflow-hidden border border-[#baff00]/30">
-              <img src="/logo.png" alt="VEXARO" className="h-full w-full object-cover" />
+              <img src="/logo.png" alt="VEXARO SMM Knowledge Hub & Services" className="h-full w-full object-cover" />
             </div>
             <span className="font-bold text-white">VEXARO SMM Knowledge Hub</span>
           </div>

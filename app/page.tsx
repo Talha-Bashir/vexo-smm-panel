@@ -197,7 +197,7 @@ function BrandMark() {
     <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(186,255,0,0.35)] border border-[#baff00]/30 group-hover:border-[#baff00]/60 transition-all duration-300">
       <img
         src="/logo.png"
-        alt="VEXARO SMM"
+        alt="VEXARO SMM Panel - Direct Provider for Social Media Growth in Pakistan"
         className="h-full w-full object-cover transition-transform group-hover:scale-105 duration-300"
       />
     </div>

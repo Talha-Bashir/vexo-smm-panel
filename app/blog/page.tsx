@@ -90,7 +90,7 @@ export default function BlogIndexPage() {
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-[0_0_20px_rgba(186,255,0,0.35)] border border-[#baff00]/30 group-hover:border-[#baff00]/60 transition-all duration-300">
-              <img src="/logo.png" alt="VEXARO SMM" className="h-full w-full object-cover" />
+              <img src="/logo.png" alt="VEXARO SMM Blog - Social Media Growth Guides & Strategies" className="h-full w-full object-cover" />
             </div>
             <div>
               <span className="text-xl sm:text-2xl font-black text-white group-hover:text-[#baff00] transition">
@@ -317,13 +317,14 @@ export default function BlogIndexPage() {
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="relative h-6 w-6 rounded-md overflow-hidden border border-[#baff00]/30">
-              <img src="/logo.png" alt="VEXARO" className="h-full w-full object-cover" />
+              <img src="/logo.png" alt="VEXARO SMM Knowledge Hub & Services" className="h-full w-full object-cover" />
             </div>
             <span className="font-bold text-white">VEXARO SMM Knowledge Hub</span>
           </div>
 
           <div className="flex items-center gap-4 text-xs">
             <Link href="/" className="hover:text-white transition">Home</Link>
+            <Link href="/blog" className="hover:text-white transition">Blog</Link>
             <Link href="/smm-panel" className="hover:text-white transition">SMM Panel</Link>
             <Link href="/terms" className="hover:text-white transition">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition">Privacy</Link>

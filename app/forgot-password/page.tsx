@@ -6,7 +6,7 @@ import Link from "next/link";
 function Mark() {
   return (
     <div className="relative flex h-14 w-14 mx-auto items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(186,255,0,0.35)] border border-[#baff00]/30">
-      <img src="/logo.png" alt="VEXARO SMM" className="h-full w-full object-cover" />
+      <img src="/logo.png" alt="VEXARO SMM Password Recovery" className="h-full w-full object-cover" />
     </div>
   );
 }
