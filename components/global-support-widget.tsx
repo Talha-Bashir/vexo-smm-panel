@@ -32,7 +32,7 @@ export function GlobalSupportWidget() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end print:hidden select-none"
+      className="fixed bottom-20 md:bottom-5 lg:bottom-6 right-3 sm:right-5 lg:right-6 z-50 flex flex-col items-end print:hidden select-none"
     >
       {/* Help Popup Drawer */}
       {open && (
@@ -150,7 +150,7 @@ export function GlobalSupportWidget() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="group relative flex items-center gap-2.5 rounded-full p-1.5 sm:pl-2 sm:pr-4 bg-[#091316]/90 border border-[#25d366]/40 backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.8),0_0_20px_rgba(37,211,102,0.35)] hover:border-[#baff00] hover:shadow-[0_15px_45px_rgba(37,211,102,0.55),0_0_30px_rgba(186,255,0,0.4)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
+        className="group relative flex items-center gap-2 rounded-full p-1.5 sm:p-2 bg-[#091316]/95 border border-[#25d366]/40 backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.8),0_0_20px_rgba(37,211,102,0.35)] hover:border-[#baff00] hover:shadow-[0_15px_45px_rgba(37,211,102,0.55),0_0_30px_rgba(186,255,0,0.4)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
         aria-label="Open 24/7 customer support"
         title="24/7 Live WhatsApp & Telegram Support"
       >
@@ -176,8 +176,8 @@ export function GlobalSupportWidget() {
           )}
         </span>
 
-        {/* Text Pill on Desktop */}
-        <div className="hidden sm:flex flex-col text-left pr-1 relative">
+        {/* Text Pill only on xl+ viewports so standard laptops (< xl) have zero horizontal obstruction */}
+        <div className="hidden xl:flex flex-col text-left pr-2 relative">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-black tracking-tight text-white group-hover:text-[#baff00] transition-colors">
               {open ? "Close Support" : "24/7 Support"}
@@ -186,6 +186,11 @@ export function GlobalSupportWidget() {
           <span className="text-[10px] font-bold text-emerald-400 leading-tight">
             ● Online Now
           </span>
+        </div>
+
+        {/* Floating Tooltip for screens < xl on hover */}
+        <div className="xl:hidden absolute right-full mr-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-xl bg-[#091316]/95 border border-[#25d366]/40 text-xs font-bold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+          24/7 WhatsApp Support
         </div>
       </button>
     </div>

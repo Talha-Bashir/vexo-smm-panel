@@ -520,7 +520,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#070d0d]/90 backdrop-blur-xl transition-all">
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-[clamp(1rem,3vw,2rem)]">
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 mr-4 sm:mr-6 lg:mr-8 xl:mr-10">
             <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
               <BrandMark />
               <span className="text-xl sm:text-2xl font-black tracking-tight text-white group-hover:text-[#baff00] transition whitespace-nowrap">
@@ -530,33 +530,33 @@ export default function LandingPage() {
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-semibold text-slate-300">
-            <a href="#services" className="transition hover:text-[#baff00]">
+          <nav className="hidden lg:flex items-center gap-5 xl:gap-8 text-sm font-semibold text-slate-300">
+            <a href="#services" className="transition hover:text-[#baff00] whitespace-nowrap">
               Services
             </a>
-            <a href="#features" className="transition hover:text-[#baff00]">
+            <a href="#features" className="transition hover:text-[#baff00] whitespace-nowrap">
               Features
             </a>
-            <a href="#how-it-works" className="transition hover:text-[#baff00]">
+            <a href="#how-it-works" className="transition hover:text-[#baff00] whitespace-nowrap">
               How It Works
             </a>
-            <a href="#faq" className="transition hover:text-[#baff00]">
+            <a href="#faq" className="transition hover:text-[#baff00] whitespace-nowrap">
               FAQ
             </a>
-            <a href="#updates" className="transition hover:text-[#baff00]">
+            <a href="#updates" className="transition hover:text-[#baff00] whitespace-nowrap">
               Updates
             </a>
-            <Link href="/blog" className="transition hover:text-[#baff00] text-emerald-300 font-bold flex items-center gap-1">
+            <Link href="/blog" className="transition hover:text-[#baff00] text-emerald-300 font-bold flex items-center gap-1 whitespace-nowrap">
               <span>Blog</span>
               <span className="flex h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
             </Link>
-            <Link href="/dashboard" className="transition hover:text-[#baff00]">
+            <Link href="/dashboard" className="transition hover:text-[#baff00] whitespace-nowrap">
               API Docs
             </Link>
           </nav>
 
           {/* Action Buttons */}
-          <div className="hidden sm:flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="hidden sm:flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* 4-Theme Selector Dropdown */}
             <div className="relative" ref={themeMenuRef}>
               <button
@@ -604,36 +604,30 @@ export default function LandingPage() {
               )}
             </div>
 
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105 whitespace-nowrap shrink-0"
-            >
-              <Icon name="bolt" size={15} />
-              <span>Open Panel</span>
-            </Link>
             {hasSession ? (
               <Link
                 href="/dashboard"
-                className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs sm:text-sm font-bold text-white transition hover:bg-white/20 whitespace-nowrap shrink-0"
+                className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105 whitespace-nowrap shrink-0"
               >
-                <span>Dashboard</span>
+                <Icon name="bolt" size={15} />
+                <span>Open Panel</span>
               </Link>
             ) : (
-              <>
+              <div className="flex items-center gap-1 sm:gap-2">
                 <Link
                   href="/login"
-                  className="rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs sm:text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/10 whitespace-nowrap shrink-0"
+                  className="rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-white/5 transition whitespace-nowrap shrink-0"
                 >
                   Login
                 </Link>
                 <Link
                   href="/signup"
-                  className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs sm:text-sm font-bold text-white transition hover:bg-white/10 whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105 whitespace-nowrap shrink-0"
                 >
                   <span>Sign Up</span>
-                  <span className="text-[11px]">→</span>
+                  <span className="text-[11px] font-black">→</span>
                 </Link>
-              </>
+              </div>
             )}
           </div>
 
@@ -797,7 +791,7 @@ export default function LandingPage() {
 
       <main className="relative z-10 w-full max-w-full overflow-x-hidden">
         {/* ---------------- 2. HERO SECTION (FLUID RESPONSIVE) ---------------- */}
-        <section className="relative w-full px-[clamp(1rem,4vw,2.5rem)] pt-[clamp(2rem,5vw,4.5rem)] pb-[clamp(3rem,6vw,5.5rem)]">
+        <section className="relative w-full px-[clamp(1rem,4vw,2.5rem)] pt-[clamp(2rem,5vw,4.5rem)] pb-[clamp(3.5rem,6.5vw,6rem)]">
           <div className="mx-auto max-w-7xl">
             <div className="grid gap-[clamp(2rem,4vw,3.5rem)] lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
               {/* Left Column: Clean Headline & Value Proposition */}
@@ -807,9 +801,9 @@ export default function LandingPage() {
                   <span>The World&apos;s #1 SMM Automation Platform</span>
                 </div>
 
-                <h1 className="mt-5 text-fluid-hero font-black tracking-tight text-white leading-tight">
+                <h1 className="mt-5 text-fluid-hero font-black tracking-tight text-white leading-[1.2] sm:leading-[1.24] pb-1">
                   Accelerate Your Social Growth at{" "}
-                  <span className="text-[#baff00]">
+                  <span className="text-[#baff00] inline-block sm:inline">
                     Wholesale Rates
                   </span>
                 </h1>
@@ -819,20 +813,20 @@ export default function LandingPage() {
                 </p>
 
                 {/* Minimalist Trust Features */}
-                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-300">
-                  <span className="flex items-center gap-1.5">
+                <div className="mt-7 sm:mt-8 flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2 text-xs font-semibold text-slate-300">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1">
                     <span className="text-emerald-400 font-bold">✓</span> No Passwords Required
                   </span>
-                  <span className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1">
                     <span className="text-emerald-400 font-bold">✓</span> 0 - 15m Instant Start
                   </span>
-                  <span className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1">
                     <span className="text-emerald-400 font-bold">✓</span> 24/7 WhatsApp Support
                   </span>
                 </div>
 
                 {/* Supporting CTAs (Clean, focused actions) */}
-                <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <Link
                     href={hasSession ? "/dashboard" : "/signup"}
                     className="flex items-center justify-center gap-2 rounded-xl bg-[#baff00] px-7 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105"
@@ -850,7 +844,7 @@ export default function LandingPage() {
               </div>
 
               {/* Right Column: Clean Client Access Portal */}
-              <div className="w-full max-w-[min(100%,28rem)] mx-auto lg:max-w-none">
+              <div className="w-full max-w-[min(100%,28rem)] mx-auto lg:max-w-md xl:max-w-[27.5rem] lg:ml-auto">
                 <div className="rounded-3xl border border-white/10 bg-[#10191b]/95 p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
                   <div className="border-b border-white/10 pb-4">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#baff00]/10 px-2.5 py-1 text-[11px] font-bold text-[#baff00]">
