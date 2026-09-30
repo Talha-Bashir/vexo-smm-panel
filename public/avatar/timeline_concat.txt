@@ -1,0 +1,339 @@
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.212
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.169
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.159
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.202
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.172
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.245
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.219
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.249
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.148
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.157
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.189
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.138
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.114
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.212
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.196
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.227
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.231
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.156
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.173
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame3_blink.jpg'
+duration 0.13
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.156
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.113
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.151
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.154
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.249
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.114
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.248
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.116
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.233
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.201
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.162
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.181
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.172
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.234
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.129
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.186
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.179
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.188
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.206
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.188
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.134
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.188
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.222
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.2
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame3_blink.jpg'
+duration 0.13
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.242
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.153
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.157
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.146
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.216
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.151
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.224
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.216
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.183
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.219
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.155
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.214
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.183
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.201
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.195
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.139
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.219
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.143
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.118
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.118
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.143
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.116
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.185
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.22
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame3_blink.jpg'
+duration 0.13
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.132
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.224
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.138
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.125
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.113
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.195
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.193
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.156
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.204
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.143
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.123
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.149
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.217
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.152
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.144
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.223
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.227
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.182
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.195
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.139
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.162
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame3_blink.jpg'
+duration 0.13
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.188
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.222
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.247
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.142
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.179
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.135
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.218
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.182
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.22
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.189
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.113
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.144
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.163
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.174
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.168
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.212
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.217
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.193
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.22
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.24
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.246
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.202
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.162
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.228
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.154
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.172
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.118
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.151
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.128
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.127
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame3_blink.jpg'
+duration 0.13
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.134
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.143
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.188
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.22
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.213
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.122
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.17
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.166
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.215
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.211
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.234
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.169
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.18
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.14
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.217
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.156
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.174
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.208
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.167
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.151
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.239
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame3_blink.jpg'
+duration 0.13
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.154
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.225
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.119
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.162
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.139
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.24
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.172
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.243
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.185
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.211
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.129
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.187
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.239
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame5_smile.jpg'
+duration 0.177
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.188
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.158
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.111
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.23
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.245
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.199
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.152
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame1_open.jpg'
+duration 0.14
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame4_o.jpg'
+duration 0.193
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'
+duration 0.123
+file 'C:/Users/HASSAN GAMERZ/Downloads/smm-panel/smm-panel/public/avatar/frame2_closed.jpg'

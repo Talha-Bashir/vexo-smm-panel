@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VEXARO SMM — Video Graphics & Thumbnail Studio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #070d0d; color: #e2e8f0; padding: 24px; display: flex; flex-direction: column; align-items: center; }
+    header { text-align: center; margin-bottom: 24px; }
+    h1 { font-size: 26px; font-weight: 900; color: #fff; }
+    h1 span { color: #baff00; }
+    p.subtitle { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+    .tab-btn { background: #10191b; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .tab-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+    .tab-btn.active { background: #baff00; color: #07100f; border-color: #baff00; box-shadow: 0 0 15px rgba(186,255,0,0.3); font-weight: 900; }
+
+    .card-container { width: 100%; max-width: 1000px; background: #0d1618; border: 1px solid rgba(186,255,0,0.25); border-radius: 20px; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; }
+    .preview-box { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 14px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.12); }
+    canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
+
+    .action-bar { margin-top: 18px; width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .btn-download { background: #baff00; color: #07100f; border: none; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 900; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 0 20px rgba(186,255,0,0.35); }
+    .btn-download:hover { background: #d4ff54; transform: scale(1.02); }
+    .tip-text { font-size: 12px; color: #94a3b8; }
+    .tip-text strong { color: #baff00; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>VEXARO <span>VIDEO GRAPHICS & THUMBNAIL SUITE</span></h1>
+    <p class="subtitle">1080p High-Resolution Graphics for "I Built an SMM Panel at 15"</p>
+  </header>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchGraphic('compare')">1. Price Comparison (₨2000 vs ₨60)</button>
+    <button class="tab-btn" onclick="switchGraphic('hook')">2. Teen Founder Hook (Age 15)</button>
+    <button class="tab-btn" onclick="switchGraphic('payments')">3. Pakistani Payments</button>
+    <button class="tab-btn" onclick="switchGraphic('tech')">4. Tech Architecture</button>
+    <button class="tab-btn" onclick="switchGraphic('thumbnail')">5. Official YouTube Thumbnail</button>
+  </div>
+
+  <div class="card-container">
+    <div class="preview-box">
+      <canvas id="mainCanvas" width="1920" height="1080"></canvas>
+    </div>
+
+    <div class="action-bar">
+      <div class="tip-text">
+        Resolution: <strong>1920x1080 Full HD (PNG)</strong> • Drop directly into CapCut / Premiere
+      </div>
+      <button class="btn-download" onclick="downloadCurrentPNG()">
+        <span>📥</span> Download This Graphic (PNG)
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("mainCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let currentMode = "compare";
+    const avatarImg = new Image();
+    avatarImg.src = "hero_avatar.jpg";
+    avatarImg.onload = () => { drawCurrent(); };
+
+    function switchGraphic(mode) {
+      currentMode = mode;
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      event.target.classList.add("active");
+      drawCurrent();
+    }
+
+    function drawCurrent() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (currentMode === "compare") drawComparison();
+      else if (currentMode === "hook") drawHook();
+      else if (currentMode === "payments") drawPayments();
+      else if (currentMode === "tech") drawTech();
+      else if (currentMode === "thumbnail") drawThumbnail();
+    }
+
+    // GRAPHIC 1: Price Comparison (₨2000 vs ₨60)
+    function drawComparison() {
+      // Dark cyber background
+      ctx.fillStyle = "#070d0d";
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      // Grid effect
+      ctx.strokeStyle = "rgba(255,255,255,0.03)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < 1920; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 1080); ctx.stroke(); }
+      for (let y = 0; y < 1080; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1920, y); ctx.stroke(); }
+
+      // Top Title Banner
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 46px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("WHY SMM PANELS EXIST (THE HIDDEN MATH)", 960, 120);
+
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "bold 24px sans-serif";
+      ctx.fillText("What influencers charge you vs wholesale supplier rates", 960, 170);
+
+      // LEFT CARD: Reseller (Overpriced)
+      drawCard(160, 240, 750, 680, "#141718", "rgba(239, 68, 68, 0.4)");
+      
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "900 24px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("❌ RETAIL / RESELLER PRICE", 220, 320);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 36px sans-serif";
+      ctx.fillText("1,000 Social Followers", 220, 400);
+
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText("Instagram / TikTok / YouTube", 220, 440);
+
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "900 84px sans-serif";
+      ctx.fillText("₨ 2,000", 220, 560);
+      ctx.font = "bold 32px sans-serif";
+      ctx.fillText("PKR", 580, 560);
+
+      // Red tag pill
+      drawPill(220, 620, 360, 60, "rgba(239,68,68,0.15)", "#ef4444", "⚠️ 97% RESELLER MARKUP");
+      ctx.fillStyle = "#64748b";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText("• Manual 24h delays", 220, 740);
+      ctx.fillText("• No refill guarantee", 220, 780);
+      ctx.fillText("• High profit pocketed by middleman", 220, 820);
+
+      // VS Circle in Center
+      ctx.fillStyle = "#1e293b";
+      ctx.beginPath();
+      ctx.arc(960, 580, 50, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#baff00";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.fillStyle = "#baff00";
+      ctx.font = "900 28px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("VS", 960, 590);
+
+      // RIGHT CARD: VEXARO Wholesale
+      drawCard(1010, 240, 750, 680, "#0c1719", "rgba(186, 255, 0, 0.6)");
+      
+      ctx.fillStyle = "#baff00";
+      ctx.font = "900 24px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("⚡ VEXARO WHOLESALE API RATE", 1070, 320);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 36px sans-serif";
+      ctx.fillText("1,000 Social Followers", 1070, 400);
+
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText("Same high-speed automated server", 1070, 440);
+
+      ctx.fillStyle = "#baff00";
+      ctx.font = "900 96px sans-serif";
+      ctx.fillText("₨ 60", 1070, 560);
+      ctx.font = "bold 32px sans-serif";
+      ctx.fillText("PKR", 1340, 560);
+
+      // Green tag pill
+      drawPill(1070, 620, 380, 60, "rgba(186,255,0,0.15)", "#baff00", "✓ 100% DIRECT WHOLESALE RATE");
+      ctx.fillStyle = "#cbd5e1";
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillText("• 0 - 15m Instant Start", 1070, 740);
+      ctx.fillText("• Automated Drop-Refill Protection", 1070, 780);
+      ctx.fillText("• Easypaisa, JazzCash, SadaPay Accepted", 1070, 820);
+    }
+
+    // GRAPHIC 2: Teen Founder Hook Card
+    function drawHook() {
+      ctx.fillStyle = "#070d0d";
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      // Glowing Ambient Center
+      const grad = ctx.createRadialGradient(960, 540, 100, 960, 540, 800);
+      grad.addColorStop(0, "rgba(186, 255, 0, 0.12)");
+      grad.addColorStop(1, "rgba(7, 13, 13, 0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      ctx.fillStyle = "#baff00";
+      ctx.font = "900 32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("THE UNTOLD STORY", 960, 180);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 72px sans-serif";
+      ctx.fillText("HOW I BUILT AN SMM EMPIRE", 960, 270);
+
+      // 3 Stat Pillars
+      const stats = [
+        { label: "AGE", val: "15", sub: "High School Student", color: "#baff00" },
+        { label: "INITIAL BUDGET", val: "₨ 0", sub: "Zero External Investment", color: "#38bdf8" },
+        { label: "PLATFORM", val: "vexarosmm.com", sub: "600+ Automated Services", color: "#22c55e" }
+      ];
+
+      stats.forEach((st, i) => {
+        const x = 200 + i * 520;
+        drawCard(x, 380, 480, 420, "#0c1618", "rgba(255,255,255,0.1)");
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "800 20px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(st.label, x + 240, 460);
+
+        ctx.fillStyle = st.color;
+        ctx.font = "900 52px sans-serif";
+        ctx.fillText(st.val, x + 240, 580);
+
+        ctx.fillStyle = "#cbd5e1";
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText(st.sub, x + 240, 680);
+      });
+
+      ctx.fillStyle = "#64748b";
+      ctx.font = "bold 24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("100% Coded from Scratch with Next.js & PostgreSQL", 960, 920);
+    }
+
+    // GRAPHIC 3: Pakistani Payments
+    function drawPayments() {
+      ctx.fillStyle = "#070d0d";
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "900 32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("THE #1 BOSS BATTLE IN PAKISTAN", 960, 150);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 68px sans-serif";
+      ctx.fillText("HOW WE SOLVED LOCAL PAYMENTS", 960, 240);
+
+      // 4 Payment Blocks
+      const gateways = [
+        { name: "Easypaisa", tag: "Most Popular", color: "#00b259", icon: "🟢" },
+        { name: "JazzCash", tag: "Instant Mobile", color: "#f27900", icon: "🟠" },
+        { name: "SadaPay", tag: "Zero Fee App", color: "#ff6363", icon: "🔴" },
+        { name: "Binance USDT", tag: "Global Crypto", color: "#f3ba2f", icon: "🟡" }
+      ];
+
+      gateways.forEach((gw, i) => {
+        const x = 140 + i * 420;
+        drawCard(x, 340, 380, 480, "#0b1517", gw.color + "88");
+        ctx.font = "60px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(gw.icon, x + 190, 440);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "900 38px sans-serif";
+        ctx.fillText(gw.name, x + 190, 530);
+
+        ctx.fillStyle = gw.color;
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText(gw.tag, x + 190, 580);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "bold 18px sans-serif";
+        ctx.fillText("Automated Verification", x + 190, 680);
+        ctx.fillText("Instant Wallet Credit", x + 190, 720);
+      });
+
+      ctx.fillStyle = "#baff00";
+      ctx.font = "900 28px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("✓ Anti-Fraud Bot Protection • 1-Click Approval System", 960, 930);
+    }
+
+    // GRAPHIC 4: Tech Stack
+    function drawTech() {
+      ctx.fillStyle = "#070d0d";
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      ctx.fillStyle = "#baff00";
+      ctx.font = "900 32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("NO CHEAP PHP SCRIPTS", 960, 150);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 64px sans-serif";
+      ctx.fillText("ENTERPRISE TECH ARCHITECTURE", 960, 240);
+
+      // 4 Tech Cards
+      const techs = [
+        { title: "Next.js 16", sub: "Turbopack Engine", desc: "Sub-second load times & modern SSR", icon: "⚡" },
+        { title: "PostgreSQL", sub: "Transactional Safety", desc: "ACID balance locks & zero currency mismatch", icon: "🐘" },
+        { title: "Routing Engine", sub: "Least-Cost Algorithm", desc: "Auto-routes to cheapest of 5 wholesale providers", icon: "🔄" },
+        { title: "SEO Core", sub: "Google Structured Data", desc: "100% Sitemap indexed & Breadcrumb schemas", icon: "🌐" }
+      ];
+
+      techs.forEach((tc, i) => {
+        const x = 140 + i * 420;
+        drawCard(x, 340, 380, 500, "#0b1517", "rgba(186,255,0,0.3)");
+        ctx.font = "60px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(tc.icon, x + 190, 440);
+
+        ctx.fillStyle = "#baff00";
+        ctx.font = "900 34px sans-serif";
+        ctx.fillText(tc.title, x + 190, 530);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText(tc.sub, x + 190, 580);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "bold 16px sans-serif";
+        wrapText(tc.desc, x + 190, 670, 320, 24);
+      });
+    }
+
+    // GRAPHIC 5: Official YouTube Thumbnail
+    function drawThumbnail() {
+      ctx.fillStyle = "#070d0d";
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      // Draw Avatar on Left
+      if (avatarImg.complete) {
+        ctx.drawImage(avatarImg, 0, 0, 1920, 1080);
+      }
+
+      // Add dark gradient overlay on Right for bold text readability
+      const grad = ctx.createLinearGradient(800, 0, 1920, 0);
+      grad.addColorStop(0, "rgba(7, 13, 13, 0)");
+      grad.addColorStop(0.3, "rgba(7, 13, 13, 0.75)");
+      grad.addColorStop(0.6, "rgba(7, 13, 13, 0.95)");
+      grad.addColorStop(1, "rgba(7, 13, 13, 1)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(800, 0, 1120, 1080);
+
+      // Big Punchy Thumbnail Text
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "900 52px sans-serif";
+      ctx.fillText("SCHOOL STUDENT BUILT", 1020, 240);
+
+      ctx.fillStyle = "#baff00";
+      ctx.font = "900 105px sans-serif";
+      ctx.fillText("TECH BUSINESS", 1020, 350);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 78px sans-serif";
+      ctx.fillText("AT AGE 15?", 1020, 450);
+
+      // Price Sticker Comparison
+      drawCard(1020, 530, 780, 260, "rgba(16, 25, 27, 0.95)", "rgba(186, 255, 0, 0.5)");
+      
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "900 36px sans-serif";
+      ctx.fillText("Others: ₨ 2,000", 1070, 630);
+
+      ctx.fillStyle = "#baff00";
+      ctx.font = "900 56px sans-serif";
+      ctx.fillText("Mine: ₨ 60 PKR", 1070, 720);
+
+      // Bottom Domain Badge
+      drawPill(1020, 840, 520, 70, "#baff00", "#07100f", "⚡ vexarosmm.com");
+    }
+
+    // Helper Card Functions
+    function drawCard(x, y, w, h, bg, border) {
+      ctx.save();
+      ctx.fillStyle = bg;
+      ctx.strokeStyle = border;
+      ctx.lineWidth = 2;
+      roundRect(ctx, x, y, w, h, 20);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPill(x, y, w, h, bg, textColor, text) {
+      ctx.save();
+      ctx.fillStyle = bg;
+      roundRect(ctx, x, y, w, h, 999);
+      ctx.fill();
+      ctx.fillStyle = textColor;
+      ctx.font = "900 24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(text, x + w / 2, y + h / 2 + 8);
+      ctx.restore();
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function wrapText(text, x, y, maxWidth, lineHeight) {
+      const words = text.split(" ");
+      let line = "";
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + " ";
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx.fillText(line, x, y);
+          line = words[n] + " ";
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+
+    function downloadCurrentPNG() {
+      const link = document.createElement("a");
+      link.download = `vexaro_graphic_${currentMode}_1080p.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }
+  </script>
+</body>
+</html>

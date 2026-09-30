@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VEXARO SMM — Multi-Frame Talking Avatar Studio (1080p 60FPS)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #070d0d;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+    }
+    h1 span {
+      color: #baff00;
+    }
+    p.subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .studio-container {
+      width: 100%;
+      max-width: 980px;
+      background: #0d1618;
+      border: 1px solid rgba(186, 255, 0, 0.25);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.85), 0 0 35px rgba(186, 255, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+    .badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: rgba(7, 13, 13, 0.9);
+      border: 1px solid rgba(186, 255, 0, 0.4);
+      color: #baff00;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      background: #baff00;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #baff00;
+      animation: pulse 1.5s infinite;
+    }
+    .phoneme-tag {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #38bdf8;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-family: monospace;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .controls {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .button-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    button {
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 9px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.3);
+      transform: translateY(-1px);
+    }
+    button.primary {
+      background: #baff00;
+      color: #07100f;
+      border-color: #baff00;
+      box-shadow: 0 0 20px rgba(186, 255, 0, 0.35);
+      font-weight: 900;
+    }
+    button.primary:hover {
+      background: #d4ff54;
+      transform: scale(1.02);
+    }
+    button.recording {
+      background: #ef4444 !important;
+      border-color: #ef4444 !important;
+      color: #fff !important;
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.6) !important;
+      animation: recordGlow 1s infinite alternate;
+    }
+    @keyframes recordGlow {
+      from { box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+      to { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
+    }
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #94a3b8;
+    }
+    .speed-control select {
+      background: #111e21;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      outline: none;
+      cursor: pointer;
+    }
+    .status-text {
+      font-size: 12px;
+      color: #38bdf8;
+      font-weight: bold;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .frames-strip {
+      width: 100%;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .frames-header {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #94a3b8;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .frames-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+    .frame-card {
+      background: #111b1d;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      padding-bottom: 6px;
+    }
+    .frame-card:hover {
+      border-color: #baff00;
+      transform: translateY(-2px);
+    }
+    .frame-card.active {
+      border-color: #baff00;
+      box-shadow: 0 0 15px rgba(186, 255, 0, 0.4);
+    }
+    .frame-card img {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      display: block;
+    }
+    .frame-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: #e2e8f0;
+      margin-top: 4px;
+    }
+    .frame-sub {
+      font-size: 9px;
+      color: #64748b;
+    }
+    .tips {
+      margin-top: 20px;
+      max-width: 980px;
+      width: 100%;
+      background: rgba(255,255,255,0.02);
+      border: 1px dashed rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+    .tips strong {
+      color: #baff00;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>VEXARO <span>TALKING AVATAR STUDIO</span></h1>
+    <p class="subtitle">5-Frame Dynamic Speech Engine • 1080p 60FPS Video Recorder (100% Silent — Ready for Voiceover)</p>
+  </header>
+
+  <div class="studio-container">
+    <div class="canvas-wrapper">
+      <canvas id="avatarCanvas" width="1920" height="1080"></canvas>
+      <div class="badge">
+        <span class="badge-dot"></span>
+        <span id="stateLabel">TALKING (SILENT)</span>
+      </div>
+      <div id="phonemeTag" class="phoneme-tag">PHONEME: AH (OPEN)</div>
+    </div>
+
+    <div class="controls">
+      <div class="button-group">
+        <button id="toggleBtn" onclick="toggleSpeech()">
+          <span id="toggleIcon">⏸️</span>
+          <span id="toggleText">Pause Speech</span>
+        </button>
+
+        <button id="record10Btn" class="primary" onclick="recordVideo(10)">
+          <span>🔴</span> Record 10s Clip
+        </button>
+
+        <button id="record30Btn" class="primary" onclick="recordVideo(30)">
+          <span>🔴</span> Record 30s Loop
+        </button>
+
+        <button id="record60Btn" class="primary" onclick="recordVideo(60)">
+          <span>🔴</span> Record 60s Video
+        </button>
+      </div>
+
+      <div class="speed-control">
+        <label for="speedSelect">Speech Cadence:</label>
+        <select id="speedSelect" onchange="updatePace(this.value)">
+          <option value="energetic">Energetic / Fast</option>
+          <option value="normal" selected>Normal Storytelling</option>
+          <option value="chill">Chill / Relaxed</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 5 Frames Visual Strip -->
+    <div class="frames-strip">
+      <div class="frames-header">
+        <span>Active Phoneme & Expression Frames (5 Frames)</span>
+        <span style="color:#baff00">Click any frame to preview / hold</span>
+      </div>
+      <div class="frames-grid">
+        <div class="frame-card active" id="card_open" onclick="previewFrame('open')">
+          <img src="frame1_open.jpg" alt="Mouth Open">
+          <div class="frame-label">Frame 1: Open</div>
+          <div class="frame-sub">"Ah / Aa" Talking</div>
+        </div>
+
+        <div class="frame-card" id="card_closed" onclick="previewFrame('closed')">
+          <img src="frame2_closed.jpg" alt="Mouth Closed">
+          <div class="frame-label">Frame 2: Closed</div>
+          <div class="frame-sub">Resting / Smile</div>
+        </div>
+
+        <div class="frame-card" id="card_blink" onclick="previewFrame('blink')">
+          <img src="frame3_blink.jpg" alt="Natural Blink">
+          <div class="frame-label">Frame 3: Blink</div>
+          <div class="frame-sub">Eyes Closed (120ms)</div>
+        </div>
+
+        <div class="frame-card" id="card_o" onclick="previewFrame('o')">
+          <img src="frame4_o.jpg" alt="Mouth O">
+          <div class="frame-label">Frame 4: "O" Shape</div>
+          <div class="frame-sub">"Oh / You / So"</div>
+        </div>
+
+        <div class="frame-card" id="card_smile" onclick="previewFrame('smile')">
+          <img src="frame5_smile.jpg" alt="Wide Smile">
+          <div class="frame-label">Frame 5: Grin / Ee</div>
+          <div class="frame-sub">"Ee / Yeah / Money"</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="statusMessage" class="status-text"></div>
+  </div>
+
+  <div class="tips">
+    <strong>💡 How to use in CapCut / Premiere Pro / DaVinci Resolve:</strong><br>
+    1. Click <strong>"Record 10s Clip"</strong>, <strong>"Record 30s Loop"</strong>, or <strong>"Record 60s Video"</strong> above.<br>
+    2. The browser records the live 5-frame speech animation at full <strong>1080p 60FPS with zero audio</strong> and saves directly into your Downloads folder.<br>
+    3. Drag the video into CapCut, place it on your timeline, and put your voiceover on top!
+  </div>
+
+  <script>
+    const canvas = document.getElementById("avatarCanvas");
+    const ctx = canvas.getContext("2d");
+    const stateLabel = document.getElementById("stateLabel");
+    const phonemeTag = document.getElementById("phonemeTag");
+    const statusMessage = document.getElementById("statusMessage");
+
+    // Preload all 5 animation frames
+    const frames = {
+      open: new Image(),
+      closed: new Image(),
+      blink: new Image(),
+      o: new Image(),
+      smile: new Image()
+    };
+
+    frames.open.src = "frame1_open.jpg";
+    frames.closed.src = "frame2_closed.jpg";
+    frames.blink.src = "frame3_blink.jpg";
+    frames.o.src = "frame4_o.jpg";
+    frames.smile.src = "frame5_smile.jpg";
+
+    let loadedCount = 0;
+    const totalFrames = 5;
+
+    function onImageLoaded() {
+      loadedCount++;
+      if (loadedCount === totalFrames) {
+        statusMessage.textContent = "✅ All 5 high-definition frames loaded. Speech & Blink Engine active.";
+        requestAnimationFrame(renderLoop);
+      }
+    }
+
+    Object.values(frames).forEach(img => {
+      img.onload = onImageLoaded;
+    });
+
+    // Speech State Engine
+    let isSpeaking = true;
+    let pace = "normal";
+    let currentKey = "open";
+    let lastSwitchTime = 0;
+    let nextDuration = 180;
+    let breathTime = 0;
+
+    // Blinking schedule
+    let lastBlinkTime = 0;
+    let nextBlinkInterval = 3500; // blink every 3.5 to 5.5s
+    let isBlinking = false;
+    let blinkEndTime = 0;
+
+    const speechPhonemes = ["open", "o", "smile", "closed", "open", "smile"];
+
+    function getNextSpeechDuration() {
+      let min = 110, max = 250;
+      if (pace === "energetic") { min = 80; max = 190; }
+      if (pace === "chill") { min = 160; max = 340; }
+      return Math.floor(Math.random() * (max - min) + min);
+    }
+
+    function toggleSpeech() {
+      isSpeaking = !isSpeaking;
+      document.getElementById("toggleText").textContent = isSpeaking ? "Pause Speech" : "Resume Speech";
+      document.getElementById("toggleIcon").textContent = isSpeaking ? "⏸️" : "▶️";
+      stateLabel.textContent = isSpeaking ? "TALKING (SILENT)" : "IDLE / PAUSED";
+      if (!isSpeaking) {
+        currentKey = "closed";
+        updateActiveCard("closed");
+      }
+    }
+
+    function updatePace(val) {
+      pace = val;
+    }
+
+    function previewFrame(key) {
+      isSpeaking = false;
+      document.getElementById("toggleText").textContent = "Resume Speech";
+      document.getElementById("toggleIcon").textContent = "▶️";
+      stateLabel.textContent = `PREVIEW: FRAME ${key.toUpperCase()}`;
+      currentKey = key;
+      updateActiveCard(key);
+    }
+
+    function updateActiveCard(key) {
+      document.querySelectorAll(".frame-card").forEach(c => c.classList.remove("active"));
+      const card = document.getElementById("card_" + key);
+      if (card) card.classList.add("active");
+
+      const labels = {
+        open: "PHONEME: AH / AA (OPEN)",
+        closed: "PHONEME: RESTING / CLOSED",
+        blink: "EXPRESSION: NATURAL BLINK",
+        o: "PHONEME: O / WHOA / YOU",
+        smile: "PHONEME: EE / YEAH / GRIN"
+      };
+      phonemeTag.textContent = labels[key] || key.toUpperCase();
+    }
+
+    function renderLoop(timestamp) {
+      breathTime += 0.035;
+
+      // Handle natural blinking
+      if (!isBlinking && timestamp - lastBlinkTime > nextBlinkInterval) {
+        isBlinking = true;
+        blinkEndTime = timestamp + 130; // blink takes ~130ms
+        lastBlinkTime = timestamp;
+        nextBlinkInterval = 3200 + Math.random() * 2500; // next blink in 3.2 - 5.7s
+      }
+
+      if (isBlinking) {
+        if (timestamp < blinkEndTime) {
+          currentKey = "blink";
+          updateActiveCard("blink");
+        } else {
+          isBlinking = false;
+        }
+      } else if (isSpeaking && timestamp - lastSwitchTime > nextDuration) {
+        // Natural speech selection
+        const randIdx = Math.floor(Math.random() * speechPhonemes.length);
+        let nextP = speechPhonemes[randIdx];
+        if (nextP === currentKey) {
+          nextP = (currentKey === "open") ? "smile" : "open";
+        }
+        currentKey = nextP;
+        updateActiveCard(currentKey);
+        lastSwitchTime = timestamp;
+        nextDuration = getNextSpeechDuration();
+      }
+
+      // Subtle dynamic camera breathing (1.000 to 1.004) to look like real video
+      const breathScale = 1.0 + Math.sin(breathTime) * 0.0035;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(breathScale, breathScale);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+      const img = frames[currentKey];
+      if (img && img.complete) {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      }
+      ctx.restore();
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    // MediaRecorder Video Export
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordTimer = null;
+
+    function recordVideo(seconds) {
+      if (mediaRecorder && mediaRecorder.state === "recording") return;
+
+      const stream = canvas.captureStream(60); // 60 FPS recording
+      let options = { mimeType: 'video/webm;codecs=vp9' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm' };
+      }
+
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        mediaRecorder = new MediaRecorder(stream);
+      }
+
+      recordedChunks = [];
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = url;
+        a.download = `vexaro_talking_avatar_${seconds}s_60fps.webm`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+
+        statusMessage.textContent = `🎉 Downloaded ${seconds}s 60FPS clean silent video (vexaro_talking_avatar_${seconds}s_60fps.webm)! Drag it into CapCut.`;
+        resetRecordButtons();
+      };
+
+      mediaRecorder.start();
+      isSpeaking = true;
+      highlightRecording(seconds);
+
+      let timeLeft = seconds;
+      statusMessage.textContent = `🔴 Recording ${seconds}s video at 60 FPS... (${timeLeft}s remaining)`;
+
+      recordTimer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+          statusMessage.textContent = `🔴 Recording ${seconds}s video at 60 FPS... (${timeLeft}s remaining)`;
+        } else {
+          clearInterval(recordTimer);
+          mediaRecorder.stop();
+        }
+      }, 1000);
+    }
+
+    function highlightRecording(seconds) {
+      const btn = document.getElementById(`record${seconds}Btn`);
+      if (btn) {
+        btn.classList.add("recording");
+        btn.innerHTML = `<span>⏺️</span> Recording ${seconds}s...`;
+      }
+    }
+
+    function resetRecordButtons() {
+      const b1 = document.getElementById("record10Btn");
+      const b2 = document.getElementById("record30Btn");
+      const b3 = document.getElementById("record60Btn");
+      if (b1) { b1.classList.remove("recording"); b1.innerHTML = "<span>🔴</span> Record 10s Clip"; }
+      if (b2) { b2.classList.remove("recording"); b2.innerHTML = "<span>🔴</span> Record 30s Loop"; }
+      if (b3) { b3.classList.remove("recording"); b3.innerHTML = "<span>🔴</span> Record 60s Video"; }
+    }
+  </script>
+</body>
+</html>
