@@ -167,6 +167,32 @@ export default function ServiceLandingPage() {
           </div>
         </div>
 
+        {/* UK TikTok Monetization Account Promo Card */}
+        <div className="mt-10 rounded-3xl border border-[#25d366]/40 bg-gradient-to-r from-[#0d2017] via-[#091512] to-[#07100f] p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[#25d366]/10 blur-3xl pointer-events-none" />
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+            <div className="space-y-2.5 max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#25d366]/40 bg-[#25d366]/10 px-3.5 py-1 text-xs font-black text-[#25d366]">
+                <span>🇬🇧</span> UK TikTok Creativity Program Account
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Unable to Create a US/UK Account? Get One for <span className="text-[#baff00]">₨250 PKR</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Stuck with Pakistan non-monetized accounts? We deliver fresh, 100% verified UK TikTok accounts with the Creator Rewards Program (Creativity Beta) already unlocked. Contact Lead Admin Talha Bashir on WhatsApp for instant handover.
+              </p>
+            </div>
+            <a
+              href="https://wa.me/923176437013?text=Hi%20Talha,%20I%20want%20to%20buy%20a%20UK%20TikTok%20Creativity%20Program%20account%20(Rs%20250)"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 shrink-0 rounded-2xl bg-[#25d366] px-6 py-3.5 text-xs sm:text-sm font-black text-black hover:bg-[#20ba59] transition shadow-[0_0_20px_rgba(37,211,102,0.3)]"
+            >
+              <span>💬 Buy UK Account on WhatsApp (₨250)</span>
+            </a>
+          </div>
+        </div>
+
         {/* Feature Grid */}
         <section className="mt-16 sm:mt-24">
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
