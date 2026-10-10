@@ -798,7 +798,7 @@ export default function LandingPage() {
               <div className="w-full min-w-0">
                 <div className="inline-flex items-center gap-2 rounded-full border border-lime-300/20 bg-lime-300/10 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-[#baff00]">
                   <Icon name="spark" size={14} />
-                  <span>The World&apos;s #1 SMM Automation Platform</span>
+                  <span>Affordable SMM Panel for Pakistan — Local Payments Accepted</span>
                 </div>
 
                 <h1 className="mt-5 text-fluid-hero font-black tracking-tight text-white leading-[1.2] sm:leading-[1.24] pb-1">
@@ -917,42 +917,67 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ---------------- 3. LIVE STATISTICS COUNTER BANNER (AUTO-FIT GRID) ---------------- */}
+        {/* ---------------- 3. TRUST HIGHLIGHTS BANNER (AUTO-FIT GRID) ---------------- */}
         <section className="w-full border-y border-white/10 bg-[#0b1315]/80 py-[clamp(1.5rem,3.5vw,2.5rem)] backdrop-blur-md">
           <div className="mx-auto max-w-7xl px-[clamp(1rem,3vw,2rem)]">
             <div className="grid-fluid-stats">
               <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
                 <p className="text-fluid-h2 font-black text-[#baff00]">
-                  1.8M+
+                  1,000+
                 </p>
                 <p className="mt-1 text-xs sm:text-sm font-semibold text-slate-300">
-                  Orders Completed
+                  Premium Services
                 </p>
               </div>
               <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
                 <p className="text-fluid-h2 font-black text-white">
-                  52,000+
+                  0–15 min
                 </p>
                 <p className="mt-1 text-xs sm:text-sm font-semibold text-slate-300">
-                  Active Clients
+                  Instant Delivery Start
                 </p>
               </div>
               <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
                 <p className="text-fluid-h2 font-black text-[#baff00]">
-                  99.9%
+                  24/7
                 </p>
                 <p className="mt-1 text-xs sm:text-sm font-semibold text-slate-300">
-                  Platform Uptime
+                  WhatsApp Human Support
                 </p>
               </div>
               <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
-                <p className="text-fluid-h2 font-black text-white">
-                  0.02s
+                <p className="text-fluid-h2 font-black text-white text-[clamp(1rem,2.5vw,1.4rem)]">
+                  JazzCash • Easypaisa • SadaPay
                 </p>
                 <p className="mt-1 text-xs sm:text-sm font-semibold text-slate-300">
-                  Average Delivery Speed
+                  Local PK Payments
                 </p>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ---------------- 3B. FREE SIGNUP BONUS PROMO ---------------- */}
+        <section className="w-full border-b border-white/10 bg-gradient-to-r from-[#101b08] via-[#0b1315] to-[#101b08] py-[clamp(2rem,5vw,3.5rem)]">
+          <div className="mx-auto max-w-5xl px-[clamp(1rem,4vw,2.5rem)] text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-lime-300/30 bg-lime-300/10 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-[#baff00]">
+              <span>🎁</span>
+              <span>Welcome Offer — No Deposit Needed</span>
+            </div>
+            <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
+              Get <span className="text-[#baff00]">Rs 50 FREE</span> to Try Real Followers, Likes &amp; Views
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm sm:text-base font-medium leading-relaxed text-slate-300">
+              Create your free account and we add Rs 50 bonus credit instantly — test our services before you spend a single rupee. Fair use: one bonus per person; our system automatically blocks repeat claims.
+            </p>
+            <div className="mt-6 flex justify-center">
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#baff00] px-8 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105"
+              >
+                <span>Claim My Free Rs 50</span>
+                <Icon name="arrowRight" size={16} />
+              </Link>
             </div>
           </div>
         </section>
@@ -1406,7 +1431,7 @@ export default function LandingPage() {
                   </h3>
                 </div>
                 <div className="text-xs text-slate-400">
-                  Status: <strong className="text-[#baff00]">Live 99.9% Uptime</strong>
+                  Status: <strong className="text-[#baff00]">Live 24/7 Uptime</strong>
                 </div>
               </div>
 
@@ -1552,7 +1577,7 @@ export default function LandingPage() {
                 <span className="text-xl font-black text-white">VEXARO SMM</span>
               </div>
               <p className="mt-3 text-xs leading-relaxed text-slate-400 max-w-sm">
-                The World&apos;s Leading &amp; Most Affordable SMM Panel.
+                An Affordable SMM Panel for Pakistan &amp; Worldwide.
                 Automating social growth for global influencers, agencies, and businesses with instant delivery.
               </p>
               <div className="mt-4 flex items-center gap-2 text-slate-400 text-xs">
