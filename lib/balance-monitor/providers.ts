@@ -1,4 +1,4 @@
-import { getGGSomaBalance } from "@/lib/ggsoma-api";
+import { getElevateXBalance } from "@/lib/elevatex-api";
 
 export interface ProviderBalanceCheckResult {
   id: string;
@@ -114,20 +114,20 @@ async function fetchSmmV2Balance(provider: SmmV2ProviderDefinition, timeoutMs = 
   }
 }
 
-async function fetchGGSomaProviderBalance(): Promise<{ balance: number; currency: string }> {
-  const result = await getGGSomaBalance();
-  if (!result.ok || result.balance === undefined) {
-    throw new Error(result.error || "Failed to retrieve balance from GGSoma Partner API");
+async function fetchElevateXProviderBalance(): Promise<{ balance: number; currency: string }> {
+  const result = await getElevateXBalance();
+  if (!result.ok || result.balance_usdt === undefined) {
+    throw new Error(result.error || "Failed to retrieve balance from ElevateX Gateway");
   }
 
-  const parsed = Number(result.balance);
+  const parsed = Number(result.balance_usdt);
   if (!Number.isFinite(parsed)) {
-    throw new Error(`Invalid balance format returned by GGSoma: ${result.balance}`);
+    throw new Error(`Invalid balance format returned by ElevateX: ${result.balance_usdt}`);
   }
 
   return {
     balance: parsed,
-    currency: (result.currency || "USD").toUpperCase(),
+    currency: "USD",
   };
 }
 
@@ -160,12 +160,12 @@ export async function checkAllProviderBalances(): Promise<ProviderBalanceCheckRe
     }
   });
 
-  // 2. Prepare check for Provider 6: GGSoma Partner Bot
-  const ggsomaPromise = (async (): Promise<ProviderBalanceCheckResult> => {
-    const id = "ggsoma_bot";
-    const name = "GGSoma Partner Bot";
+  // 2. Prepare check for Provider 6: ElevateX Partner Gateway
+  const elevatexPromise = (async (): Promise<ProviderBalanceCheckResult> => {
+    const id = "elevatex_bot";
+    const name = "ElevateX Partner Gateway";
     try {
-      const res = await fetchGGSomaProviderBalance();
+      const res = await fetchElevateXProviderBalance();
       return {
         id,
         name,
@@ -185,6 +185,6 @@ export async function checkAllProviderBalances(): Promise<ProviderBalanceCheckRe
   })();
 
   // 3. Execute all 6 concurrently with Promise.all
-  const results = await Promise.all([...smmPromises, ggsomaPromise]);
+  const results = await Promise.all([...smmPromises, elevatexPromise]);
   return results;
 }

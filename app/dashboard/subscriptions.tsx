@@ -79,6 +79,7 @@ export function SubscriptionsPage({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [purchaseError, setPurchaseError] = useState<string>("");
   const [purchaseSuccess, setPurchaseSuccess] = useState<UserSubscription | null>(null);
+  const [purchaseDispatch, setPurchaseDispatch] = useState<any>(null);
   const [mounted, setMounted] = useState<boolean>(false);
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
   const [isRefreshingStock, setIsRefreshingStock] = useState<boolean>(false);
@@ -209,6 +210,7 @@ export function SubscriptionsPage({
     setPurchasingTool(tool);
     setPurchaseError("");
     setPurchaseSuccess(null);
+    setPurchaseDispatch(null);
   }
 
   async function handleConfirmPurchase() {
@@ -257,6 +259,7 @@ export function SubscriptionsPage({
       }
 
       setPurchaseSuccess(data.subscription);
+      setPurchaseDispatch(data.dispatch || null);
       onBalanceUpdated();
       setMySubs((prev) => [data.subscription, ...prev]);
     } catch (err) {
@@ -396,18 +399,21 @@ export function SubscriptionsPage({
               </button>
 
               <div className="relative w-full sm:w-64">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">
+                  🔍
+                </span>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search tools & subscriptions..."
-                  className="w-full rounded-xl border border-white/10 bg-[#0b1418] px-3.5 py-2 text-xs text-white outline-none transition focus:border-[#baff00] placeholder-slate-500"
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1418] pl-8 pr-8 py-2 text-xs text-white outline-none transition focus:border-[#baff00] placeholder-slate-500"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-2 text-xs text-slate-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
                   >
                     ✕
                   </button>
@@ -424,15 +430,29 @@ export function SubscriptionsPage({
               ))}
             </div>
           ) : filteredCatalog.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-[#0a1110] p-12 text-center">
-              <p className="text-sm text-slate-400">No tools found matching this search or category.</p>
-              <button
-                type="button"
-                onClick={() => { setCategoryFilter("all"); setSearchQuery(""); }}
-                className="mt-3 rounded-xl bg-[#baff00] px-4 py-2 text-xs font-bold text-[#07100f]"
-              >
-                Reset Filters
-              </button>
+            <div className="rounded-3xl border border-white/10 bg-[#0d171a] p-12 text-center space-y-3">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-2xl border border-white/10">
+                📦
+              </div>
+              <h3 className="text-base font-bold text-white">No Subscription Tools Available</h3>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                {searchQuery || categoryFilter !== "all" || inStockOnly
+                  ? "No subscriptions match your active search keyword, filter, or stock preference."
+                  : "There are currently no active digital tools or accounts listed in this category."}
+              </p>
+              {(searchQuery || categoryFilter !== "all" || inStockOnly) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryFilter("all");
+                    setSearchQuery("");
+                    setInStockOnly(false);
+                  }}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer"
+                >
+                  Clear Filters & Show All
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -902,7 +922,27 @@ export function SubscriptionsPage({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
+                {/* WhatsApp & Email Dispatch Confirmation */}
+                {purchaseDispatch?.directWhatsAppLink && (
+                  <a
+                    href={purchaseDispatch.directWhatsAppLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 py-3 text-xs font-black text-slate-950 hover:bg-emerald-400 transition shadow-[0_4px_14px_rgba(16,185,129,0.3)]"
+                  >
+                    <span>📱</span>
+                    <span>Save Credentials to WhatsApp ↗</span>
+                  </a>
+                )}
+
+                {purchaseDispatch?.emailSent && (
+                  <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-xs text-blue-300 flex items-center justify-center gap-2">
+                    <span>✉️</span>
+                    <span>Setup email dispatched to <strong className="text-white">{purchaseSuccess.delivery_contact}</strong></span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => {
@@ -1049,18 +1089,23 @@ export function SubscriptionsPage({
                         {/* Delivery Input */}
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                            Delivery Email or WhatsApp Number <span className="text-[#baff00]">*</span>
+                            Delivery Gmail or WhatsApp Number <span className="text-[#baff00]">*</span>
                           </label>
                           <input
                             type="text"
                             value={deliveryContact}
                             onChange={(e) => setDeliveryContact(e.target.value)}
-                            placeholder="e.g. user@gmail.com or +923001234567"
+                            placeholder="e.g. yourname@gmail.com or 03176437013 (WhatsApp)"
                             className="w-full rounded-xl border border-white/15 bg-[#070e10] px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/30 placeholder-slate-500 transition"
                           />
-                          <span className="mt-1 block text-[11px] text-slate-400">
-                            Instant software credentials, activation links, or promo codes will be dispatched here.
-                          </span>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
+                              <span>✉️</span> <strong>Gmail:</strong> Automated setup email
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+                              <span>📱</span> <strong>WhatsApp:</strong> Instant credentials chat
+                            </span>
+                          </div>
                         </div>
 
                         {/* Error Notice */}

@@ -59,6 +59,59 @@ export async function POST(req: Request) {
     const password = String(body.password || "");
     const permissions = typeof body.permissions === "object" && body.permissions !== null ? body.permissions : {};
 
+    const existingUserId = body.existingUserId ? Number(body.existingUserId) : null;
+    if (existingUserId && Number.isInteger(existingUserId) && existingUserId > 0) {
+      const userRes = await db.query(`SELECT id, name, email, role FROM vexo_users WHERE id = $1 LIMIT 1`, [existingUserId]);
+      const targetUser = userRes.rows[0];
+      if (!targetUser) {
+        return NextResponse.json({ success: false, error: "Target user not found." }, { status: 404 });
+      }
+      if (targetUser.role === "admin" || targetUser.role === "super_admin") {
+        return NextResponse.json({ success: false, error: "Cannot modify primary admin accounts." }, { status: 400 });
+      }
+
+      const updateSql = [`role = 'sub_admin'`, `permissions = $1::jsonb`, `is_active = true`];
+      const params: any[] = [JSON.stringify(permissions)];
+      let pIdx = 2;
+      if (password && password.length >= 6) {
+        updateSql.push(`password_hash = $${pIdx}`);
+        params.push(hashPassword(password));
+        pIdx++;
+      }
+      params.push(targetUser.id);
+
+      const updRes = await db.query(
+        `UPDATE vexo_users
+         SET ${updateSql.join(", ")}
+         WHERE id = $${pIdx}
+         RETURNING id, name, email, role, permissions, is_active, created_at`,
+        params
+      );
+
+      const subAdmin = updRes.rows[0];
+      await logAdminActivity(
+        auth.user.id,
+        "PROMOTE_SUB_ADMIN",
+        "user",
+        String(subAdmin.id),
+        { email: subAdmin.email, permissions }
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: `${subAdmin.name} (${subAdmin.email}) promoted to Sub-Admin.`,
+        subAdmin: {
+          id: subAdmin.id,
+          name: subAdmin.name,
+          email: subAdmin.email,
+          role: subAdmin.role,
+          permissions: subAdmin.permissions || {},
+          isActive: Boolean(subAdmin.is_active),
+          createdAt: subAdmin.created_at,
+        },
+      });
+    }
+
     if (!name || name.length < 2) {
       return NextResponse.json({ success: false, error: "Name must be at least 2 characters." }, { status: 400 });
     }
@@ -77,7 +130,7 @@ export async function POST(req: Request) {
     const existing = await db.query(`SELECT id, role FROM vexo_users WHERE email = $1 LIMIT 1`, [email]);
     if (existing.rows[0]) {
       return NextResponse.json(
-        { success: false, error: "A user or sub-admin with this email already exists." },
+        { success: false, error: "A user with this email already exists. You can select them directly under 'Promote Existing User'." },
         { status: 400 }
       );
     }

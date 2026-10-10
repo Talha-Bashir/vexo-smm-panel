@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BLOG_POSTS, BLOG_CATEGORIES } from "@/lib/blog-data";
+import { BLOG_POSTS, BLOG_CATEGORIES, getCombinedBlogPosts } from "@/lib/blog-data";
+
+export const dynamic = "force-dynamic";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
@@ -46,9 +48,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BlogIndexPage() {
-  const featuredPost = BLOG_POSTS.find((p) => p.featured) || BLOG_POSTS[0];
-  const regularPosts = BLOG_POSTS.filter((p) => p.slug !== featuredPost.slug);
+export default async function BlogIndexPage() {
+  const allPosts = await getCombinedBlogPosts();
+  const featuredPost = allPosts.find((p) => p.featured) || allPosts[0];
+  const regularPosts = allPosts.filter((p) => p.slug !== featuredPost.slug);
 
   const blogSchema = {
     "@context": "https://schema.org",

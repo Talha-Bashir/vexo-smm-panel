@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { GlobalSupportWidget } from "@/components/global-support-widget";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta-sans",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -24,129 +26,156 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: "SMM Panel Pakistan – Buy Instagram Followers, TikTok Likes & YouTube Views",
-    template: "%s | VEXARO SMM Panel",
-  },
-  description:
-    "VEXARO SMM is an affordable SMM panel in Pakistan. Buy Instagram followers, TikTok likes, YouTube watch time & views, Facebook followers and Telegram members. Pay with JazzCash, Easypaisa, SadaPay or crypto. Instant delivery + Rs 50 free signup bonus.",
-  keywords: [
-    "vexarosmm",
-    "vexarosmm.com",
-    "vexaro smm",
-    "vexaro smm panel",
-    "vexaro panel",
-    "smm panel pakistan",
-    "cheapest smm panel",
-    "best smm panel pakistan",
-    "smm panel easypaisa",
-    "smm panel jazzcash",
-    "smm panel sadapay",
-    "smm panel binance pay",
-    "smm panel usdt",
-    "crypto smm panel",
-    "buy youtube subscribers pakistan",
-    "buy youtube watchtime 4000 hours",
-    "cheap youtube views",
-    "facebook followers smm panel",
-    "telegram members provider",
-    "whatsapp marketing panel",
-    "reseller smm panel",
-    "main smm provider api",
-    "automated smm panel",
-    "instant smm delivery",
-    "pakistani smm panel",
-    "buy instagram followers pakistan",
-    "buy instagram likes cheap",
-    "buy tiktok likes pakistan",
-    "buy tiktok followers cheap",
-    "smm panel",
-    "best smm panel",
-    "cheap smm panel",
-    "affordable smm panel",
-    "social media marketing panel",
-    "instagram smm panel",
-    "tiktok smm panel",
-    "youtube smm panel",
-    "facebook smm panel",
-    "telegram smm panel",
-    "pakistan smm panel",
-    "pkr smm panel",
-    "automatic smm panel",
-    "fast smm panel",
-    "buy instagram followers",
-    "buy tiktok followers",
-    "buy youtube watch time",
-    "buy youtube subscribers",
-    "social media growth",
-    "social media growth pakistan",
-  ],
-  authors: [{ name: "VEXARO SMM", url: SITE_URL }],
-  creator: "VEXARO SMM",
-  publisher: "VEXARO SMM Services",
-  applicationName: "VEXARO SMM Panel",
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  alternates: {
-    canonical: SITE_URL,
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: SITE_URL,
-    title: "SMM Panel Pakistan – Buy Instagram Followers, TikTok Likes & YouTube Views",
-    description:
-      "Boost your social media growth instantly with VEXARO SMM (vexarosmm.com). Cheapest automated SMM panel for Instagram, TikTok, YouTube, & Facebook. Easy deposits via SadaPay, Easypaisa, JazzCash, and Binance Pay.",
-    siteName: "VEXARO SMM Services",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "VEXARO SMM Panel - Automated Social Media Marketing Services",
+import { getAllPlatformSettings, DEFAULT_PLATFORM_SETTINGS } from "@/lib/admin";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getAllPlatformSettings().catch(() => DEFAULT_PLATFORM_SETTINGS);
+  const siteUrl = settings.seo_site_url || SITE_URL;
+  const title = settings.seo_meta_title || "SMM Panel Pakistan – Buy Instagram Followers, TikTok Likes & YouTube Views";
+  const desc =
+    settings.seo_meta_description ||
+    "VEXARO SMM is an affordable SMM panel in Pakistan. Buy Instagram followers, TikTok likes, YouTube watch time & views, Facebook followers and Telegram members. Pay with JazzCash, Easypaisa, SadaPay or crypto. Instant delivery + Rs 50 free signup bonus.";
+
+  const rawKeywords = settings.seo_meta_keywords || "";
+  const keywords = rawKeywords
+    ? rawKeywords.split(",").map((k) => k.trim()).filter(Boolean)
+    : [
+        "vexarosmm",
+        "vexarosmm.com",
+        "vexaro smm",
+        "vexaro smm panel",
+        "vexaro panel",
+        "smm panel pakistan",
+        "cheapest smm panel",
+        "best smm panel pakistan",
+        "smm panel easypaisa",
+        "smm panel jazzcash",
+        "smm panel sadapay",
+        "smm panel binance pay",
+        "smm panel usdt",
+        "crypto smm panel",
+        "buy youtube subscribers pakistan",
+        "buy youtube watchtime 4000 hours",
+        "cheap youtube views",
+        "facebook followers smm panel",
+        "telegram members provider",
+        "whatsapp marketing panel",
+        "reseller smm panel",
+        "main smm provider api",
+        "automated smm panel",
+        "instant smm delivery",
+        "pakistani smm panel",
+        "buy instagram followers pakistan",
+        "buy instagram likes cheap",
+        "buy tiktok likes pakistan",
+        "buy tiktok followers cheap",
+        "smm panel",
+        "best smm panel",
+        "cheap smm panel",
+        "affordable smm panel",
+        "social media marketing panel",
+        "instagram smm panel",
+        "tiktok smm panel",
+        "youtube smm panel",
+        "facebook smm panel",
+        "telegram smm panel",
+        "pakistan smm panel",
+        "pkr smm panel",
+        "automatic smm panel",
+        "fast smm panel",
+        "buy instagram followers",
+        "buy tiktok followers",
+        "buy youtube watch time",
+        "buy youtube subscribers",
+        "social media growth",
+        "social media growth pakistan",
+      ];
+
+  const ogTitle = settings.seo_og_title || title;
+  const ogDesc = settings.seo_og_description || desc;
+  const ogImage = settings.seo_og_image || "/og-image.png";
+  const twitterTitle = settings.seo_twitter_title || title;
+  const twitterDesc = settings.seo_twitter_description || desc;
+  const twitterHandle = settings.seo_twitter_handle || "@VexaroSMMAdmin";
+  const twitterCard = (settings.seo_twitter_card === "summary" ? "summary" : "summary_large_image") as "summary" | "summary_large_image";
+  const robotsIndex = settings.seo_robots_index !== "false";
+  const robotsFollow = settings.seo_robots_follow !== "false";
+  const googleVerification = settings.seo_google_site_verification || "googleb27b1614a9d4e487";
+  const bingVerification = settings.seo_bing_site_verification;
+
+  return {
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: title,
+      template: "%s | VEXARO SMM Panel",
+    },
+    description: desc,
+    keywords,
+    authors: [{ name: "VEXARO SMM", url: siteUrl }],
+    creator: "VEXARO SMM",
+    publisher: "VEXARO SMM Services",
+    applicationName: "VEXARO SMM Panel",
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
+    },
+    alternates: {
+      canonical: siteUrl,
+    },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: siteUrl,
+      title: ogTitle,
+      description: ogDesc,
+      siteName: "VEXARO SMM Services",
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: `${title} - Social Media Growth`,
+        },
+      ],
+    },
+    twitter: {
+      card: twitterCard,
+      title: twitterTitle,
+      description: twitterDesc,
+      creator: twitterHandle,
+      images: [ogImage],
+    },
+    robots: {
+      index: robotsIndex,
+      follow: robotsFollow,
+      googleBot: {
+        index: robotsIndex,
+        follow: robotsFollow,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
       },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "VEXARO SMM Panel – Best & Cheapest SMM Panel",
-    description:
-      "Cheapest SMM panel (vexarosmm.com) for Instagram, TikTok, YouTube, and Facebook. Instant automated delivery with 24/7 support.",
-    creator: "@VexaroSMMAdmin",
-    images: ["/og-image.png"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
     },
-  },
-  verification: {
-    google: "googleb27b1614a9d4e487",
-    other: {
-      "google-site-verification": ["googleb27b1614a9d4e487.html", "googleb27b1614a9d4e487"],
+    verification: {
+      google: googleVerification,
+      other: {
+        "google-site-verification": [googleVerification, `${googleVerification}.html`],
+        ...(bingVerification ? { "msvalidate.01": [bingVerification] } : {}),
+      },
     },
-  },
-  icons: {
-    icon: [
-      { url: "/logo.png", type: "image/png" },
-      { url: "/icon.png", type: "image/png" },
-    ],
-    apple: [{ url: "/logo.png" }],
-    shortcut: ["/logo.png"],
-  },
-  category: "technology",
-};
+    icons: {
+      icon: [
+        { url: "/logo.png", type: "image/png" },
+        { url: "/icon.png", type: "image/png" },
+      ],
+      apple: [{ url: "/logo.png" }],
+      shortcut: ["/logo.png"],
+    },
+    category: "technology",
+  };
+}
+
 
 // JSON-LD Structured Schemas for Search Engines (Google Rich Snippets)
 const structuredData = {
@@ -310,40 +339,126 @@ const structuredData = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const settings = await getAllPlatformSettings().catch(() => DEFAULT_PLATFORM_SETTINGS);
+  const gaId = settings.seo_google_analytics_id || "G-34H7D6YB4D";
+  const gtmId = settings.seo_google_tag_manager_id;
+  const metaPixelId = settings.seo_meta_pixel_id;
+  const tiktokPixelId = settings.seo_tiktok_pixel_id;
+  const customHead = settings.seo_custom_head_scripts || "";
+  const customBody = settings.seo_custom_body_scripts || "";
+  const googleVerification = settings.seo_google_site_verification || "googleb27b1614a9d4e487";
+  const defaultTheme = settings.platform_theme === "light" ? "light" : "dark";
+  const noticeEnabled = settings.site_notice_enabled === "true";
+  const noticeText = settings.site_notice_text;
+  const isMaintenance = settings.site_maintenance_mode === "true";
+  const maintenanceMsg = settings.site_maintenance_message;
+
   return (
     <html
       lang="en"
-      data-theme="cyber-lime"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-theme={defaultTheme}
+      className={`${plusJakartaSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
-        {/* Google tag (gtag.js) */}
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-34H7D6YB4D"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.dataLayer = window.dataLayer || [];
+        {/* Google Analytics 4 (GA4) */}
+        {gaId && (
+          <>
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-gtag('config', 'G-34H7D6YB4D');`,
-          }}
-        />
+gtag('config', '${gaId}');`,
+              }}
+            />
+          </>
+        )}
+        {/* Google Tag Manager (GTM) Container */}
+        {gtmId && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${gtmId}');`,
+            }}
+          />
+        )}
+        {/* Meta / Facebook Pixel Container */}
+        {metaPixelId && (
+          <>
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${metaPixelId}');
+fbq('track', 'PageView');`,
+              }}
+            />
+            <noscript>
+              <img
+                height="1"
+                width="1"
+                style={{ display: "none" }}
+                src={`https://www.facebook.com/tr?id=${metaPixelId}&ev=PageView&noscript=1`}
+                alt=""
+              />
+            </noscript>
+          </>
+        )}
+        {/* TikTok Pixel Container */}
+        {tiktokPixelId && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `!function (w, d, t) {
+  w.TiktokAnalyticsObject=t;var tt=w[t]=w[t]||[];tt.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"],tt.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<tt.methods.length;i++)tt.setAndDefer(tt,tt.methods[i]);tt.instance=function(t){for(var e=tt._i[t]||[],n=0;n<tt.methods.length;n++)tt.setAndDefer(e,tt.methods[n]);return e},tt.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";tt._i=tt._i||{},tt._i[e]=[],tt._i[e]._u=i,tt._t=tt._t||{},tt._t[e]=+new Date,tt._o=tt._o||{},tt._o[e]=n||{};var o=document.createElement("script");o.type="text/javascript",o.async=!0,o.src=i+"?sdkid="+e+"&lib="+t;var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+  tt.load('${tiktokPixelId}');
+  tt.page();
+}(window, document, 'ttq');`,
+            }}
+          />
+        )}
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap"
+        />
         <link rel="icon" type="image/png" href="/logo.png" />
         <link rel="apple-touch-icon" href="/logo.png" />
-        <meta name="google-site-verification" content="googleb27b1614a9d4e487" />
-        <meta name="google-site-verification" content="googleb27b1614a9d4e487.html" />
+        {googleVerification && (
+          <>
+            <meta name="google-site-verification" content={googleVerification} />
+            <meta name="google-site-verification" content={`${googleVerification}.html`} />
+          </>
+        )}
+        {customHead && (
+          <script
+            id="vexo-custom-head-injection"
+            dangerouslySetInnerHTML={{ __html: customHead }}
+          />
+        )}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('vexo_platform_theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('vexo_platform_theme');if(t==='midnight'||t==='purple'||(t&&t!=='dark'&&t!=='light')){t='dark';localStorage.setItem('vexo_platform_theme','dark');}if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,
           }}
         />
         <script
@@ -351,8 +466,28 @@ gtag('config', 'G-34H7D6YB4D');`,
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-[#0a1110] text-slate-100" suppressHydrationWarning>
+      <body className={`${plusJakartaSans.className} min-h-full flex flex-col bg-[#0a1110] text-slate-100 font-sans`} suppressHydrationWarning>
+        {/* Maintenance Banner */}
+        {isMaintenance && (
+          <aside aria-label="System Notice" className="relative z-50 flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-center text-xs font-bold text-amber-300">
+            <span>⚠️</span>
+            <span>{maintenanceMsg || "Platform Maintenance Mode is currently active."}</span>
+          </aside>
+        )}
+        {/* Broadcast Announcement Banner */}
+        {!isMaintenance && noticeEnabled && noticeText && (
+          <aside aria-label="Special Announcement" className="relative z-50 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 via-[#baff00] to-emerald-500 px-4 py-2 text-center text-xs font-black text-[#07100f] shadow-md">
+            <span>📢</span>
+            <span>{noticeText}</span>
+          </aside>
+        )}
         {children}
+        {customBody && (
+          <div
+            id="vexo-custom-body-injection"
+            dangerouslySetInnerHTML={{ __html: customBody }}
+          />
+        )}
         <GlobalSupportWidget />
         <Analytics />
       </body>

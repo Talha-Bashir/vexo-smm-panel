@@ -51,3 +51,16 @@ next-env.d.ts
 # scratch
 scratch/
 
+# video generation & render temporary cache
+public/render_temp/
+public/render_temp_v2/
+public/render_temp_v3/
+public/temp_broll/
+public/video_cards/
+public/avatar/
+public/tutorial_video/
+public/*.ass
+public/*.srt
+public/mouth_frame.jpg
+scripts/tutorial/
+

@@ -2,16 +2,15 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Social3DIcon } from "@/components/social-3d-icon";
 
 /* ---------------- TYPES ---------------- */
 
-export type PlatformTheme = "dark" | "light" | "midnight" | "purple";
+export type PlatformTheme = "dark" | "light";
 
 export const THEME_OPTIONS: { id: PlatformTheme; name: string; icon: string; dot: string }[] = [
   { id: "dark", name: "Cyber Dark", icon: "⚡", dot: "#baff00" },
   { id: "light", name: "Clean Light", icon: "☀️", dot: "#10b981" },
-  { id: "midnight", name: "Midnight Navy", icon: "🌌", dot: "#38bdf8" },
-  { id: "purple", name: "Neon Purple", icon: "🔮", dot: "#c084fc" },
 ];
 
 type Service = {
@@ -124,18 +123,21 @@ function Icon({
         </svg>
       );
     case "whatsapp":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="9" />
-          <path d="M8.4 7.8c.4-.4 1-.4 1.4.1l1 1.3c.3.4.3.8 0 1.2l-.5.6c.8 1.5 1.7 2.4 3.2 3.2l.6-.5c.4-.3.8-.3 1.2 0l1.3 1c.5.4.5 1 .1 1.4l-.6.6c-.5.5-1.3.7-2 .4-3.4-1.3-5.9-3.8-7.2-7.2-.3-.7-.1-1.5.4-2l.6-.6Z" />
-        </svg>
-      );
+      return <Social3DIcon platform="whatsapp" size={size} className={className} glow />;
     case "telegram":
-      return (
-        <svg {...common} fill="currentColor" stroke="none">
-          <path d="m21.5 4.5-3 14.2c-.2 1-1 1.3-1.8.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.9 8.9-8c.4-.3-.1-.5-.6-.2l-11 6.9-4.7-1.5c-1-.3-1-1 .2-1.5L20 3.2c.8-.3 1.7.2 1.5 1.3Z" />
-        </svg>
-      );
+      return <Social3DIcon platform="telegram" size={size} className={className} glow />;
+    case "instagram":
+      return <Social3DIcon platform="instagram" size={size} className={className} glow />;
+    case "tiktok":
+      return <Social3DIcon platform="tiktok" size={size} className={className} glow />;
+    case "youtube":
+      return <Social3DIcon platform="youtube" size={size} className={className} glow />;
+    case "facebook":
+      return <Social3DIcon platform="facebook" size={size} className={className} glow />;
+    case "spotify":
+      return <Social3DIcon platform="spotify" size={size} className={className} glow />;
+    case "discord":
+      return <Social3DIcon platform="discord" size={size} className={className} glow />;
     case "menu":
       return (
         <svg {...common}>
@@ -325,7 +327,7 @@ export default function LandingPage() {
   useEffect(() => {
     try {
       const stored = (localStorage.getItem("vexo_platform_theme") || document.documentElement.getAttribute("data-theme") || "dark") as PlatformTheme;
-      const valid = ["dark", "light", "midnight", "purple"].includes(stored) ? stored : "dark";
+      const valid = (["dark", "light"].includes(stored) ? stored : "dark") as PlatformTheme;
       setCurrentTheme(valid);
       document.documentElement.setAttribute("data-theme", valid);
     } catch {}
@@ -531,9 +533,9 @@ export default function LandingPage() {
 
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-5 xl:gap-8 text-sm font-semibold text-slate-300">
-            <a href="#services" className="transition hover:text-[#baff00] whitespace-nowrap">
+            <Link href="/services" className="transition hover:text-[#baff00] whitespace-nowrap">
               Services
-            </a>
+            </Link>
             <a href="#features" className="transition hover:text-[#baff00] whitespace-nowrap">
               Features
             </a>
@@ -662,13 +664,13 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="border-b border-white/10 bg-[#0d1617] px-4 py-6 lg:hidden">
             <nav className="flex flex-col gap-4 text-sm font-semibold text-slate-300">
-              <a
-                href="#services"
+              <Link
+                href="/services"
                 onClick={() => setMobileMenuOpen(false)}
                 className="py-1 hover:text-[#baff00]"
               >
                 Services Catalog
-              </a>
+              </Link>
               <a
                 href="#features"
                 onClick={() => setMobileMenuOpen(false)}
@@ -1000,10 +1002,7 @@ export default function LandingPage() {
                   key={`${network.name}-${index}`}
                   className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#10191b] px-5 py-3 shrink-0 transition hover:border-[#baff00]/50"
                 >
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: network.color }}
-                  />
+                  <Social3DIcon platform={network.name} size={28} glow />
                   <div>
                     <p className="text-xs font-black text-white">{network.name}</p>
                     <p className="text-[10px] text-slate-400">{network.badge}</p>
@@ -1248,13 +1247,14 @@ export default function LandingPage() {
                     type="button"
                     suppressHydrationWarning
                     onClick={() => setSelectedPlatform(p)}
-                    className={`shrink-0 rounded-xl px-3.5 py-2 transition ${
+                    className={`flex items-center gap-2 shrink-0 rounded-xl px-3.5 py-2 transition cursor-pointer ${
                       selectedPlatform === p
-                        ? "bg-[#baff00] text-[#07100f] shadow-[0_2px_12px_rgba(186,255,0,0.2)]"
-                        : "border border-white/10 bg-[#121b1d] text-slate-400 hover:text-white"
+                        ? "bg-[#baff00] text-[#07100f] font-bold shadow-[0_2px_12px_rgba(186,255,0,0.2)]"
+                        : "border border-white/10 bg-[#121b1d] text-slate-400 hover:text-white hover:border-white/20"
                     }`}
                   >
-                    {p}
+                    <Social3DIcon platform={p} size={17} />
+                    <span>{p}</span>
                   </button>
                 ))}
               </div>
@@ -1356,10 +1356,11 @@ export default function LandingPage() {
                   <strong className="text-white">{services.length || "1,000+"}</strong> active services
                 </span>
                 <Link
-                  href="/signup"
-                  className="font-bold text-[#baff00] hover:underline"
+                  href="/services"
+                  className="font-bold text-[#baff00] hover:underline flex items-center gap-1.5"
                 >
-                  View all 1,000+ services inside dashboard →
+                  <span>Browse full public catalog &amp; live rates</span>
+                  <span>→</span>
                 </Link>
               </div>
             </div>

@@ -4,7 +4,7 @@ import { db, ensureDatabase } from "@/lib/db";
 import { createSession, hashPassword } from "@/lib/auth";
 import { getCorsHeaders, handleCorsPreflight } from "@/lib/cors";
 import { verifyBotProtection } from "@/lib/bot-protection";
-import { processSignupBonus } from "@/lib/signup-bonus";
+import { redeemCoupon } from "@/lib/coupons";
 
 function generateReferralCode() {
   return "VX" + crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "");
     const inputReferralCode = String(body.referralCode || body.ref || "").trim().toUpperCase();
+    const inputCouponCode = String(body.couponCode || body.coupon || "").trim().toUpperCase();
     const botToken = String(body.botToken || body.turnstileToken || body["cf-turnstile-response"] || "");
     const honeypot = String(body.honeypot || body._hp_trap || "");
     const deviceFingerprint = String(body.deviceFingerprint || "").trim();
@@ -104,18 +105,31 @@ export async function POST(request: Request) {
     const newUser = result.rows[0];
     await createSession(newUser.id);
 
-    // Evaluate and grant Rs. 50 new user promotional signup bonus
-    let bonusResult = null;
-    try {
-      bonusResult = await processSignupBonus({
-        userId: Number(newUser.id),
-        email: newUser.email,
-        clientIp,
-        deviceFingerprint,
-        userAgent,
-      });
-    } catch (bonusErr) {
-      console.error("VEXO SIGNUP BONUS PROCESS WARNING:", bonusErr);
+    // If user provided a promo coupon code, redeem it atomically
+    let couponResult = null;
+    if (inputCouponCode) {
+      try {
+        const redeemed = await redeemCoupon({
+          code: inputCouponCode,
+          userId: Number(newUser.id),
+          clientIp,
+          deviceFingerprint,
+          userAgent,
+        });
+        couponResult = {
+          success: true,
+          code: redeemed.code,
+          prizePkr: redeemed.prizePkr,
+          rewardType: redeemed.rewardType,
+          message: redeemed.message,
+        };
+      } catch (couponErr) {
+        couponResult = {
+          success: false,
+          code: inputCouponCode,
+          error: couponErr instanceof Error ? couponErr.message : "Coupon redemption failed.",
+        };
+      }
     }
 
     return NextResponse.json(
@@ -127,12 +141,13 @@ export async function POST(request: Request) {
           email: newUser.email,
           referralCode: newUser.referral_code,
         },
-        bonus: bonusResult
+        coupon: couponResult,
+        bonus: couponResult && couponResult.success
           ? {
-              granted: bonusResult.granted,
-              amount: bonusResult.amount,
-              message: bonusResult.message,
-              reason: bonusResult.reason,
+              granted: true,
+              amount: couponResult.prizePkr,
+              message: couponResult.message,
+              reason: "COUPON_REDEEMED",
             }
           : null,
       },

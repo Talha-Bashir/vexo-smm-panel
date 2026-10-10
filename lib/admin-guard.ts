@@ -10,6 +10,10 @@ export type AdminPermission =
   | "users"
   | "analytics"
   | "withdrawals"
+  | "coupons"
+  | "subscriptions"
+  | "settings"
+  | "seo"
   | "sub_admins";
 
 export interface RequestAdminUser {
@@ -71,7 +75,16 @@ export async function requireAdminPermission(
       };
     }
 
-    if (!requiredPermission || user.permissions?.[requiredPermission] === true) {
+    const p = user.permissions || {};
+    const hasPerm =
+      !requiredPermission ||
+      p[requiredPermission] === true ||
+      p.full_access === true ||
+      (requiredPermission === "coupons" && (p.coupons === true || p.users === true)) ||
+      (requiredPermission === "subscriptions" && (p.subscriptions === true || p.services === true)) ||
+      (requiredPermission === "seo" && (p.seo === true || p.settings === true));
+
+    if (hasPerm) {
       return {
         authorized: true,
         user,

@@ -845,3 +845,54 @@ export const BLOG_POSTS: BlogPost[] = [
   },
 ];
 
+export async function getCombinedBlogPosts(): Promise<BlogPost[]> {
+  try {
+    const { db } = await import("@/lib/db");
+    const res = await db.query(
+      `SELECT * FROM vexo_blog_posts WHERE published = true ORDER BY created_at DESC`
+    );
+    const dbPosts: BlogPost[] = res.rows.map((r) => {
+      const paragraphs = (r.content_markdown || "").split("\n\n").filter(Boolean);
+      return {
+        slug: r.slug,
+        title: r.title,
+        metaTitle: r.meta_title || r.title,
+        metaDescription: r.meta_description || r.summary,
+        summary: r.summary,
+        category: (r.category || "Pakistan Guides") as BlogPost["category"],
+        tags: r.tags || [],
+        author: {
+          name: r.author_name || "VEXARO Team",
+          role: r.author_role || "SMM Strategist",
+          avatar: (r.author_name || "V").slice(0, 2).toUpperCase(),
+        },
+        publishedAt: r.created_at ? new Date(r.created_at).toISOString().split("T")[0] : "2026-10-01",
+        updatedAt: r.updated_at ? new Date(r.updated_at).toISOString().split("T")[0] : "2026-10-01",
+        readTime: r.read_time || "5 min read",
+        featured: false,
+        coverGradient: "from-emerald-950 via-[#0a1815] to-[#07100f]",
+        coverIcon: r.cover_icon || "🚀",
+        keywords: r.tags || [],
+        tableOfContents: [],
+        sections: [
+          {
+            heading: r.title,
+            paragraphs,
+          },
+        ],
+      };
+    });
+
+    const dbSlugs = new Set(dbPosts.map((p) => p.slug));
+    return [...dbPosts, ...BLOG_POSTS.filter((p) => !dbSlugs.has(p.slug))];
+  } catch {
+    return BLOG_POSTS;
+  }
+}
+
+export async function getPostBySlug(slug: string): Promise<BlogPost | undefined> {
+  const all = await getCombinedBlogPosts();
+  return all.find((p) => p.slug === slug);
+}
+
+

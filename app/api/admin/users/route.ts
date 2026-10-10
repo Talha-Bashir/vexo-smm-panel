@@ -21,6 +21,8 @@ export async function GET(req: Request) {
     const q = new URL(req.url).searchParams.get("q")?.trim() || "";
     const r = await db.query(
       `SELECT u.id, u.name, u.email, u.created_at,
+              COALESCE(u.custom_discount_percent, 0) AS custom_discount_percent,
+              COALESCE(u.custom_rates, '{}'::jsonb) AS custom_rates,
               COALESCE(w.balance_pkr, 0) AS balance_pkr,
               COALESCE(w.bonus_balance_pkr, 0) AS bonus_balance_pkr,
               c.status AS bonus_status,
@@ -49,6 +51,8 @@ export async function GET(req: Request) {
         bonusReason: x.bonus_reason || null,
         orderCount: +x.order_count,
         depositCount: +x.deposit_count,
+        customDiscountPercent: Number(x.custom_discount_percent || 0),
+        customRates: x.custom_rates || {},
       })),
     });
   } catch (e) {
@@ -88,6 +92,45 @@ export async function PATCH(req: Request) {
         success: true,
         message: result.message,
         bonusBalancePkr: result.newBonusBalance,
+      });
+    }
+
+    // Support custom user rates and wholesale discounts
+    if (b?.action === "set_custom_rates") {
+      const userId = Number(b?.userId);
+      const discountPercent = Math.max(0, Math.min(99, Number(b?.customDiscountPercent || 0)));
+      const customRates = typeof b?.customRates === "object" && b?.customRates !== null ? b.customRates : {};
+
+      if (!Number.isInteger(userId) || userId < 1) {
+        return NextResponse.json({ success: false, error: "Invalid user ID." }, { status: 400 });
+      }
+
+      await c.query("BEGIN");
+      const u = await c.query(`SELECT id, email FROM vexo_users WHERE id = $1 FOR UPDATE`, [userId]);
+      if (!u.rows[0]) {
+        await c.query("ROLLBACK");
+        return NextResponse.json({ success: false, error: "User not found." }, { status: 404 });
+      }
+
+      await c.query(
+        `UPDATE vexo_users 
+         SET custom_discount_percent = $1, custom_rates = $2 
+         WHERE id = $3`,
+        [discountPercent, JSON.stringify(customRates), userId]
+      );
+
+      await c.query(
+        `INSERT INTO vexo_admin_activity(admin_user_id, action, target_type, target_id, details)
+         VALUES ($1, 'set_custom_rates', 'user', $2, $3::jsonb)`,
+        [+g.user!.id, String(userId), JSON.stringify({ email: u.rows[0].email, discountPercent, customRates })]
+      );
+      await c.query("COMMIT");
+
+      return NextResponse.json({
+        success: true,
+        message: `Wholesale pricing updated for ${u.rows[0].email}`,
+        customDiscountPercent: discountPercent,
+        customRates,
       });
     }
 

@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MassOrderPage } from "./mass-order";
 import { SubscriptionsPage } from "./subscriptions";
 import BonusCelebrationModal from "@/components/bonus-celebration-modal";
+import RedeemCouponModal from "@/components/redeem-coupon-modal";
+import CurrencySelectModal from "@/components/currency-select-modal";
+import { Social3DIcon } from "@/components/social-3d-icon";
 
 type RizviService = {
   service: number;
@@ -42,13 +45,11 @@ type Service = {
   enabled?: boolean;
 };
 
-export type PlatformTheme = "dark" | "light" | "midnight" | "purple";
+export type PlatformTheme = "dark" | "light";
 
 export const THEME_OPTIONS: { id: PlatformTheme; name: string; icon: string; dot: string }[] = [
   { id: "dark", name: "Cyber Dark", icon: "⚡", dot: "#baff00" },
   { id: "light", name: "Clean Light", icon: "☀️", dot: "#10b981" },
-  { id: "midnight", name: "Midnight Navy", icon: "🌌", dot: "#38bdf8" },
-  { id: "purple", name: "Neon Purple", icon: "🔮", dot: "#c084fc" },
 ];
 
 function isPackageService(service?: { type?: string; min?: string | number; max?: string | number } | null): boolean {
@@ -112,6 +113,7 @@ type VexoDeposit = {
   createdAt: string;
   reviewedAt?: string | null;
   rejectionReason?: string | null;
+  bonusPkr?: number;
 };
 
 type CurrentUser = {
@@ -195,14 +197,27 @@ function Icon({ name, size = 20, strokeWidth = 1.9, className = "" }: { name: st
     case "heart": return <svg {...common}><path d="M20.8 8.7c0 5.1-8.8 10.2-8.8 10.2S3.2 13.8 3.2 8.7A4.7 4.7 0 0 1 12 6.3a4.7 4.7 0 0 1 8.8 2.4Z"/></svg>;
     case "shield": return <svg {...common}><path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg>;
     case "more": return <svg {...common}><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></svg>;
-    case "instagram": return <svg {...common}><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg>;
-    case "youtube": return <svg {...common} fill="currentColor" stroke="none"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="m10 9 5 3-5 3V9Z" fill="#07100f"/></svg>;
-    case "tiktok": return <svg {...common}><path d="M14.5 4v9.2a4.5 4.5 0 1 1-3.5-4.4"/><path d="M14.5 4c1 2.5 2.7 4 5 4.2"/><path d="M11 8.8c.7-.2 1.5-.2 2.2.1"/></svg>;
-    case "facebook": return <svg {...common} fill="currentColor" stroke="none"><circle cx="12" cy="12" r="9.5"/><path d="M13.5 20v-6h2l.4-2.4h-2.4V10c0-.8.2-1.4 1.5-1.4H16V6.4c-.5-.1-1.2-.2-2-.2-2 0-3.4 1.2-3.4 3.5v1.9H8.5V14h2.1v6h2.9Z" fill="#07100f"/></svg>;
-    case "whatsapp": return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="M8.4 7.8c.4-.4 1-.4 1.4.1l1 1.3c.3.4.3.8 0 1.2l-.5.6c.8 1.5 1.7 2.4 3.2 3.2l.6-.5c.4-.3.8-.3 1.2 0l1.3 1c.5.4.5 1 .1 1.4l-.6.6c-.5.5-1.3.7-2 .4-3.4-1.3-5.9-3.8-7.2-7.2-.3-.7-.1-1.5.4-2l.6-.6Z"/></svg>;
-    case "telegram": return <svg {...common} fill="currentColor" stroke="none"><path d="m21.5 4.5-3 14.2c-.2 1-1 1.3-1.8.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.9 8.9-8c.4-.3-.1-.5-.6-.2l-11 6.9-4.7-1.5c-1-.3-1-1 .2-1.5L20 3.2c.8-.3 1.7.2 1.5 1.3Z"/></svg>;
-    case "globe": return <svg {...common}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>;
-    case "x-social": return <svg {...common} strokeWidth={2.1}><path d="M5 4h4.1l3.1 4.7L16.4 4H19l-5.6 6.3L19.5 20h-4.1l-3.6-5.4L7.2 20H4.5l6-6.9L5 4Z"/></svg>;
+    case "instagram": return <Social3DIcon platform="instagram" size={size} className={className} glow />;
+    case "youtube": return <Social3DIcon platform="youtube" size={size} className={className} glow />;
+    case "tiktok": return <Social3DIcon platform="tiktok" size={size} className={className} glow />;
+    case "facebook": return <Social3DIcon platform="facebook" size={size} className={className} glow />;
+    case "whatsapp": return <Social3DIcon platform="whatsapp" size={size} className={className} glow />;
+    case "telegram": return <Social3DIcon platform="telegram" size={size} className={className} glow />;
+    case "globe": return <Social3DIcon platform="globe" size={size} className={className} glow />;
+    case "traffic": return <Social3DIcon platform="traffic" size={size} className={className} glow />;
+    case "x-social":
+    case "x":
+    case "twitter": return <Social3DIcon platform="x" size={size} className={className} glow />;
+    case "spotify": return <Social3DIcon platform="spotify" size={size} className={className} glow />;
+    case "discord": return <Social3DIcon platform="discord" size={size} className={className} glow />;
+    case "twitch": return <Social3DIcon platform="twitch" size={size} className={className} glow />;
+    case "snapchat": return <Social3DIcon platform="snapchat" size={size} className={className} glow />;
+    case "pinterest": return <Social3DIcon platform="pinterest" size={size} className={className} glow />;
+    case "reddit": return <Social3DIcon platform="reddit" size={size} className={className} glow />;
+    case "linkedin": return <Social3DIcon platform="linkedin" size={size} className={className} glow />;
+    case "vk": return <Social3DIcon platform="vk" size={size} className={className} glow />;
+    case "star-3d": return <Social3DIcon platform="star" size={size} className={className} glow />;
+    case "all": return <Social3DIcon platform="all" size={size} className={className} glow />;
     default: return <svg {...common}><circle cx="12" cy="12" r="8"/></svg>;
   }
 }
@@ -223,6 +238,20 @@ function getPlatformIconClass(platform: string) {
       return "text-[#2aa8e8]";
     case "X / Twitter":
       return "text-white";
+    case "Spotify":
+      return "text-[#1db954]";
+    case "Discord":
+      return "text-[#5865f2]";
+    case "Snapchat":
+      return "text-[#fffc00]";
+    case "Twitch":
+      return "text-[#9146ff]";
+    case "Pinterest":
+      return "text-[#e60023]";
+    case "LinkedIn":
+      return "text-[#0a66c2]";
+    case "Website Traffic":
+      return "text-[#00d4ff]";
     default:
       return "text-[#baff00]";
   }
@@ -231,15 +260,15 @@ function getPlatformIconClass(platform: string) {
 function getPlatform(category: string, name: string) {
   const text = `${category} ${name}`.toLowerCase();
 
-  if (text.includes("instagram")) {
+  if (text.includes("instagram") || /\big\b/.test(text)) {
     return { platform: "Instagram", icon: "instagram" };
   }
 
-  if (text.includes("youtube")) {
+  if (text.includes("youtube") || /\byt\b/.test(text)) {
     return { platform: "YouTube", icon: "youtube" };
   }
 
-  if (text.includes("tiktok")) {
+  if (text.includes("tiktok") || /\btt\b/.test(text)) {
     return { platform: "TikTok", icon: "tiktok" };
   }
 
@@ -247,16 +276,48 @@ function getPlatform(category: string, name: string) {
     return { platform: "Facebook", icon: "facebook" };
   }
 
-  if (text.includes("whatsapp")) {
+  if (text.includes("whatsapp") || /\bwa\b/.test(text)) {
     return { platform: "WhatsApp", icon: "whatsapp" };
   }
 
-  if (text.includes("telegram")) {
+  if (text.includes("telegram") || /\btg\b/.test(text)) {
     return { platform: "Telegram", icon: "telegram" };
   }
 
-  if (text.includes("twitter") || text.includes("x ")) {
+  if (text.includes("twitter") || text.includes("x ") || text.includes(" x")) {
     return { platform: "X / Twitter", icon: "x-social" };
+  }
+
+  if (text.includes("spotify")) {
+    return { platform: "Spotify", icon: "spotify" };
+  }
+
+  if (text.includes("discord")) {
+    return { platform: "Discord", icon: "discord" };
+  }
+
+  if (text.includes("twitch")) {
+    return { platform: "Twitch", icon: "twitch" };
+  }
+
+  if (text.includes("snapchat")) {
+    return { platform: "Snapchat", icon: "snapchat" };
+  }
+
+  if (text.includes("pinterest")) {
+    return { platform: "Pinterest", icon: "pinterest" };
+  }
+
+  if (text.includes("linkedin")) {
+    return { platform: "LinkedIn", icon: "linkedin" };
+  }
+
+  if (text.includes("reddit")) {
+    return { platform: "Reddit", icon: "reddit" };
+  }
+
+  if (text.includes("traffic") || text.includes("website") || text.includes("seo")) {
+    return { platform: "Website Traffic", icon: "traffic" };
   }
 
   return { platform: "Other", icon: "spark" };
@@ -336,40 +397,40 @@ function convertRizviService(item: RizviService): Service {
 const DEFAULT_WALLET_BALANCE_PKR = 0.00;
 
 const CURRENCY_OPTIONS = [
-  ["PKR", "Pakistani Rupee", "₨"],
-  ["USD", "US Dollar", "$"],
-  ["AED", "UAE Dirham", "د.إ"],
-  ["SAR", "Saudi Riyal", "﷼"],
-  ["INR", "Indian Rupee", "₹"],
-  ["EUR", "Euro", "€"],
-  ["GBP", "British Pound", "£"],
-  ["CAD", "Canadian Dollar", "$"],
-  ["AUD", "Australian Dollar", "$"],
-  ["CNY", "Chinese Yuan", "¥"],
-  ["JPY", "Japanese Yen", "¥"],
-  ["QAR", "Qatari Riyal", "﷼"],
-  ["KWD", "Kuwaiti Dinar", "د.ك"],
-  ["BHD", "Bahraini Dinar", ".د.ب"],
-  ["OMR", "Omani Rial", "﷼"],
-  ["TRY", "Turkish Lira", "₺"],
-  ["MYR", "Malaysian Ringgit", "RM"],
-  ["SGD", "Singapore Dollar", "$"],
-  ["THB", "Thai Baht", "฿"],
-  ["IDR", "Indonesian Rupiah", "Rp"],
-  ["EGP", "Egyptian Pound", "E£"],
-  ["ZAR", "South African Rand", "R"],
-  ["NZD", "New Zealand Dollar", "$"],
-  ["CHF", "Swiss Franc", "CHF"],
-  ["SEK", "Swedish Krona", "kr"],
-  ["NOK", "Norwegian Krone", "kr"],
-  ["DKK", "Danish Krone", "kr"],
-  ["RUB", "Russian Ruble", "₽"],
-  ["KRW", "South Korean Won", "₩"],
-  ["BRL", "Brazilian Real", "R$"],
+  ["PKR", "Pakistani Rupee", "₨", "🇵🇰"],
+  ["USD", "US Dollar", "$", "🇺🇸"],
+  ["AED", "UAE Dirham", "د.إ", "🇦🇪"],
+  ["SAR", "Saudi Riyal", "﷼", "🇸🇦"],
+  ["INR", "Indian Rupee", "₹", "🇮🇳"],
+  ["EUR", "Euro", "€", "🇪🇺"],
+  ["GBP", "British Pound", "£", "🇬🇧"],
+  ["CAD", "Canadian Dollar", "$", "🇨🇦"],
+  ["AUD", "Australian Dollar", "$", "🇦🇺"],
+  ["CNY", "Chinese Yuan", "¥", "🇨🇳"],
+  ["JPY", "Japanese Yen", "¥", "🇯🇵"],
+  ["QAR", "Qatari Riyal", "﷼", "🇶🇦"],
+  ["KWD", "Kuwaiti Dinar", "د.ك", "🇰🇼"],
+  ["BHD", "Bahraini Dinar", ".د.ب", "🇧🇭"],
+  ["OMR", "Omani Rial", "﷼", "🇴🇲"],
+  ["TRY", "Turkish Lira", "₺", "🇹🇷"],
+  ["MYR", "Malaysian Ringgit", "RM", "🇲🇾"],
+  ["SGD", "Singapore Dollar", "$", "🇸🇬"],
+  ["THB", "Thai Baht", "฿", "🇹🇭"],
+  ["IDR", "Indonesian Rupiah", "Rp", "🇮🇩"],
+  ["EGP", "Egyptian Pound", "E£", "🇪🇬"],
+  ["ZAR", "South African Rand", "R", "🇿🇦"],
+  ["NZD", "New Zealand Dollar", "$", "🇳🇿"],
+  ["CHF", "Swiss Franc", "CHF", "🇨🇭"],
+  ["SEK", "Swedish Krona", "kr", "🇸🇪"],
+  ["NOK", "Norwegian Krone", "kr", "🇳🇴"],
+  ["DKK", "Danish Krone", "kr", "🇩🇰"],
+  ["RUB", "Russian Ruble", "₽", "🇷🇺"],
+  ["KRW", "South Korean Won", "₩", "🇰🇷"],
+  ["BRL", "Brazilian Real", "R$", "🇧🇷"],
 ] as const;
 
-function currencyInfo(code: string) {
-  return CURRENCY_OPTIONS.find((item) => item[0] === code) || CURRENCY_OPTIONS[0];
+function currencyInfo(code: string): readonly [string, string, string, string] {
+  return (CURRENCY_OPTIONS.find((item) => item[0] === code) || CURRENCY_OPTIONS[0]) as readonly [string, string, string, string];
 }
 
 function formatWalletBalance(code: string, rates: Record<string, number>, walletBalancePkr: number) {
@@ -416,6 +477,8 @@ export default function Home() {
   const [walletBalancePkr, setWalletBalancePkr] = useState(DEFAULT_WALLET_BALANCE_PKR);
   const [bonusBalancePkr, setBonusBalancePkr] = useState(0);
   const [bonusCelebration, setBonusCelebration] = useState<{ amount: number; claimKey?: string } | null>(null);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
   const totalAvailablePkr = walletBalancePkr + bonusBalancePkr;
   const [sadaPayNumber, setSadaPayNumber] = useState("03197008275");
   const [sadaPayTitle, setSadaPayTitle] = useState("Saeed Bashir");
@@ -478,7 +541,7 @@ export default function Home() {
   useEffect(() => {
     try {
       const stored = (localStorage.getItem("vexo_platform_theme") || document.documentElement.getAttribute("data-theme") || "dark") as PlatformTheme;
-      const valid = (["dark", "light", "midnight", "purple"].includes(stored) ? stored : "dark") as PlatformTheme;
+      const valid = (["dark", "light"].includes(stored) ? stored : "dark") as PlatformTheme;
       setCurrentTheme(valid);
       document.documentElement.setAttribute("data-theme", valid);
     } catch {}
@@ -787,6 +850,7 @@ export default function Home() {
     { name: "Orders", icon: "layers" },
     { name: "Services", icon: "layers" },
     { name: "Add Funds", icon: "wallet" },
+    { name: "Redeem Coupon", icon: "spark" },
     { name: "Account", icon: "user" },
     { name: "Refer & Earn", icon: "referral" },
     { name: "API", icon: "code" },
@@ -794,6 +858,11 @@ export default function Home() {
   ];
 
   function navigate(page: string) {
+    if (page === "Redeem Coupon" || page === "Coupons") {
+      setShowCouponModal(true);
+      setSidebarOpen(false);
+      return;
+    }
     setActivePage(page);
     setSidebarOpen(false);
   }
@@ -1035,6 +1104,19 @@ export default function Home() {
           </div>
 
           <div className="shrink-0 flex items-center gap-1.5 sm:gap-2.5">
+            {/* Quick Currency Selector Button */}
+            <button
+              type="button"
+              onClick={() => setCurrencyModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-slate-200 hover:border-[#baff00]/40 hover:text-white hover:bg-white/10 transition shrink-0 cursor-pointer shadow-sm"
+              title="Change Display Currency"
+            >
+              <span>{currencyInfo(selectedCurrency)[3]}</span>
+              <span className="font-mono text-[#baff00] font-black">{currencyInfo(selectedCurrency)[2]}</span>
+              <span className="font-black text-white">{selectedCurrency}</span>
+              <span className="text-[10px] text-slate-400">▼</span>
+            </button>
+
             {/* Quick Notification Feed Box */}
             <div className="relative shrink-0" ref={announcementsRef}>
               {(() => {
@@ -1318,6 +1400,23 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => {
+                      setUserMenuOpen(false);
+                      setCurrencyModalOpen(true);
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm">💱</span>
+                      <span>Display Currency</span>
+                    </div>
+                    <span className="font-mono text-xs text-[#baff00] font-black">
+                      {currencyInfo(selectedCurrency)[3]} {selectedCurrency}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
                       navigate("Account");
                       setUserMenuOpen(false);
                     }}
@@ -1387,11 +1486,7 @@ export default function Home() {
         
 
         {/* Content */}
-        <section className="vexo-page-enter p-4 sm:p-6 lg:p-7 pb-36 lg:pb-8">
-          <h1 className="sr-only">
-            VEXARO SMM Panel | Best &amp; Cheapest SMM Panel in Pakistan for Instagram, TikTok, YouTube &amp; Facebook with SadaPay, Easypaisa &amp; JazzCash
-          </h1>
-
+        <section className="vexo-page-enter p-4 sm:p-6 lg:p-7 pb-36 lg:pb-20">
           {/* Active Broadcast Announcements Banner */}
           {announcements.filter((a) => !dismissedAnnouncements[a.id]).length > 0 && (
             <div className="mb-4 sm:mb-6 space-y-3">
@@ -1530,6 +1625,33 @@ export default function Home() {
                 })}
             </div>
           )}
+
+          {/* Low Balance Alert Nudge */}
+          {walletBalancePkr < 100 && activePage !== "Add Funds" && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/20 text-base font-bold text-amber-400">
+                  ⚠️
+                </span>
+                <div>
+                  <p className="font-bold text-amber-200">
+                    Low Wallet Balance: <span className="font-mono text-white">₨{walletBalancePkr.toFixed(2)}</span>
+                  </p>
+                  <p className="text-[11px] text-amber-300/80">
+                    Add funds via SadaPay, Easypaisa, or JazzCash to ensure your automated orders process without interruption.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate("Add Funds")}
+                className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-sm cursor-pointer"
+              >
+                + Add Funds Now →
+              </button>
+            </div>
+          )}
+
           {activePage === "Dashboard" && (
             <Dashboard
               navigate={navigate}
@@ -1757,6 +1879,30 @@ export default function Home() {
           amount={bonusCelebration.amount}
           onClose={handleCloseCelebration}
           onOrderNow={handleOrderNowCelebration}
+        />
+      )}
+
+      {/* Redeem Coupon Modal */}
+      {showCouponModal && (
+        <RedeemCouponModal
+          isOpen={showCouponModal}
+          onClose={() => setShowCouponModal(false)}
+          onSuccess={(prizePkr, message) => {
+            setShowCouponModal(false);
+            loadWallet();
+            setBonusCelebration({ amount: prizePkr, claimKey: `coupon_${Date.now()}` });
+          }}
+        />
+      )}
+
+      {/* Global Currency Selection Modal */}
+      {currencyModalOpen && (
+        <CurrencySelectModal
+          isOpen={currencyModalOpen}
+          onClose={() => setCurrencyModalOpen(false)}
+          selectedCurrency={selectedCurrency}
+          onSelectCurrency={(code) => setSelectedCurrency(code)}
+          rates={currencyRates}
         />
       )}
     </main>
@@ -2139,8 +2285,8 @@ function Dashboard({
                     <th className="pb-3 pr-4">Service</th>
                     <th className="pb-3 pr-4">Target Link</th>
                     <th className="pb-3 pr-4">Quantity</th>
-                    <th className="pb-3 pr-4">Status</th>
-                    <th className="pb-3 text-right">Charge</th>
+                    <th className="pb-3 pr-6 text-center">Status</th>
+                    <th className="pb-3 pl-4 text-right">Charge</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
@@ -2171,10 +2317,10 @@ function Dashboard({
                       <td className="py-3.5 pr-4 font-black text-white">
                         {order.quantity.toLocaleString()}
                       </td>
-                      <td className="py-3.5 pr-4">
+                      <td className="py-3.5 pr-6 text-center whitespace-nowrap">
                         <StatusPill status={order.status} />
                       </td>
-                      <td className="py-3.5 text-right font-black text-[#baff00]">
+                      <td className="py-3.5 pl-4 text-right font-black text-[#baff00] whitespace-nowrap">
                         ₨{Number(order.charge).toFixed(2)}
                       </td>
                     </tr>
@@ -2274,10 +2420,17 @@ function Dashboard({
             </div>
 
             {/* Progress Bar & Target */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-300 font-medium">Progress to {vipTier.nextTier}</span>
-                <span className="font-extrabold text-[#baff00]">{vipTier.progressPercent}%</span>
+                <div className="flex items-center gap-2">
+                  {vipTier.remaining > 0 && (
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      ₨{vipTier.remaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining
+                    </span>
+                  )}
+                  <span className="font-extrabold text-[#baff00]">{vipTier.progressPercent}%</span>
+                </div>
               </div>
               <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
                 <div
@@ -2285,13 +2438,9 @@ function Dashboard({
                   style={{ width: `${vipTier.progressPercent}%` }}
                 />
               </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
-                <span>Perk: <strong className="text-white">{vipTier.perk}</strong></span>
-                {vipTier.remaining > 0 ? (
-                  <span className="text-slate-300">₨{vipTier.remaining.toFixed(2)} remaining</span>
-                ) : (
-                  <span className="text-[#baff00] font-bold">Max Tier</span>
-                )}
+              <div className="rounded-xl bg-white/[0.03] border border-white/5 px-3 py-2 text-[11px] text-slate-300 flex items-center justify-between">
+                <span className="text-slate-400">Active Perk:</span>
+                <span className="font-bold text-white text-right">{vipTier.perk}</span>
               </div>
             </div>
 
@@ -2480,7 +2629,7 @@ function ServicesPage({
             e.currentTarget.scrollLeft += e.deltaY;
           }
         }}
-        className="mb-4 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:flex-wrap"
+        className="mb-4 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-1 flex-wrap"
       >
         {platforms.map((p) => {
           const isActive = platformFilter === p;
@@ -2488,13 +2637,14 @@ function ServicesPage({
             <button
               key={p}
               onClick={() => setPlatformFilter(p)}
-              className={`shrink-0 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+              className={`flex items-center gap-2 shrink-0 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
                 isActive
                   ? "bg-[#baff00] text-[#07100f] shadow-[0_4px_16px_rgba(186,255,0,0.18)]"
                   : "border border-white/10 bg-[#121b1d] text-slate-400 hover:border-white/20 hover:text-white"
               }`}
             >
-              {p}
+              <Social3DIcon platform={p} size={15} />
+              <span>{p}</span>
             </button>
           );
         })}
@@ -2524,7 +2674,7 @@ function ServicesPage({
         </div>
       )}
 
-      {loading && (
+      {loading && services.length === 0 && (
         <div className="mb-6 rounded-2xl border border-white/10 bg-[#121b1d] p-8 text-center text-sm text-slate-400">
           Loading live services...
         </div>
@@ -2605,7 +2755,7 @@ function ServicesPage({
                   <th className="px-4 py-3.5">Service Name</th>
                   <th className="px-4 py-3.5">Rate / Price</th>
                   <th className="px-4 py-3.5">Min / Max</th>
-                  <th className="px-4 py-3.5">Guarantee</th>
+                  <th className="px-4 py-3.5 text-center">Guarantee</th>
                   <th className="px-4 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
@@ -2638,7 +2788,7 @@ function ServicesPage({
                     <td className="px-4 py-3.5 text-slate-400">
                       {Number(service.min).toLocaleString()} / {Number(service.max).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3.5 text-center">
                       {isServiceGuaranteed(service) ? (
                         <span className="rounded-full bg-lime-400/15 px-2.5 py-0.5 text-[10px] font-bold text-[#baff00]">
                           ✓ Refill
@@ -2685,7 +2835,7 @@ function ServicesPage({
             >
               <div className="flex items-start justify-between">
                 <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-white/5 font-bold ${getPlatformIconClass(service.platform)}`}>
-                  <Icon name={service.icon} size={22} strokeWidth={2} />
+                  <Icon name={service.icon} size={26} strokeWidth={2} />
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {isServiceGuaranteed(service) ? (
@@ -3153,6 +3303,31 @@ function NewOrder({
   const [orderMessage, setOrderMessage] = useState<string>("");
   const [orderError, setOrderError] = useState<string>("");
   const [dismissedOrderBonusBanner, setDismissedOrderBonusBanner] = useState<boolean>(false);
+  const [favorites, setFavorites] = useState<number[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("vexo_favorite_services");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const toggleFavorite = (serviceId: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setFavorites((prev) => {
+      const next = prev.includes(serviceId)
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId];
+      try {
+        localStorage.setItem("vexo_favorite_services", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (buyAgainPrefill) {
@@ -3195,7 +3370,8 @@ function NewOrder({
 
   // Platform list definitions with clean floating icons
   const platformList = useMemo(() => [
-    { name: "All", label: "All Platforms", icon: "spark" },
+    { name: "All", label: "All Platforms", icon: "all" },
+    { name: "Favorites", label: "⭐ Bookmarks", icon: "star-3d" },
     { name: "WhatsApp", label: "WhatsApp", icon: "whatsapp" },
     { name: "Instagram", label: "Instagram", icon: "instagram" },
     { name: "TikTok", label: "TikTok", icon: "tiktok" },
@@ -3203,26 +3379,31 @@ function NewOrder({
     { name: "Facebook", label: "Facebook", icon: "facebook" },
     { name: "Telegram", label: "Telegram", icon: "telegram" },
     { name: "X / Twitter", label: "X / Twitter", icon: "x-social" },
-    { name: "Spotify", label: "Spotify", icon: "spark" },
-    { name: "Website Traffic", label: "Website Traffic", icon: "globe" },
+    { name: "Spotify", label: "Spotify", icon: "spotify" },
+    { name: "Discord", label: "Discord", icon: "discord" },
+    { name: "Website Traffic", label: "Website Traffic", icon: "traffic" },
     { name: "Other", label: "Other Services", icon: "spark" },
   ], []);
 
   // Compute live service count per platform
   const platformCounts = useMemo(() => {
-    const counts: Record<string, number> = { All: services.length };
+    const counts: Record<string, number> = {
+      All: services.length,
+      Favorites: favorites.filter((id) => services.some((s) => s.id === id)).length,
+    };
     for (const s of services) {
       const p = s.platform || "Other";
       counts[p] = (counts[p] || 0) + 1;
     }
     return counts;
-  }, [services]);
+  }, [services, favorites]);
 
   // Filter: Services by platform
   const servicesByPlatform = useMemo(() => {
     if (platform === "All") return services;
+    if (platform === "Favorites") return services.filter((s) => favorites.includes(s.id));
     return services.filter((s) => s.platform?.toLowerCase() === platform.toLowerCase());
-  }, [services, platform]);
+  }, [services, platform, favorites]);
 
   // Action options for the selected platform
   const actionOptions = useMemo(() => {
@@ -3350,7 +3531,9 @@ function NewOrder({
 
     // If active service does not belong to this platform, switch to the first service of this platform
     if (p !== "All") {
-      const matching = services.find((s) => s.platform?.toLowerCase() === p.toLowerCase());
+      const matching = p === "Favorites"
+        ? services.find((s) => favorites.includes(s.id))
+        : services.find((s) => s.platform?.toLowerCase() === p.toLowerCase());
       if (matching) {
         lastSelectedIdRef.current = String(matching.id);
         onSelectServiceId(String(matching.id));
@@ -3577,7 +3760,7 @@ function NewOrder({
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-200 border border-white/10">
-                  <Icon name={activePlatformItem.icon} size={16} />
+                  <Icon name={activePlatformItem.icon} size={20} />
                 </div>
                 <p className="text-sm font-bold text-white truncate">
                   {activePlatformItem.label || activePlatformItem.name}
@@ -3605,8 +3788,8 @@ function NewOrder({
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${isSelected ? "bg-[#baff00] text-black" : "bg-white/5 text-slate-300"}`}>
-                          <Icon name={p.icon} size={15} />
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${isSelected ? "bg-white/15 shadow-sm" : "bg-white/5"}`}>
+                          <Icon name={p.icon} size={18} />
                         </div>
                         <span className="text-xs sm:text-sm font-medium truncate">
                           {p.label || p.name}
@@ -3749,9 +3932,25 @@ function NewOrder({
         {/* 4. Service Package Dropdown & Combobox */}
         <div className="space-y-2" ref={comboboxRef}>
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-300">
-              Service Package
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-slate-300">
+                Service Package
+              </label>
+              {service && (
+                <button
+                  type="button"
+                  onClick={(e) => toggleFavorite(service.id, e)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                    favorites.includes(service.id)
+                      ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+                      : "bg-white/5 text-slate-400 hover:text-amber-300 border border-white/10"
+                  }`}
+                  title={favorites.includes(service.id) ? "Remove from bookmarks" : "Save to bookmarks"}
+                >
+                  <span>{favorites.includes(service.id) ? "⭐ Bookmarked" : "☆ Bookmark"}</span>
+                </button>
+              )}
+            </div>
             <span className="text-[11px] font-medium text-slate-400">
               {comboboxFilteredServices.length} packages
             </span>
@@ -3874,10 +4073,17 @@ function NewOrder({
                       const isPkg = isPackageService(s);
 
                       return (
-                        <button
+                        <div
                           key={s.id}
-                          type="button"
+                          role="button"
+                          tabIndex={0}
                           onClick={() => handleSelectComboboxService(s)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectComboboxService(s);
+                            }
+                          }}
                           className={`w-full text-left rounded-lg p-2.5 transition flex items-center justify-between gap-3 border cursor-pointer ${
                             isSelected
                               ? "bg-[#baff00]/15 border-[#baff00]/40 text-white"
@@ -3893,20 +4099,36 @@ function NewOrder({
                             </p>
                           </div>
 
-                          <div className="text-right shrink-0">
-                            <div className="text-xs sm:text-sm font-bold text-[#baff00]">
-                              ₨{Number(s.price).toFixed(2)}
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              /{isPkg ? "pkg" : "1k"}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => toggleFavorite(s.id, e)}
+                              className={`p-1.5 rounded-lg text-sm transition cursor-pointer ${
+                                favorites.includes(s.id)
+                                  ? "text-amber-400 hover:text-amber-300 bg-amber-400/15"
+                                  : "text-slate-500 hover:text-amber-300 hover:bg-white/10"
+                              }`}
+                              title={favorites.includes(s.id) ? "Remove bookmark" : "Add to bookmarks"}
+                            >
+                              {favorites.includes(s.id) ? "⭐" : "☆"}
+                            </button>
+                            <div className="text-right">
+                              <div className="text-xs sm:text-sm font-bold text-[#baff00]">
+                                ₨{Number(s.price).toFixed(2)}
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                /{isPkg ? "pkg" : "1k"}
+                              </div>
                             </div>
                           </div>
-                        </button>
+                        </div>
                       );
                     })
                   ) : (
-                    <div className="py-6 text-center text-xs text-slate-400">
-                      No services match your search query.
+                    <div className="py-6 text-center text-xs text-slate-400 px-4">
+                      {platform === "Favorites"
+                        ? "⭐ You haven't bookmarked any services yet. Click the star (☆) next to any service to save your favorites here!"
+                        : "No services match your search query."}
                     </div>
                   )}
                 </div>
@@ -4373,6 +4595,8 @@ function OrdersPage({
 
               const linkHref = order.link.startsWith("http://") || order.link.startsWith("https://") ? order.link : `https://${order.link}`;
 
+              const isNoRefill = (order as any).refill === false || /no[\s_-]?refill/i.test(order.service);
+
               return (
                 <div
                   key={order.localId}
@@ -4450,11 +4674,22 @@ function OrdersPage({
 
                     {(isCompleted || isPartial) && (
                       <button
-                        onClick={() => handleRequestRefill(order)}
-                        disabled={isRefilling || hasPendingRefill}
-                        className="w-full rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-slate-300 transition active:bg-white/10 active:text-white disabled:opacity-40"
+                        onClick={() => !isNoRefill && handleRequestRefill(order)}
+                        disabled={isRefilling || hasPendingRefill || isNoRefill}
+                        className={`w-full rounded-xl border py-2 text-xs font-bold transition active:bg-white/10 active:text-white ${
+                          isNoRefill
+                            ? "border-white/5 bg-white/[0.02] text-slate-500 opacity-40 cursor-not-allowed"
+                            : "border-white/10 bg-white/5 text-slate-300 disabled:opacity-40"
+                        }`}
+                        title={
+                          isNoRefill
+                            ? "Refill not available for this service [ No Refill ]"
+                            : hasPendingRefill
+                            ? "Refill Active"
+                            : "Request Refill"
+                        }
                       >
-                        {isRefilling ? "Requesting..." : hasPendingRefill ? "Refill Active" : "↻ Request Refill"}
+                        {isNoRefill ? "No Refill" : isRefilling ? "Requesting..." : hasPendingRefill ? "Refill Active" : "↻ Request Refill"}
                       </button>
                     )}
 
@@ -4495,6 +4730,7 @@ function OrdersPage({
                 statusColor = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
 
               const linkHref = order.link.startsWith("http://") || order.link.startsWith("https://") ? order.link : `https://${order.link}`;
+              const isNoRefill = (order as any).refill === false || /no[\s_-]?refill/i.test(order.service);
 
               return (
                 <div
@@ -4541,7 +4777,7 @@ function OrdersPage({
 
                   {/* Details Area + Right Action Area */}
                   <div className="mt-3.5 pt-3.5 border-t border-white/5 flex flex-wrap items-center justify-between gap-4">
-                    <div className="grid grid-cols-5 gap-6 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6 text-xs">
                       <div>
                         <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Quantity</p>
                         <p className="mt-1 font-bold text-white text-sm">{order.quantity.toLocaleString()}</p>
@@ -4583,12 +4819,22 @@ function OrdersPage({
 
                       {(isCompleted || isPartial) && (
                         <button
-                          onClick={() => handleRequestRefill(order)}
-                          disabled={isRefilling || hasPendingRefill}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
-                          title={hasPendingRefill ? "Refill already active" : "Request engagement drop refill"}
+                          onClick={() => !isNoRefill && handleRequestRefill(order)}
+                          disabled={isRefilling || hasPendingRefill || isNoRefill}
+                          className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                            isNoRefill
+                              ? "border-white/5 bg-white/[0.02] text-slate-500 opacity-40 cursor-not-allowed"
+                              : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-40"
+                          }`}
+                          title={
+                            isNoRefill
+                              ? "Refill is not available for this service [ No Refill ]"
+                              : hasPendingRefill
+                              ? "Refill already active"
+                              : "Request engagement drop refill"
+                          }
                         >
-                          {isRefilling ? "Requesting..." : hasPendingRefill ? "Refill Active" : "↻ Refill"}
+                          {isNoRefill ? "No Refill" : isRefilling ? "Requesting..." : hasPendingRefill ? "Refill Active" : "↻ Refill"}
                         </button>
                       )}
 
@@ -4839,13 +5085,49 @@ function AddFundsPage({
   const [copiedUid, setCopiedUid] = useState(false);
   const [copiedBName, setCopiedBName] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const [activeGuide, setActiveGuide] = useState<"easypaisa" | "jazzcash" | "sadapay">("easypaisa");
   const [transferGuideOpen, setTransferGuideOpen] = useState(false);
-  const [activeBinanceGuide, setActiveBinanceGuide] = useState<"binance_pay" | "bep20" | "find_tid">("binance_pay");
-  const [binanceGuideOpen, setBinanceGuideOpen] = useState(true);
+  const [binanceGuideOpen, setBinanceGuideOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [couponCodeInput, setCouponCodeInput] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponFeedback, setCouponFeedback] = useState<{ text: string; error?: boolean } | null>(null);
+  const [activeTab, setActiveTab] = useState<"deposit" | "coupon" | "history">("deposit");
+  const [historyFilter, setHistoryFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
+  const [historyQuery, setHistoryQuery] = useState("");
+
+  async function handleRedeemCoupon(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = couponCodeInput.trim().toUpperCase();
+    if (!clean) return;
+    setCouponBusy(true);
+    setCouponFeedback(null);
+    try {
+      const res = await fetch("/api/coupons/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code: clean }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Unable to redeem coupon.");
+      }
+      setCouponCodeInput("");
+      setCouponFeedback({ text: data.message, error: false });
+      if (data.newBalancePkr !== undefined) {
+        onWalletUpdated(data.newBalancePkr, deposits);
+      }
+      if (onCelebrateBonus && data.prizePkr > 0) {
+        onCelebrateBonus();
+      }
+    } catch (err: any) {
+      setCouponFeedback({ text: err.message || "Failed to redeem coupon.", error: true });
+    } finally {
+      setCouponBusy(false);
+    }
+  }
 
   const selected = currencyInfo(selectedCurrency);
   const filtered = CURRENCY_OPTIONS.filter(([code, name]) =>
@@ -4853,6 +5135,19 @@ function AddFundsPage({
   );
 
   const numericAmount = Number(amount);
+
+  const filteredDeposits = useMemo(() => {
+    return deposits.filter((d) => {
+      const matchFilter = historyFilter === "All" || d.status === historyFilter;
+      const q = historyQuery.toLowerCase().trim();
+      const matchQuery =
+        !q ||
+        d.method.toLowerCase().includes(q) ||
+        d.transactionId.toLowerCase().includes(q) ||
+        String(d.amount).includes(q);
+      return matchFilter && matchQuery;
+    });
+  }, [deposits, historyFilter, historyQuery]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setScreenshotError("");
@@ -5013,42 +5308,165 @@ function AddFundsPage({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="mb-2">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#baff00]">Wallet &amp; Payments</p>
-        <h2 className="mt-2 text-3xl font-black text-white">Add Funds</h2>
-        <p className="mt-2 max-w-2xl text-sm text-slate-400">
-          Transfer money via SadaPay, Easypaisa, JazzCash, or Bank, then submit your transaction reference with a receipt screenshot.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#baff00]">Wallet &amp; Payments</p>
+          <h2 className="mt-1 text-2xl sm:text-3xl font-black text-white">Add Funds</h2>
+          <p className="mt-1 text-xs sm:text-sm text-slate-200">
+            Deposit cash securely via Pakistani banks &amp; Binance, or redeem promotional vouchers.
+          </p>
+        </div>
+
+        {/* Tabbed Navigation Interface */}
+        <div className="flex items-center gap-1.5 rounded-2xl border border-white/10 bg-slate-900/80 p-1.5 self-start sm:self-auto shadow-inner">
+          <button
+            type="button"
+            onClick={() => setActiveTab("deposit")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition cursor-pointer ${
+              activeTab === "deposit"
+                ? "bg-[#baff00] text-[#07100f] shadow-md shadow-[#baff00]/20"
+                : "text-slate-300 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <span>💳</span>
+            <span>Deposit Funds</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("coupon")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition cursor-pointer ${
+              activeTab === "coupon"
+                ? "bg-[#baff00] text-[#07100f] shadow-md shadow-[#baff00]/20"
+                : "text-slate-300 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <span>🎟️</span>
+            <span>Redeem Coupon</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition cursor-pointer ${
+              activeTab === "history"
+                ? "bg-[#baff00] text-[#07100f] shadow-md shadow-[#baff00]/20"
+                : "text-slate-300 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <span>📋</span>
+            <span>History</span>
+            {deposits.length > 0 && (
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                activeTab === "history" ? "bg-[#07100f] text-[#baff00]" : "bg-white/10 text-white"
+              }`}>
+                {deposits.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
-        <div className="space-y-6">
-          {/* Consolidated Compact Wallet Summary Card */}
-          <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-medium">Deposited Balance:</span>
-                <span className="font-extrabold text-white text-base">₨{walletBalancePkr.toFixed(2)}</span>
-              </div>
-              <span className="hidden sm:inline text-white/20">|</span>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-medium">Promotional Credit:</span>
-                <span className="font-bold text-[#baff00] bg-[#baff00]/10 px-2.5 py-0.5 rounded-lg border border-[#baff00]/20 text-xs">
-                  ₨{bonusBalancePkr.toFixed(2)} (Auto-applied)
+      {/* Consolidated Compact Wallet Summary Card */}
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-slate-900/90 via-[#0d1816] to-slate-900/90 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="text-slate-300 font-semibold text-xs sm:text-sm">Deposited Cash Balance:</span>
+            <div className="flex items-center gap-2">
+              <span className="font-black text-white text-base sm:text-lg">₨{walletBalancePkr.toFixed(2)}</span>
+              {selectedCurrency !== "PKR" && (
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg">
+                  ≈ {formatWalletBalance(selectedCurrency, rates, walletBalancePkr)}
                 </span>
+              )}
+            </div>
+          </div>
+          <span className="hidden sm:inline text-white/20">|</span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-slate-300 font-semibold text-xs sm:text-sm">Promotional Credit:</span>
+            <span className="font-black text-[#baff00] bg-[#baff00]/15 px-2.5 py-1 rounded-xl border border-[#baff00]/30 text-xs sm:text-sm shadow-sm">
+              ₨{bonusBalancePkr.toFixed(2)} (Auto-applied)
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setOpenCurrency(true)}
+          className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition cursor-pointer shadow-sm flex items-center gap-1.5"
+        >
+          <span>{selected[3] || "🌐"}</span>
+          <span>{selected[2]} {selectedCurrency}</span>
+          <span className="text-slate-400">· Change Currency</span>
+        </button>
+      </div>
+
+      {/* TAB 1: DEPOSIT FUNDS */}
+      {activeTab === "deposit" && (
+        <div className="grid gap-6 xl:grid-cols-[1.25fr_.75fr]">
+          <div className="space-y-6">
+
+          {/* STEP 1: PAYMENT METHOD SELECTOR */}
+          <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5 shadow-xl space-y-3 w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#baff00]/15 text-xs font-black text-[#baff00] border border-[#baff00]/30">
+                  1
+                </span>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white">Select Payment Channel</h3>
+                  <p className="text-[11px] text-slate-300">Choose where you are transferring funds from</p>
+                </div>
               </div>
+              <span className="rounded-full bg-white/5 border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-slate-300">
+                Selected: <strong className="text-white">{method === "Binance Pay" ? "🟡 Binance Pay / Crypto" : method}</strong>
+              </span>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setOpenCurrency(true)}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
-            >
-              {selected[2]} {selectedCurrency} · Change Currency
-            </button>
+            <div className="flex flex-wrap gap-2 sm:gap-2.5 pt-1 w-full">
+              {[
+                { id: "SadaPay", label: "SadaPay", icon: "💳" },
+                { id: "Easypaisa", label: "Easypaisa", icon: "🟢" },
+                { id: "JazzCash", label: "JazzCash", icon: "🟠" },
+                { id: "Bank Transfer", label: "Bank Transfer", icon: "🏛️" },
+                { id: "Binance Pay", label: "Binance Pay", icon: "🟡" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setMethod(item.id);
+                    if (item.id === "Binance Pay" && binanceAmountUsd && Number(binanceAmountUsd) > 0) {
+                      setAmount(String(Math.round(Number(binanceAmountUsd) * liveForexUsdRate * 100) / 100));
+                    }
+                  }}
+                  className={`flex-1 min-w-[120px] sm:min-w-[130px] rounded-xl border px-3 py-2.5 text-left transition cursor-pointer ${
+                    method === item.id
+                      ? item.id === "Binance Pay"
+                        ? "border-[#F0B90B]/60 bg-[#F0B90B]/15 text-white shadow-sm ring-1 ring-[#F0B90B]/30"
+                        : "border-[#baff00]/60 bg-[#baff00]/15 text-white shadow-sm ring-1 ring-[#baff00]/30"
+                      : "border-white/10 bg-[#0b1418] text-slate-300 hover:border-white/20 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1.5 min-w-0">
+                    <span className="text-xs font-bold flex items-center gap-1.5 min-w-0 truncate">
+                      <span className="shrink-0">{item.icon}</span>
+                      <span className="truncate">{item.label}</span>
+                    </span>
+                    {method === item.id && (
+                      <Icon
+                        name="check"
+                        size={14}
+                        className={item.id === "Binance Pay" ? "text-[#F0B90B] shrink-0" : "text-[#baff00] shrink-0"}
+                      />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* OFFICIAL RECEIVING BINANCE CRYPTO BOX */}
+          {/* STEP 2: OFFICIAL RECEIVING BINANCE CRYPTO BOX */}
           {method === "Binance Pay" && (
             <>
             <div className="relative overflow-hidden rounded-xl border border-[#F0B90B]/40 bg-gradient-to-br from-[#1c1808] via-[#141208] to-[#241f0a] p-5 sm:p-6 shadow-xl space-y-5">
@@ -5059,7 +5477,7 @@ function AddFundsPage({
                   </div>
                   <div>
                     <span className="rounded-full bg-[#F0B90B]/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#F0B90B]">
-                      Official Global Payment Receiver
+                      Step 2 · Global Payment Receiver
                     </span>
                     <h3 className="text-lg font-black text-white">Binance &amp; Crypto Deposit Details</h3>
                   </div>
@@ -5079,7 +5497,7 @@ function AddFundsPage({
               <div className="grid gap-3 sm:grid-cols-2">
                 {/* Binance UID */}
                 <div className="rounded-xl border border-white/10 bg-[#0c0a06] p-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
                     Binance UID / Pay ID
                   </span>
                   <div className="mt-2 flex items-center justify-between gap-2">
@@ -5098,7 +5516,7 @@ function AddFundsPage({
 
                 {/* Account Title */}
                 <div className="rounded-xl border border-white/10 bg-[#0c0a06] p-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
                     Account Title / Beneficiary Name
                   </span>
                   <div className="mt-2 flex items-center justify-between gap-2">
@@ -5118,10 +5536,10 @@ function AddFundsPage({
                 {/* USDT Deposit Address */}
                 <div className="rounded-xl border border-white/10 bg-[#0c0a06] p-4 sm:col-span-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
                       USDT Deposit Address ({binanceNetwork})
                     </span>
-                    <span className="text-[11px] font-semibold text-amber-400">
+                    <span className="text-[11px] font-semibold text-amber-300">
                       ⚠️ Send BEP-20 (BSC) tokens only
                     </span>
                   </div>
@@ -5159,194 +5577,91 @@ function AddFundsPage({
               </button>
 
               {binanceGuideOpen && (
-                <div className="border-t border-white/10 p-4 sm:p-5 bg-black/20 space-y-4">
-                  {/* Guide Tabs */}
-                  <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
-                    <button
-                      type="button"
-                      onClick={() => setActiveBinanceGuide("binance_pay")}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        activeBinanceGuide === "binance_pay"
-                          ? "bg-[#F0B90B] text-[#07100f] font-black"
-                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      🟡 Binance App (Pay ID / QR)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveBinanceGuide("bep20")}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        activeBinanceGuide === "bep20"
-                          ? "bg-[#38bdf8] text-[#07100f] font-black"
-                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      ⚡ USDT BEP-20 (Trust / MetaMask / Any Wallet)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveBinanceGuide("find_tid")}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        activeBinanceGuide === "find_tid"
-                          ? "bg-emerald-400 text-[#07100f] font-black"
-                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      🔍 How to Find Order ID / TxHash
-                    </button>
+                <div className="border-t border-white/10 p-4 sm:p-5 bg-black/20">
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                    {/* Embedded Binance Pay QR */}
+                    <div className="shrink-0 flex flex-col items-center">
+                      <div className="relative overflow-hidden rounded-2xl border-2 border-[#F0B90B]/50 bg-white p-2.5 shadow-2xl">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/binance-pay-qr.jpg"
+                          alt="Binance Pay & USDT QR Code"
+                          className="h-40 w-40 sm:h-48 sm:w-48 object-contain rounded-xl"
+                        />
+                      </div>
+                      <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#F0B90B]/15 px-3 py-1 text-xs font-bold text-[#F0B90B]">
+                        🟡 Scan with Binance App
+                      </span>
+                      <span className="mt-1 text-[11px] text-slate-200 font-medium">
+                        Recipient: <strong className="text-white">{binanceName}</strong>
+                      </span>
+                      <span className="mt-0.5 text-[10px] text-emerald-400 font-semibold">
+                        ✓ Instant spot receipt · 0% fee
+                      </span>
+                    </div>
+
+                    {/* Streamlined Step-by-Step Instructions */}
+                    <div className="flex-1 space-y-2.5 text-xs text-slate-200 w-full">
+                      <div className="flex gap-2.5 items-start rounded-xl bg-white/[0.03] p-3 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">1</span>
+                        <div>
+                          <p className="font-bold text-white">Send via Binance App or Web3 Wallet:</p>
+                          <p className="text-slate-300 mt-1 leading-relaxed">
+                            Open Binance App $\rightarrow$ tap <strong className="text-[#F0B90B]">Pay</strong> (or Scan icon) $\rightarrow$ scan QR code or enter UID: <code className="rounded bg-black/40 px-1.5 py-0.5 font-bold text-white">{binanceUid}</code>. For external wallets (Trust / MetaMask), transfer USDT via <strong className="text-amber-300">BNB Smart Chain (BEP20)</strong> to: <code className="rounded bg-black/40 px-1.5 py-0.5 font-bold text-white break-all">{binanceUsdtAddress}</code>.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2.5 items-start rounded-xl bg-white/[0.03] p-3 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">2</span>
+                        <div>
+                          <p className="font-bold text-white">Verify Recipient Title:</p>
+                          <p className="text-slate-300 mt-1 leading-relaxed">
+                            Verify that recipient name displays <strong className="text-[#F0B90B]">{binanceName}</strong> before confirming the transfer.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2.5 items-start rounded-xl bg-white/[0.03] p-3 border border-white/5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">3</span>
+                        <div>
+                          <p className="font-bold text-white">Find Order ID / TxHash &amp; Submit Below:</p>
+                          <p className="text-slate-300 mt-1 leading-relaxed">
+                            In Binance Pay history, copy your <strong className="text-[#F0B90B]">Order ID</strong> (or crypto <strong className="text-[#38bdf8]">TxHash</strong>), take a screenshot of your receipt, and submit in the form below for fast approval.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-
-                  {/* Tab 1: Binance App (Pay ID / QR) */}
-                  {activeBinanceGuide === "binance_pay" && (
-                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6 pt-1">
-                      {/* Embedded Binance Pay QR */}
-                      <div className="shrink-0 flex flex-col items-center">
-                        <div className="relative overflow-hidden rounded-2xl border-2 border-[#F0B90B]/50 bg-white p-2.5 shadow-2xl">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src="/binance-pay-qr.jpg"
-                            alt="Binance Pay QR Code"
-                            className="h-44 w-44 sm:h-52 sm:w-52 object-contain rounded-xl"
-                          />
-                        </div>
-                        <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#F0B90B]/15 px-3 py-1 text-xs font-bold text-[#F0B90B]">
-                          🟡 Scan with Binance App
-                        </span>
-                        <span className="mt-1 text-[11px] text-slate-300 font-medium">
-                          Recipient: <strong className="text-white">{binanceName}</strong>
-                        </span>
-                        <span className="mt-0.5 text-[10px] text-emerald-400 font-semibold">
-                          ✓ Instant spot wallet receipt · 0% fee
-                        </span>
-                      </div>
-
-                      {/* Binance Pay Step-by-Step Instructions */}
-                      <div className="flex-1 space-y-2 text-xs leading-relaxed text-slate-300 w-full">
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">1</span>
-                          <p>Open the <strong className="text-white">Binance App</strong> on your phone and tap the <strong className="text-[#F0B90B]">Pay</strong> icon (or tap the top-right <strong className="text-white">Scan [—]</strong> button).</p>
-                        </div>
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">2</span>
-                          <p>Scan the <strong className="text-[#F0B90B]">Binance Pay QR Code</strong> shown on the left, or choose <strong className="text-white">Send</strong> and enter Binance UID: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">{binanceUid}</code> <button type="button" onClick={() => handleCopyUid(binanceUid)} className="ml-1 inline-flex items-center rounded border border-[#F0B90B]/30 bg-[#F0B90B]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#F0B90B] hover:bg-[#F0B90B] hover:text-black cursor-pointer">{copiedUid ? "✓ Copied" : "Copy"}</button>.</p>
-                        </div>
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">3</span>
-                          <p>Verify that the recipient name displays <strong className="text-[#F0B90B]">{binanceName}</strong> before proceeding.</p>
-                        </div>
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">4</span>
-                          <p>Enter the amount of USDT to transfer and confirm (0% fee, instant spot internal transfer).</p>
-                        </div>
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">5</span>
-                          <p>On the payment success screen, copy the <strong className="text-[#F0B90B]">Binance Order ID</strong>, take a screenshot of your receipt, and submit below.</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tab 2: USDT BEP-20 (Trust / MetaMask / Any Wallet) */}
-                  {activeBinanceGuide === "bep20" && (
-                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6 pt-1">
-                      {/* Embedded USDT BEP-20 QR */}
-                      <div className="shrink-0 flex flex-col items-center">
-                        <div className="relative overflow-hidden rounded-2xl border-2 border-[#38bdf8]/50 bg-white p-2.5 shadow-2xl">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src="/binance-usdt-qr.jpg"
-                            alt="USDT BEP-20 QR Code"
-                            className="h-44 w-44 sm:h-52 sm:w-52 object-contain rounded-xl"
-                          />
-                        </div>
-                        <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#38bdf8]/15 px-3 py-1 text-xs font-bold text-[#38bdf8]">
-                          ⚡ Scan with Web3 / Crypto Wallet
-                        </span>
-                        <span className="mt-1 text-[11px] text-amber-400 font-semibold">
-                          ⚠️ BEP-20 (BNB Smart Chain) Only
-                        </span>
-                        <span className="mt-0.5 text-[10px] text-emerald-400 font-semibold">
-                          ✓ Multi-exchange &amp; Web3 wallet compatible
-                        </span>
-                      </div>
-
-                      {/* USDT BEP-20 Step-by-Step Instructions */}
-                      <div className="flex-1 space-y-2 text-xs leading-relaxed text-slate-300 w-full">
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">1</span>
-                          <p>Open your crypto wallet or exchange (<strong className="text-white">Trust Wallet, MetaMask, OKX, Bybit, KuCoin, or Binance</strong>).</p>
-                        </div>
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">2</span>
-                          <p>Select <strong className="text-white">USDT</strong> and tap <strong className="text-[#38bdf8]">Send / Withdraw</strong>.</p>
-                        </div>
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">3</span>
-                          <p>CRITICAL: Select network <strong className="text-amber-400">BNB Smart Chain (BEP20 / BSC)</strong>. (Do NOT select TRC20 or ERC20).</p>
-                        </div>
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">4</span>
-                          <p>Scan the <strong className="text-[#38bdf8]">USDT QR Code</strong> on the left, or paste our address: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white break-all">{binanceUsdtAddress}</code> <button type="button" onClick={() => handleCopyAddress(binanceUsdtAddress)} className="ml-1 inline-flex items-center rounded border border-[#38bdf8]/30 bg-[#38bdf8]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#38bdf8] hover:bg-[#38bdf8] hover:text-black cursor-pointer">{copiedAddress ? "✓ Copied" : "Copy"}</button>.</p>
-                        </div>
-                        <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38bdf8]/20 font-black text-[#38bdf8] text-[11px]">5</span>
-                          <p>Confirm the withdrawal, copy the <strong className="text-[#38bdf8]">TxHash / Transaction ID</strong>, take a screenshot, and submit below.</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tab 3: How to Find Order ID / TxHash */}
-                  {activeBinanceGuide === "find_tid" && (
-                    <div className="space-y-3 text-xs leading-relaxed text-slate-300">
-                      <div className="flex gap-3 items-start rounded-xl bg-white/[0.02] p-3.5 border border-white/5">
-                        <span className="text-xl shrink-0">🟡</span>
-                        <div>
-                          <p className="font-bold text-white text-sm">For Binance Pay (Pay ID / QR):</p>
-                          <p className="text-slate-400 mt-1">
-                            Go to Binance App $\rightarrow$ <strong className="text-white">Pay</strong> $\rightarrow$ <strong className="text-white">History</strong> (clock icon in top-right) $\rightarrow$ Tap the payment to <strong className="text-white">{binanceName}</strong> $\rightarrow$ Copy the <strong className="text-[#F0B90B]">Order ID</strong> (a 19 or 20-digit number).
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3 items-start rounded-xl bg-white/[0.02] p-3.5 border border-white/5">
-                        <span className="text-xl shrink-0">⚡</span>
-                        <div>
-                          <p className="font-bold text-white text-sm">For On-Chain USDT (BEP-20 / BSC):</p>
-                          <p className="text-slate-400 mt-1">
-                            Go to your wallet's activity/withdrawal history $\rightarrow$ Tap your USDT transfer $\rightarrow$ Copy the <strong className="text-[#38bdf8]">TxHash / Transaction Hash</strong> (starts with <code className="text-white">0x...</code>).
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3 items-start rounded-xl bg-white/[0.02] p-3.5 border border-white/5">
-                        <span className="text-xl shrink-0">📸</span>
-                        <div>
-                          <p className="font-bold text-white text-sm">Receipt Screenshot:</p>
-                          <p className="text-slate-400 mt-1">
-                            Capture a full screenshot showing the completed transaction status, date, and Order ID or TxHash, then attach it in the form below.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
             </>
           )}
 
-          {/* OFFICIAL RECEIVING SADAPAY ACCOUNT BOX */}
+          {/* STEP 2: OFFICIAL RECEIVING LOCAL ACCOUNT BOX */}
           {method !== "Binance Pay" && (
             <>
             <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 sm:p-6 shadow-xl space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-lg font-black text-white border border-white/10">
-                    💳
+                    {method === "Easypaisa" ? "🟢" : method === "JazzCash" ? "🟠" : method === "Bank Transfer" ? "🏛️" : "💳"}
                   </div>
                   <div>
-                    <h3 className="text-base sm:text-lg font-black text-white">SadaPay Account Details</h3>
-                    <p className="text-xs text-slate-400">Send money from Easypaisa, JazzCash, SadaPay or any Bank</p>
+                    <span className="rounded-full bg-[#baff00]/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#baff00]">
+                      Step 2 · Receiving Account ({method})
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-white">
+                      {method === "SadaPay"
+                        ? "SadaPay Account Details"
+                        : `${method} → SadaPay Transfer Details`}
+                    </h3>
+                    <p className="text-xs text-slate-300">
+                      {method === "SadaPay"
+                        ? "Direct SadaPay-to-SadaPay instant zero fee transfer"
+                        : `Send from your ${method} App to our SadaPay account`}
+                    </p>
                   </div>
                 </div>
 
@@ -5359,8 +5674,8 @@ function AddFundsPage({
               <div className="grid gap-3 sm:grid-cols-2">
                 {/* Account Number */}
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    SadaPay Mobile / Account Number
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    {method === "SadaPay" ? "SadaPay Mobile / Account Number" : `Beneficiary Account Number (SadaPay)`}
                   </span>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <span className="font-mono text-lg sm:text-xl font-black tracking-wider text-white">
@@ -5378,7 +5693,7 @@ function AddFundsPage({
 
                 {/* Account Title */}
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
                     Account Title / Beneficiary Name
                   </span>
                   <div className="mt-2 flex items-center justify-between gap-2">
@@ -5396,8 +5711,8 @@ function AddFundsPage({
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-400">
-                💡 Always verify that the recipient account title shows <strong className="text-white">{sadaPayTitle} ({sadaPayNumber})</strong> before confirming your transfer.
+              <p className="text-[11px] text-slate-300">
+                💡 In your <strong className="text-white">{method}</strong> app, select <strong className="text-[#baff00]">Bank Transfer → SadaPay</strong>, enter <strong className="text-white">{sadaPayNumber}</strong>, and verify that recipient title is <strong className="text-white">{sadaPayTitle}</strong> before paying.
               </p>
             </div>
 
@@ -5406,120 +5721,85 @@ function AddFundsPage({
               <button
                 type="button"
                 onClick={() => setTransferGuideOpen(!transferGuideOpen)}
-                className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left text-xs sm:text-sm font-bold text-slate-300 hover:bg-white/[0.03] transition cursor-pointer"
+                className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left text-xs sm:text-sm font-bold text-slate-200 hover:bg-white/[0.03] transition cursor-pointer"
               >
                 <span className="flex items-center gap-2">
                   <span>📖</span>
-                  <span>View How to Transfer Instructions</span>
+                  <span>View How to Transfer via {method}</span>
                 </span>
-                <span className="text-xs font-semibold text-slate-400">
+                <span className="text-xs font-semibold text-slate-300">
                   {transferGuideOpen ? "Hide Instructions ▲" : "Expand Instructions ▼"}
                 </span>
               </button>
 
               {transferGuideOpen && (
-                <div className="border-t border-white/10 p-4 sm:p-5 bg-black/20 space-y-4">
-                  {/* Guide Tabs */}
-                  <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
-                    <button
-                      type="button"
-                      onClick={() => setActiveGuide("easypaisa")}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        activeGuide === "easypaisa"
-                          ? "bg-[#25d366] text-[#07100f]"
-                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      Easypaisa → SadaPay
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveGuide("jazzcash")}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        activeGuide === "jazzcash"
-                          ? "bg-[#ff9900] text-[#07100f]"
-                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      JazzCash → SadaPay
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveGuide("sadapay")}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        activeGuide === "sadapay"
-                          ? "bg-[#ff6060] text-white"
-                          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      SadaPay / Bank → SadaPay
-                    </button>
-                  </div>
-
+                <div className="border-t border-white/10 p-4 sm:p-5 bg-black/20">
                   {/* Guide Content: Easypaisa to SadaPay */}
-                  {activeGuide === "easypaisa" && (
-                    <div className="space-y-2 text-xs leading-relaxed text-slate-300">
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                  {method === "Easypaisa" && (
+                    <div className="space-y-2 text-xs leading-relaxed text-slate-200">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">1</span>
                         <p>Open <strong className="text-white">Easypaisa App</strong> and tap <strong className="text-[#25d366]">Bank Transfer</strong>.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">2</span>
                         <p>Search for <strong className="text-white">SadaPay</strong> in the bank list and select it.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">3</span>
-                        <p>Enter account: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code> and enter your deposit amount.</p>
+                        <p>Enter account: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">{sadaPayNumber}</code> and enter your deposit amount.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">4</span>
-                        <p>Confirm recipient is <strong className="text-[#baff00]">Saeed Bashir</strong> and tap <strong className="text-white">Send Now</strong>.</p>
+                        <p>Confirm recipient is <strong className="text-[#baff00]">{sadaPayTitle}</strong> and tap <strong className="text-white">Send Now</strong>.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#25d366]/20 font-black text-[#25d366] text-[11px]">5</span>
                         <p>Save payment screenshot and copy the <strong className="text-[#baff00]">Transaction ID (TID)</strong> to submit below.</p>
                       </div>
                     </div>
                   )}
 
-                  {activeGuide === "jazzcash" && (
-                    <div className="space-y-2 text-xs leading-relaxed text-slate-300">
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                  {/* Guide Content: JazzCash to SadaPay */}
+                  {method === "JazzCash" && (
+                    <div className="space-y-2 text-xs leading-relaxed text-slate-200">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">1</span>
                         <p>Open <strong className="text-white">JazzCash App</strong> and select <strong className="text-[#ff9900]">Money Transfer → Bank Transfer</strong>.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">2</span>
                         <p>Search and select <strong className="text-white">SadaPay</strong>.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">3</span>
-                        <p>Enter account number: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code> and amount.</p>
+                        <p>Enter account number: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">{sadaPayNumber}</code> and amount.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">4</span>
-                        <p>Confirm beneficiary name is <strong className="text-[#baff00]">Saeed Bashir</strong> and authorize payment.</p>
+                        <p>Confirm beneficiary name is <strong className="text-[#baff00]">{sadaPayTitle}</strong> and authorize payment.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff9900]/20 font-black text-[#ff9900] text-[11px]">5</span>
-                        <p>Take a receipt screenshot and copy your <strong className="text-[#baff00]">TID number</strong>.</p>
+                        <p>Take a receipt screenshot and copy your <strong className="text-[#baff00]">TID number</strong> to submit below.</p>
                       </div>
                     </div>
                   )}
 
-                  {activeGuide === "sadapay" && (
-                    <div className="space-y-2 text-xs leading-relaxed text-slate-300">
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                  {/* Guide Content: SadaPay or Bank Transfer */}
+                  {method !== "Easypaisa" && method !== "JazzCash" && (
+                    <div className="space-y-2 text-xs leading-relaxed text-slate-200">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">1</span>
                         <p>Open <strong className="text-white">SadaPay</strong> or any Bank App and tap <strong className="text-white">Send Money</strong>.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">2</span>
-                        <p>Select <strong className="text-white">SadaPay</strong> and enter <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">03197008275</code>.</p>
+                        <p>Select <strong className="text-white">SadaPay</strong> and enter account: <code className="rounded bg-black/40 px-2 py-0.5 font-bold text-white">{sadaPayNumber}</code>.</p>
                       </div>
-                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2 border border-white/5">
+                      <div className="flex gap-2.5 items-start rounded-lg bg-white/[0.02] p-2.5 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6060]/20 font-black text-[#ff6060] text-[11px]">3</span>
-                        <p>Confirm title <strong className="text-[#baff00]">Saeed Bashir</strong>, send payment, and save receipt screenshot.</p>
+                        <p>Confirm recipient is <strong className="text-[#baff00]">{sadaPayTitle}</strong>, send payment, and save receipt screenshot.</p>
                       </div>
                     </div>
                   )}
@@ -5529,50 +5809,28 @@ function AddFundsPage({
             </>
           )}
 
-          {/* DEPOSIT SUBMISSION FORM */}
+          {/* STEP 3: DEPOSIT SUBMISSION FORM */}
           <div className="rounded-xl border border-white/10 bg-[#111a1d] p-5 sm:p-7">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
-                <Icon name="wallet" size={22} />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
+                  <Icon name="wallet" size={22} />
+                </div>
+                <div>
+                  <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#baff00]">
+                    Step 3
+                  </span>
+                  <h3 className="text-lg font-black text-white">Confirm Your Deposit</h3>
+                  <p className="text-xs text-slate-400">Fill in your transaction details and attach payment proof</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-black text-white">Confirm Your Deposit</h3>
-                <p className="text-xs text-slate-400">Fill in your transaction details and attach payment proof</p>
-              </div>
-            </div>
 
-            {/* Method selector */}
-            <div className="mt-5">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400">
-                Payment Channel Used
-              </label>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
-                {["SadaPay", "Easypaisa", "JazzCash", "Bank Transfer", "Binance Pay"].map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => {
-                      setMethod(item);
-                      if (item === "Binance Pay" && binanceAmountUsd && Number(binanceAmountUsd) > 0) {
-                        setAmount(String(Math.round(Number(binanceAmountUsd) * liveForexUsdRate * 100) / 100));
-                      }
-                    }}
-                    className={`rounded-xl border px-3 py-2.5 text-left transition cursor-pointer ${
-                      method === item
-                        ? item === "Binance Pay"
-                          ? "border-[#F0B90B]/60 bg-[#F0B90B]/15 text-white shadow-sm ring-1 ring-[#F0B90B]/30"
-                          : "border-[#baff00]/60 bg-[#baff00]/10 text-white shadow-sm"
-                        : "border-white/10 bg-[#0b1418] text-slate-400 hover:border-white/20 hover:text-white"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-bold">{item === "Binance Pay" ? "🟡 Binance Pay" : item}</span>
-                      {method === item && (
-                        <Icon name="check" size={15} className={item === "Binance Pay" ? "text-[#F0B90B]" : "text-[#baff00]"} />
-                      )}
-                    </div>
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs">
+                <span className="text-slate-400">Channel:</span>
+                <span className="font-extrabold text-white flex items-center gap-1.5">
+                  <span>{method === "Binance Pay" ? "🟡" : method === "Easypaisa" ? "🟢" : method === "JazzCash" ? "🟠" : method === "Bank Transfer" ? "🏛️" : "💳"}</span>
+                  <span>{method}</span>
+                </span>
               </div>
             </div>
 
@@ -5580,8 +5838,13 @@ function AddFundsPage({
             {method === "Binance Pay" ? (
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
-                    <span>Deposit Amount (USDT / USD)</span>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-1 text-xs font-bold uppercase tracking-wide text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span>Deposit Amount (USD)</span>
+                      <span className="rounded-full bg-[#F0B90B]/15 border border-[#F0B90B]/30 px-2 py-0.2 text-[10px] font-extrabold normal-case text-[#F0B90B]">
+                        🎁 5%–10% bonus ($2+)
+                      </span>
+                    </div>
                     <span className="text-amber-400 font-normal">Min: $1.00 USD</span>
                   </div>
                   <div className="relative">
@@ -5602,59 +5865,98 @@ function AddFundsPage({
                         }
                       }}
                       placeholder="e.g. 10.00"
-                      className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] pl-8 pr-4 text-base sm:text-sm font-bold text-white outline-none placeholder:text-slate-600 focus:border-[#F0B90B]/50 focus:ring-2 focus:ring-[#F0B90B]/10"
+                      className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] pl-8 pr-4 text-base sm:text-sm font-bold text-white outline-none placeholder:text-slate-500 focus:border-[#F0B90B]/50 focus:ring-2 focus:ring-[#F0B90B]/10"
                     />
                   </div>
-                  <p className="mt-1.5 text-[11px] text-slate-400">
-                    ≈ <strong className="text-white">₨{amount || "0.00"} PKR</strong> wallet credit (⚡ 1 USD = ₨{liveForexUsdRate} · 0% deposit fee)
-                  </p>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] min-h-[20px]">
+                    <span className="text-slate-300">
+                      ≈ <strong className="text-white">₨{amount || "0.00"} PKR</strong> (1 USD = ₨{liveForexUsdRate})
+                      {Number(amount) >= 500 && (
+                        <strong className="text-[#F0B90B] ml-1.5">
+                          · +{Number(amount) >= 5000 ? "10% VIP" : "5%"} bonus (+₨{Math.round(Number(amount) * (Number(amount) >= 5000 ? 0.10 : 0.05)).toLocaleString()})
+                        </strong>
+                      )}
+                    </span>
+                  </div>
                 </label>
 
                 <label className="block">
-                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
+                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-300">
                     <span>Binance Order ID / TxHash</span>
-                    <span className="text-slate-500 font-normal">From Receipt</span>
+                    <span className="text-slate-400 font-normal">From Receipt</span>
                   </div>
                   <input
                     type="text"
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
                     placeholder="e.g. 238910283 or 0x..."
-                    className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm text-white font-mono outline-none placeholder:text-slate-600 focus:border-[#F0B90B]/50 focus:ring-2 focus:ring-[#F0B90B]/10"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm text-white font-mono outline-none placeholder:text-slate-500 focus:border-[#F0B90B]/50 focus:ring-2 focus:ring-[#F0B90B]/10"
                   />
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400 min-h-[20px]">
+                    <span>Enter Binance Pay Order ID or crypto TxHash</span>
+                  </div>
                 </label>
               </div>
             ) : (
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
-                    <span>Amount (PKR)</span>
-                    <span className="text-slate-500 font-normal">Min: ₨100</span>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-1 text-xs font-bold uppercase tracking-wide text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span>Amount (PKR)</span>
+                      <span className="rounded-full bg-[#baff00]/15 border border-[#baff00]/30 px-2 py-0.2 text-[10px] font-extrabold normal-case text-[#baff00]">
+                        🎁 +5%–10% bonus (₨500+)
+                      </span>
+                    </div>
+                    <span className="text-slate-400 font-normal">Min: ₨100</span>
                   </div>
-                  <input
-                    type="number"
-                    min="100"
-                    max="500000"
-                    step="1"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="e.g. 1000"
-                    className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm font-bold text-white outline-none placeholder:text-slate-600 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-[#baff00]">₨</span>
+                    <input
+                      type="number"
+                      min="100"
+                      max="500000"
+                      step="1"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="e.g. 1000"
+                      className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] pl-9 pr-4 text-base sm:text-sm font-bold text-white outline-none placeholder:text-slate-500 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
+                    />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] min-h-[20px]">
+                    {Number(amount) >= 500 ? (
+                      <span className="text-[#baff00] font-semibold flex items-center gap-1">
+                        <span>🎁</span>
+                        <span>
+                          +{Number(amount) >= 5000 ? "10% VIP" : "5%"} bonus (+₨{Math.round(Number(amount) * (Number(amount) >= 5000 ? 0.10 : 0.05)).toLocaleString()}) auto-applied!
+                        </span>
+                      </span>
+                    ) : Number(amount) > 0 ? (
+                      <span className="text-slate-400">
+                        Deposit ₨500+ to unlock +5% to +10% bonus
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        Eligible for +5% to +10% bonus on ₨500+
+                      </span>
+                    )}
+                  </div>
                 </label>
 
                 <label className="block">
-                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
+                  <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-300">
                     <span>Transaction ID (TID)</span>
-                    <span className="text-slate-500 font-normal">From SMS / Receipt</span>
+                    <span className="text-slate-400 font-normal">From SMS / Receipt</span>
                   </div>
                   <input
                     type="text"
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
                     placeholder="e.g. 3738920194 or 12-digit ref"
-                    className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm text-white font-mono outline-none placeholder:text-slate-600 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm text-white font-mono outline-none placeholder:text-slate-500 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
                   />
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400 min-h-[20px]">
+                    <span>Enter 11-12 digit TID from payment receipt</span>
+                  </div>
                 </label>
               </div>
             )}
@@ -5732,82 +6034,430 @@ function AddFundsPage({
               </div>
             )}
 
+            {/* Primary Action Button */}
             <button
               type="button"
               disabled={submitting}
               onClick={submitDeposit}
-              className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] px-5 text-sm font-black text-[#07100f] transition hover:bg-[#d2ff5a] shadow-[0_4px_25px_rgba(186,255,0,0.25)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+              className="mt-6 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-[#baff00] via-[#c6ff24] to-[#88e600] px-6 text-sm font-black text-[#07100f] transition-all duration-200 hover:brightness-110 hover:shadow-[0_0_30px_rgba(186,255,0,0.4)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer shadow-[0_4px_25px_rgba(186,255,0,0.25)]"
             >
-              <Icon name={submitting ? "clock" : "check"} size={18} />
-              {submitting ? "Submitting Request..." : "Submit Deposit with Proof"}
+              <Icon name={submitting ? "clock" : "check"} size={19} />
+              <span>{submitting ? "Submitting Request..." : "Submit Deposit with Proof"}</span>
             </button>
 
-            {/* Direct WhatsApp Receipt Confirmation */}
-            <a
-              href={`https://wa.me/923176437013?text=${encodeURIComponent(
-                method === "Binance Pay"
-                  ? `Hello VEXARO SMM Admin, I have submitted a deposit of $${binanceAmountUsd || (Number(amount) / liveForexUsdRate).toFixed(2)} USDT (₨${amount || "..."} PKR) via Binance. TxHash / Order ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
-                  : `Hello Saeed Bashir / VEXARO SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via ${method}. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#25d366]/40 bg-[#25d366]/10 px-5 text-xs sm:text-sm font-bold text-[#25d366] transition hover:bg-[#25d366] hover:text-[#07100f] shadow-[0_4px_20px_rgba(37,211,102,0.15)] cursor-pointer"
-            >
-              <Icon name="whatsapp" size={18} />
-              <span>Send Receipt on WhatsApp (+92 317 6437013)</span>
-            </a>
+            {/* Secondary Action: WhatsApp Support Confirmation */}
+            <div className="mt-3 text-center">
+              <a
+                href={`https://wa.me/923176437013?text=${encodeURIComponent(
+                  method === "Binance Pay"
+                    ? `Hello VEXARO SMM Admin, I have submitted a deposit of $${binanceAmountUsd || (Number(amount) / liveForexUsdRate).toFixed(2)} USDT (₨${amount || "..."} PKR) via Binance. TxHash / Order ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
+                    : `Hello Saeed Bashir / VEXARO SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via ${method}. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2.5 text-xs font-semibold text-slate-300 hover:border-[#25d366]/40 hover:bg-[#25d366]/10 hover:text-[#25d366] transition cursor-pointer w-full"
+              >
+                <Icon name="whatsapp" size={16} className="text-[#25d366] group-hover:scale-110 transition-transform" />
+                <span>Optional: Send Receipt on WhatsApp (+92 317 6437013)</span>
+                <span className="text-[10px] text-slate-500 group-hover:text-[#25d366]">↗</span>
+              </a>
+            </div>
           </div>
         </div>
 
-        {/* Right column - Deposit history */}
-        <div className="space-y-5">
-          <div className="rounded-xl border border-white/10 bg-[#111a1d] p-5 sm:p-7">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
-                <Icon name="history" size={22} />
+        {/* Right column - Recent activity & guarantee */}
+        <div className="space-y-5 pb-20 sm:pb-24 lg:pb-28">
+          {/* Recent Deposits Mini Card */}
+          <div className="rounded-xl border border-white/10 bg-[#111a1d] p-5 sm:p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
+                  <Icon name="history" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Recent Activity</h3>
+                  <p className="text-[11px] text-slate-200">Latest payment requests</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-black text-white">Deposit History</h3>
-                <p className="text-xs text-slate-500">Your recent payment requests.</p>
-              </div>
+
+              {deposits.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("history")}
+                  className="text-xs font-bold text-[#baff00] hover:underline cursor-pointer"
+                >
+                  View All ({deposits.length})
+                </button>
+              )}
             </div>
 
             {deposits.length === 0 ? (
-              <p className="text-center text-sm text-slate-500 py-6">No deposits yet.</p>
+              <p className="text-center text-xs text-slate-300 py-6">No deposits submitted yet.</p>
             ) : (
               <div className="space-y-3">
-                {deposits.slice(0, 10).map((deposit) => (
-                  <div key={deposit.id} className="rounded-xl border border-white/5 bg-[#0b1418] p-4">
+                {deposits.slice(0, 3).map((deposit) => (
+                  <div key={deposit.id} className="rounded-xl border border-white/5 bg-[#0b1418] p-3.5 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-white">₨{deposit.amount.toLocaleString()}</p>
-                        <p className="mt-1 text-xs text-slate-400 font-medium">
-                          {deposit.method} • <span className="font-mono text-[11px] text-slate-500">{deposit.transactionId}</span>
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-black text-white">₨{deposit.amount.toLocaleString()}</p>
+                        {deposit.status === "Approved" && (deposit.bonusPkr || 0) > 0 && (
+                          <span className="rounded-md bg-emerald-400/15 border border-emerald-400/30 px-1.5 py-0.5 text-[10px] font-black text-emerald-300">
+                            +₨{Number(deposit.bonusPkr).toLocaleString()}
+                          </span>
+                        )}
                       </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                        deposit.status === "Approved" ? "bg-emerald-400/10 text-emerald-300" :
-                        deposit.status === "Rejected" ? "bg-red-400/10 text-red-300" :
-                        "bg-amber-400/10 text-amber-300"
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        deposit.status === "Approved" ? "bg-emerald-400/15 text-emerald-300 border border-emerald-400/30" :
+                        deposit.status === "Rejected" ? "bg-red-400/15 text-red-300 border border-red-400/30" :
+                        "bg-amber-400/15 text-amber-300 border border-amber-400/30"
                       }`}>
                         {deposit.status}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs text-slate-600">{new Date(deposit.createdAt).toLocaleDateString()}</p>
+                    <div className="flex items-center justify-between text-[11px] text-slate-200">
+                      <span>{deposit.method}</span>
+                      <span className="font-mono text-slate-300">{deposit.transactionId.length > 12 ? `${deposit.transactionId.slice(0, 10)}...` : deposit.transactionId}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("history")}
+              className="w-full mt-4 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-bold text-slate-100 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              <span>Open Full Transaction Ledger</span>
+              <span>→</span>
+            </button>
+          </div>
+
+          {/* Fast Approval Guarantee */}
+          <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-5 shadow-lg space-y-2">
+            <p className="text-xs font-bold text-[#baff00] flex items-center gap-1.5">
+              <span>⚡</span>
+              <span>Fast Approval Guarantee</span>
+            </p>
+            <p className="text-xs leading-5 text-slate-100">
+              Our support team reviews incoming payment proofs against live statements in 5–30 minutes. Once confirmed, your balance and bonus are applied instantly.
+            </p>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {/* TAB 2: REDEEM COUPON */}
+      {activeTab === "coupon" && (
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6 sm:p-8 shadow-xl">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#baff00]/10 text-2xl font-black text-[#baff00] border border-[#baff00]/20">
+                🎟️
+              </div>
+              <div>
+                <span className="rounded-full bg-[#baff00]/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#baff00]">
+                  Promotional Voucher
+                </span>
+                <h3 className="text-xl font-black text-white">Redeem Coupon Code</h3>
+                <p className="mt-0.5 text-xs text-slate-200">
+                  Enter your voucher code to receive instant wallet balance or promotional funds.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleRedeemCoupon} className="mt-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                  Voucher / Coupon Code
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                    🏷️
+                  </span>
+                  <input
+                    type="text"
+                    value={couponCodeInput}
+                    onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                    placeholder="e.g. WELCOME100, BONUS50"
+                    disabled={couponBusy}
+                    className="h-13 w-full rounded-xl border border-white/10 bg-[#0b1418] pl-11 pr-4 font-mono text-base font-bold text-white uppercase tracking-wider placeholder:text-slate-500 placeholder:normal-case placeholder:font-sans focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10 outline-none"
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-slate-300">
+                  Coupon codes are case-insensitive and can be redeemed once per account.
+                </p>
+              </div>
+
+              {couponFeedback && (
+                <div
+                  className={`rounded-xl border p-4 text-xs font-semibold flex items-start gap-2.5 ${
+                    couponFeedback.error
+                      ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                  }`}
+                >
+                  <span className="text-base shrink-0">{couponFeedback.error ? "⚠️" : "🎉"}</span>
+                  <span className="mt-0.5 leading-relaxed">{couponFeedback.text}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={couponBusy || !couponCodeInput.trim()}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] px-5 text-sm font-black text-[#07100f] transition hover:bg-[#d2ff5a] shadow-[0_4px_25px_rgba(186,255,0,0.25)] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              >
+                {couponBusy ? (
+                  <>
+                    <Icon name="clock" size={18} />
+                    <span>Verifying &amp; Applying...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🎟️</span>
+                    <span>Claim Voucher Bonus</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Switch to Deposit tab */}
+            <div className="mt-6 pt-5 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <span className="text-slate-300">Need to deposit cash via Bank, SadaPay, or Binance?</span>
+              <button
+                type="button"
+                onClick={() => setActiveTab("deposit")}
+                className="font-bold text-[#baff00] hover:text-[#d8ff86] hover:underline flex items-center gap-1 cursor-pointer transition"
+              >
+                <span>💳 Go to Deposit Funds</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Benefits Grid */}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-[#0d1816] p-4 text-center">
+              <div className="text-2xl mb-1">⚡</div>
+              <p className="text-xs font-bold text-white">Instant Credit</p>
+              <p className="mt-1 text-[11px] text-slate-300">Funds are credited immediately upon code validation.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-[#0d1816] p-4 text-center">
+              <div className="text-2xl mb-1">🛒</div>
+              <p className="text-xs font-bold text-white">All Services</p>
+              <p className="mt-1 text-[11px] text-slate-300">Use coupon balance on any social media growth order.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-[#0d1816] p-4 text-center">
+              <div className="text-2xl mb-1">🛡️</div>
+              <p className="text-xs font-bold text-white">Zero Expiry</p>
+              <p className="mt-1 text-[11px] text-slate-300">Your credited wallet funds never expire.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: TRANSACTION HISTORY */}
+      {activeTab === "history" && (
+        <div className="space-y-6">
+          {/* Metric Overview Counters */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5 shadow-lg">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-300">Total Approved</p>
+              <p className="mt-2 text-2xl sm:text-3xl font-black text-white">
+                ₨{deposits
+                  .filter((d) => d.status === "Approved")
+                  .reduce((acc, d) => acc + (Number(d.amount) || 0), 0)
+                  .toLocaleString()}
+              </p>
+              <p className="mt-1 text-[11px] text-emerald-400 font-semibold">
+                {deposits.filter((d) => d.status === "Approved").length} approved payments
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5 shadow-lg">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-300">Deposit Bonuses</p>
+              <p className="mt-2 text-2xl sm:text-3xl font-black text-[#baff00]">
+                +₨{deposits
+                  .filter((d) => d.status === "Approved")
+                  .reduce((acc, d) => acc + (Number(d.bonusPkr) || 0), 0)
+                  .toLocaleString()}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-300">5%–10% bonus rewards</p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5 shadow-lg">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-300">Pending Approval</p>
+              <p className="mt-2 text-2xl sm:text-3xl font-black text-amber-400">
+                {deposits.filter((d) => d.status === "Pending").length}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-300">Under admin verification</p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5 shadow-lg">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-300">Total Requests</p>
+              <p className="mt-2 text-2xl sm:text-3xl font-black text-white">{deposits.length}</p>
+              <p className="mt-1 text-[11px] text-slate-300">All submitted records</p>
+            </div>
+          </div>
+
+          {/* Filter & Search Bar */}
+          <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg">
+            {/* Status filter pills */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(["All", "Pending", "Approved", "Rejected"] as const).map((st) => {
+                const count = st === "All" ? deposits.length : deposits.filter((d) => d.status === st).length;
+                return (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setHistoryFilter(st)}
+                    className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      historyFilter === st
+                        ? "bg-[#baff00] text-[#07100f] font-black"
+                        : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <span>{st}</span>
+                    <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                      historyFilter === st ? "bg-black/20 text-[#07100f]" : "bg-white/10 text-slate-300"
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search query input */}
+            <div className="relative min-w-[240px]">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+              <input
+                type="text"
+                value={historyQuery}
+                onChange={(e) => setHistoryQuery(e.target.value)}
+                placeholder="Search by TID, method, amount..."
+                className="h-10 w-full rounded-xl border border-white/10 bg-[#0b1418] pl-9 pr-8 text-xs text-white placeholder:text-slate-500 focus:border-[#baff00]/50 outline-none"
+              />
+              {historyQuery && (
+                <button
+                  type="button"
+                  onClick={() => setHistoryQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Ledger Table / Card List */}
+          <div className="rounded-2xl border border-white/10 bg-[#111a1d] overflow-hidden shadow-xl">
+            {filteredDeposits.length === 0 ? (
+              <div className="p-12 text-center space-y-3">
+                <div className="text-4xl">📋</div>
+                <p className="text-base font-bold text-white">No deposit records found</p>
+                <p className="text-xs text-slate-300 max-w-sm mx-auto">
+                  {historyQuery || historyFilter !== "All"
+                    ? "No deposits match your active filter or search query. Try clearing the filter."
+                    : "You haven't submitted any deposit requests yet. Submit a payment to get started."}
+                </p>
+                {(historyQuery || historyFilter !== "All") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryFilter("All");
+                      setHistoryQuery("");
+                    }}
+                    className="mt-2 inline-flex items-center gap-1 rounded-xl bg-white/5 border border-white/10 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-white/10 cursor-pointer"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {filteredDeposits.map((dep) => (
+                  <div key={dep.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition hover:bg-white/[0.02]">
+                    <div className="flex items-start gap-3.5">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold ${
+                        dep.method === "Binance Pay" ? "bg-[#F0B90B]/15 text-[#F0B90B] border border-[#F0B90B]/30" : "bg-white/5 text-white border border-white/10"
+                      }`}>
+                        {dep.method === "Binance Pay" ? "🟡" : "💳"}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-black text-white">
+                            ₨{dep.amount.toLocaleString()}
+                          </span>
+                          <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] font-bold text-slate-200">
+                            {dep.method}
+                          </span>
+                          {dep.status === "Approved" && (dep.bonusPkr || 0) > 0 && (
+                            <span className="rounded-full bg-[#baff00]/15 border border-[#baff00]/30 px-2.5 py-0.5 text-[11px] font-black text-[#baff00]">
+                              🎁 +₨{Number(dep.bonusPkr).toLocaleString()} Bonus Credited
+                            </span>
+                          )}
+                          {dep.status === "Pending" && dep.amount >= 500 && (
+                            <span className="rounded-full bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                              🎁 +₨{Math.round(dep.amount * (dep.amount >= 5000 ? 0.10 : 0.05)).toLocaleString()} bonus on approval
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                          <span className="text-slate-400">TID / Ref:</span>
+                          <code className="rounded bg-black/40 px-2 py-0.5 font-mono text-white text-[11px]">
+                            {dep.transactionId}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(dep.transactionId);
+                            }}
+                            className="text-[10px] font-bold text-[#baff00] hover:underline cursor-pointer"
+                            title="Copy Transaction ID"
+                          >
+                            Copy
+                          </button>
+                          <span className="text-slate-500">•</span>
+                          <span className="text-slate-300">
+                            {new Date(dep.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 self-end sm:self-center">
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        dep.status === "Approved"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : dep.status === "Rejected"
+                          ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                          : "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                      }`}>
+                        {dep.status === "Approved" && "✓ "}
+                        {dep.status === "Rejected" && "✕ "}
+                        {dep.status === "Pending" && "⏳ "}
+                        {dep.status}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
-          <div className="rounded-3xl border border-[#baff00]/20 bg-[#baff00]/5 p-6 sm:p-8">
-            <p className="text-sm font-bold text-[#baff00] mb-2">💡 Fast Approval Guarantee</p>
-            <p className="text-xs leading-5 text-slate-300">
-              Admin team reviews incoming deposits directly against bank receipts. Once approved, your wallet balance updates automatically. Need urgent top-up? Message our WhatsApp support at <strong className="text-[#baff00]">VexaroSMMAdmin</strong>.
-            </p>
-          </div>
         </div>
-      </div>
+      )}
+
+      {/* Currency Selection Modal in Add Funds */}
+      {openCurrency && (
+        <CurrencySelectModal
+          isOpen={openCurrency}
+          onClose={() => setOpenCurrency(false)}
+          selectedCurrency={selectedCurrency}
+          onSelectCurrency={(code) => setSelectedCurrency(code)}
+          rates={rates}
+        />
+      )}
     </div>
   );
 }
@@ -5903,7 +6553,7 @@ function Popular({
       <div>
         <div className="flex items-center justify-between">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.05] border border-white/10 text-white group-hover:border-[#baff00]/50 group-hover:shadow-[0_0_15px_rgba(186,255,0,0.2)] transition-all">
-            <Icon name={icon} size={20} />
+            <Icon name={icon} size={26} />
           </div>
 
           <span className="rounded-full bg-white/[0.05] border border-white/10 px-3 py-1 text-[11px] font-bold text-slate-300">
@@ -6383,7 +7033,7 @@ function ReferAndEarnPage({
               <span className="font-bold text-[#baff00]">{progressPercent}%</span>
             </div>
 
-            <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#0a1110]">
+            <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-black/50 border border-white/10 p-0.5">
               <div
                 className={`h-full transition-all duration-500 rounded-full ${
                   canWithdraw
@@ -6406,13 +7056,13 @@ function ReferAndEarnPage({
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-3xl border border-white/10 bg-[#111a1d] p-5">
             <p className="text-xs font-semibold text-slate-400">Friends Invited</p>
-            <p className="mt-2 text-2xl font-black text-white">{totalInvited}</p>
+            <p className="mt-1 text-2xl font-black text-white">{totalInvited}</p>
             <p className="mt-1 text-[11px] text-slate-500">Active accounts</p>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-[#111a1d] p-5">
             <p className="text-xs font-semibold text-slate-400">Commission Rate</p>
-            <p className="mt-2 text-2xl font-black text-sky-400">{commissionRate}%</p>
+            <p className="mt-1 text-2xl font-black text-sky-400">{commissionRate}%</p>
             <p className="mt-1 text-[11px] text-slate-500">Lifetime on every order</p>
           </div>
 
@@ -6438,16 +7088,26 @@ function ReferAndEarnPage({
               Referral Link
             </label>
             <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={loading ? "Generating link..." : referralLink}
-                className="w-full rounded-xl border border-white/10 bg-[#0a1110] px-4 py-3 text-xs text-slate-200 outline-none sm:text-sm font-mono"
-              />
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  readOnly
+                  value={loading ? "Connecting to referral system..." : referralLink || "No referral link found"}
+                  className={`w-full rounded-xl border border-white/10 bg-[#0a1110] px-4 py-3 text-xs text-slate-200 outline-none sm:text-sm font-mono ${
+                    loading ? "text-slate-500 italic animate-pulse pr-8" : ""
+                  }`}
+                />
+                {loading && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#baff00] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#baff00]"></span>
+                  </span>
+                )}
+              </div>
               <button
                 onClick={handleCopyLink}
                 disabled={loading || !referralLink}
-                className="shrink-0 rounded-xl bg-[#baff00] px-5 py-3 text-xs font-black text-[#07100f] transition hover:bg-[#d2ff5a] disabled:opacity-50"
+                className="shrink-0 rounded-xl bg-[#baff00] px-5 py-3 text-xs font-black text-[#07100f] transition hover:bg-[#d2ff5a] disabled:opacity-50 cursor-pointer"
               >
                 {copiedLink ? "✓ Copied!" : "Copy Link"}
               </button>
@@ -6484,7 +7144,7 @@ function ReferAndEarnPage({
           </span>
           <a
             href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-              `Join VEXARO SMM Panel with my referral link for lightning-fast social media growth: ${referralLink}`
+              `🚀 Boost your Instagram, TikTok, YouTube & Facebook with Pakistan's #1 Cheapest SMM Panel — VEXARO!\n\n⚡ Instant Followers, Views, Likes & Watchtime\n💳 Automated JazzCash, Easypaisa & SadaPay deposits\n🎁 Free signup bonus included!\n\nRegister via my official link now:\n${referralLink}`
             )}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -6883,7 +7543,9 @@ function ApiPage({ currentUser }: { currentUser: CurrentUser | null }) {
 
   // Code snippet generator
   const currentSnippet = useMemo(() => {
-    const effectiveKey = apiKey || "YOUR_API_KEY";
+    const effectiveKey = showKey
+      ? (apiKey || "YOUR_API_KEY")
+      : (apiKey ? `${apiKey.slice(0, 4)}••••••••••••••••${apiKey.slice(-4)}` : "YOUR_API_KEY");
 
     if (selectedAction === "services") {
       if (selectedLang === "cURL") {
@@ -7107,7 +7769,7 @@ curl_close($ch);
     }
 
     return "";
-  }, [selectedAction, selectedLang, apiKey, apiUrl]);
+  }, [selectedAction, selectedLang, apiKey, apiUrl, showKey]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">

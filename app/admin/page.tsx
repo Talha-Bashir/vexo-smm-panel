@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { SeoManagementView } from "@/components/admin-seo-management";
+import { PlatformSettingsView } from "@/components/admin-platform-settings";
+import { BlogCmsAdmin } from "@/components/admin-blog-cms";
 
 type Tab =
   | "Dashboard"
@@ -9,9 +12,13 @@ type Tab =
   | "Orders"
   | "Services"
   | "Subscriptions"
+  | "Coupons"
   | "Withdrawals"
   | "Tickets"
   | "Announcements"
+  | "SEO & Meta"
+  | "Blog CMS"
+  | "Settings"
   | "Appearance"
   | "Activity"
   | "Sub-Admins";
@@ -23,9 +30,13 @@ const tabs: Tab[] = [
   "Orders",
   "Services",
   "Subscriptions",
+  "Coupons",
   "Withdrawals",
   "Tickets",
   "Announcements",
+  "SEO & Meta",
+  "Blog CMS",
+  "Settings",
   "Appearance",
   "Activity",
   "Sub-Admins",
@@ -35,6 +46,28 @@ const card = "rounded-2xl border border-white/10 bg-[#111a1d]";
 
 function money(n: number) {
   return `₨${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function downloadCsv(filename: string, headers: string[], rows: (string | number | null | undefined)[][]) {
+  if (typeof window === "undefined") return;
+  const escapeCell = (val: string | number | null | undefined) => {
+    const s = String(val ?? "").replace(/"/g, '""');
+    return `"${s}"`;
+  };
+  const csvContent = [
+    headers.map(escapeCell).join(","),
+    ...rows.map((row) => row.map(escapeCell).join(",")),
+  ].join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function Badge({ children }: { children: React.ReactNode }) {
@@ -151,18 +184,26 @@ export default function Admin() {
     if (!currentUser) return tabs;
     if (currentUser.is_super_admin) return tabs;
     const p = currentUser.permissions || {};
+    if (p.full_access) return tabs;
     const list: Tab[] = [];
     if (p.analytics) list.push("Dashboard");
     if (p.users) list.push("Users");
     if (p.deposits) list.push("Deposits");
     if (p.orders) list.push("Orders");
-    if (p.services) {
-      list.push("Services");
-      list.push("Subscriptions");
-    }
+    if (p.services) list.push("Services");
+    if (p.subscriptions || p.services) list.push("Subscriptions");
+    if (p.coupons || p.users) list.push("Coupons");
     if (p.withdrawals) list.push("Withdrawals");
     if (p.tickets) list.push("Tickets");
     if (p.announcements) list.push("Announcements");
+    if (p.seo || p.settings) {
+      list.push("SEO & Meta");
+      list.push("Blog CMS");
+    }
+    if (p.settings) {
+      list.push("Settings");
+      list.push("Appearance");
+    }
     if (p.analytics) list.push("Activity");
     return list;
   }, [currentUser]);
@@ -289,7 +330,7 @@ export default function Admin() {
     }
   }
 
-  async function updateDeposit(depositId: string, action: "approve" | "reject") {
+  async function updateDeposit(depositId: string, action: "approve" | "reject", customBonusPercent?: number) {
     if (depositBusyId) return;
     let rejectionReason = "";
     if (action === "reject") {
@@ -303,7 +344,12 @@ export default function Admin() {
       await api("/api/admin/deposits", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ depositId, action, rejectionReason }),
+        body: JSON.stringify({
+          depositId,
+          action,
+          rejectionReason,
+          bonusPercent: customBonusPercent,
+        }),
       });
       await load();
     } catch (err) {
@@ -343,18 +389,31 @@ export default function Admin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serviceId: String(s.service || s.id),
+          name: s.name,
+          platform: s.platform,
+          category: s.category,
+          min: s.min,
+          max: s.max,
+          refill: s.refill,
+          cancel: s.cancel,
+          is_guaranteed: s.is_guaranteed,
           enabled: s.enabled,
           popular: s.popular,
           autoRoute: s.auto_route,
           activeProviderId: s.active_provider_id,
+          activeRemoteServiceId: s.active_remote_service_id,
+          baseRateUsd: s.base_rate_usd,
           rateMultiplier: Number(s.rate_multiplier || 1.07),
+          description: s.description,
         }),
       });
       if (res?.service) {
         setServices((v) => v.map((x) => (String(x.service || x.id) === String(s.service || s.id) ? { ...x, ...res.service } : x)));
       }
+      return res;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Service update failed.");
+      throw e;
     } finally {
       setBusy(false);
     }
@@ -474,14 +533,14 @@ export default function Admin() {
             <button
               type="button"
               onClick={() => {
-                const order = ["dark", "light", "midnight", "purple"];
+                const order = ["dark", "light"];
                 const cur = document.documentElement.getAttribute("data-theme") || "dark";
                 const next = order[(order.indexOf(cur) + 1) % order.length];
                 document.documentElement.setAttribute("data-theme", next);
                 try { localStorage.setItem("vexo_platform_theme", next); } catch {}
               }}
               className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm font-bold text-slate-300 hover:border-[#baff00]/40 hover:text-white transition"
-              title="Cycle Platform Theme (Dark / Light / Midnight / Purple)"
+              title="Cycle Platform Theme (Dark / Light)"
             >
               🎨 Switch Theme
             </button>
@@ -499,7 +558,7 @@ export default function Admin() {
           </div>
         </header>
 
-        <nav className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        <nav className="mb-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {visibleTabs.map((t) => (
             <button
               key={t}
@@ -510,7 +569,21 @@ export default function Admin() {
                   : "border border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10"
               }`}
             >
-              {t === "Sub-Admins" ? "👥 Sub-Admins" : t === "Subscriptions" ? "🤖 Bot Subscriptions" : t}
+              {t === "Sub-Admins"
+                ? "👥 Sub-Admins"
+                : t === "Subscriptions"
+                ? "⚡ Subscriptions & Tools"
+                : t === "Coupons"
+                ? "🎟️ Coupons"
+                : t === "SEO & Meta"
+                ? "🚀 SEO & Meta"
+                : t === "Blog CMS"
+                ? "✍️ Blog CMS"
+                : t === "Settings"
+                ? "⚙️ Settings"
+                : t === "Appearance"
+                ? "🎨 Appearance"
+                : t}
             </button>
           ))}
         </nav>
@@ -528,7 +601,21 @@ export default function Admin() {
             onRefreshBalances={fetchProviderBalances}
           />
         )}
-        {tab === "Users" && <Users users={users} q={userQ} setQ={setUserQ} reload={load} wallet={wallet} grantBonus={grantBonus} resetPass={resetUserPassword} busy={busy} />}
+        {tab === "Users" && (
+          <Users
+            users={users}
+            setUsers={setUsers}
+            q={userQ}
+            setQ={setUserQ}
+            reload={load}
+            wallet={wallet}
+            grantBonus={grantBonus}
+            resetPass={resetUserPassword}
+            busy={busy}
+            services={services}
+            api={api}
+          />
+        )}
         {tab === "Deposits" && (
           <DepositsAdmin
             deposits={deposits}
@@ -583,9 +670,19 @@ export default function Admin() {
             setError={setError}
           />
         )}
+        {tab === "Coupons" && (
+          <CouponsAdmin
+            api={api}
+            setError={setError}
+            money={money}
+          />
+        )}
         {tab === "Tickets" && <Tickets tickets={tickets} reload={load} updateStatus={updateTicketStatus} busy={busy} />}
         {tab === "Announcements" && <Announcements ann={ann} title={title} setTitle={setTitle} message={message} setMessage={setMessage} create={createAnnouncement} del={deleteAnnouncement} busy={busy} />}
         {tab === "Activity" && <Activity rows={activity} />}
+        {tab === "SEO & Meta" && <SeoManagementView />}
+        {tab === "Blog CMS" && <BlogCmsAdmin />}
+        {tab === "Settings" && <PlatformSettingsView />}
         {tab === "Appearance" && <AppearanceView />}
         {tab === "Sub-Admins" && (
           <SubAdminsView
@@ -633,7 +730,7 @@ function ProviderBalancesWidget({
     { id: "am_smm", name: "AM SMM Panel", url: "amsmmpanel.com" },
     { id: "pakistan_smm", name: "Pakistan SMM Panel", url: "pakistansmmpanel.pk" },
     { id: "rizvi_smm", name: "Rizvi SMM Panels", url: "rizvismmpanels.com" },
-    { id: "ggsoma_bot", name: "GGSoma Partner Bot", url: "Partner API" },
+    { id: "elevatex_bot", name: "ElevateX Partner Gateway", url: "shop.elevatexbyzaid.com" },
   ];
 
   const balanceMap = useMemo(() => {
@@ -694,39 +791,44 @@ function ProviderBalancesWidget({
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {defaultList.map((dp) => {
-          const live = balanceMap.get(dp.id);
+          const live = balanceMap.get(dp.id) || (dp.id === "elevatex_bot" ? balanceMap.get("ggsoma_bot") : undefined);
           const numBal = parseNumericBalance(live?.balanceRaw ?? live?.balance);
 
           let badgeClass = "bg-white/5 text-slate-400";
           let dotClass = "bg-slate-500";
           let statusText = "WAITING";
 
+          let cardClass = "border-white/5 bg-[#0b1418]";
+
           if (loading && !live) {
             statusText = "CHECKING...";
-            badgeClass = "bg-blue-500/10 text-blue-400";
+            badgeClass = "bg-blue-500/15 text-blue-400 border border-blue-500/30";
             dotClass = "bg-blue-400 animate-pulse";
-          } else if (live?.alertLevel === "CRITICAL") {
-            statusText = "CRITICAL (<$5)";
-            badgeClass = "bg-red-500/15 text-red-400 border border-red-500/30";
-            dotClass = "bg-red-400 animate-ping";
-          } else if (live?.alertLevel === "LOW") {
-            statusText = "LOW (<$15)";
-            badgeClass = "bg-amber-500/15 text-amber-300 border border-amber-500/30";
-            dotClass = "bg-amber-400";
-          } else if (live?.alertLevel === "NORMAL" || (numBal !== null && numBal > 15)) {
-            statusText = "NORMAL";
-            badgeClass = "bg-emerald-500/15 text-emerald-400";
-            dotClass = "bg-emerald-400";
           } else if (live?.status === "error") {
             statusText = "OFFLINE";
-            badgeClass = "bg-rose-500/10 text-rose-400";
+            badgeClass = "bg-rose-500/20 text-rose-300 border border-rose-500/40";
             dotClass = "bg-rose-500";
+            cardClass = "border-rose-500/30 bg-rose-950/20";
+          } else if (live?.alertLevel === "CRITICAL") {
+            statusText = "CRITICAL (<$5)";
+            badgeClass = "bg-red-500/20 text-red-300 border border-red-500/40";
+            dotClass = "bg-red-400 animate-ping";
+            cardClass = "border-red-500/30 bg-red-950/20";
+          } else if (live?.alertLevel === "LOW") {
+            statusText = "LOW (<$15)";
+            badgeClass = "bg-amber-500/20 text-amber-300 border border-amber-500/40";
+            dotClass = "bg-amber-400";
+            cardClass = "border-amber-500/30 bg-amber-950/20";
+          } else if (live?.alertLevel === "NORMAL" || (numBal !== null && numBal > 15)) {
+            statusText = "NORMAL";
+            badgeClass = "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
+            dotClass = "bg-emerald-400";
           }
 
           return (
             <div
               key={dp.id}
-              className="rounded-xl border border-white/5 bg-[#0b1418] p-3.5 flex flex-col justify-between transition hover:border-[#baff00]/30 min-w-0"
+              className={`rounded-xl border p-3.5 flex flex-col justify-between transition hover:border-[#baff00]/30 min-w-0 ${cardClass}`}
             >
               <div>
                 <div className="flex items-start justify-between gap-1.5">
@@ -841,6 +943,111 @@ function Dashboard({
         ))}
       </div>
 
+      {/* 💰 Live Profit & Margins Intelligence */}
+      <div className={card + " mt-5 p-6"}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">💰</span>
+              <h2 className="text-lg font-black text-white">Live Profit &amp; Margins Intelligence</h2>
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">Live Upstream Delta</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Real-time spread calculation: Customer charges minus upstream wholesale provider cost across automated and manual orders.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          {/* Today's Profit */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-400 uppercase">Today's Net Profit</span>
+              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black text-emerald-400">
+                {stats.marginTodayPercent ?? 0}% Margin
+              </span>
+            </div>
+            <p className="mt-2 text-2xl font-black text-[#baff00]">{money(stats.profitTodayPkr ?? 0)}</p>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Wholesale Cost:</span>
+              <span className="font-mono text-slate-300">{money(stats.costTodayPkr ?? 0)}</span>
+            </div>
+          </div>
+
+          {/* Month Profit */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-400 uppercase">This Month Profit</span>
+              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black text-emerald-400">
+                {stats.marginMonthPercent ?? 0}% Margin
+              </span>
+            </div>
+            <p className="mt-2 text-2xl font-black text-cyan-400">{money(stats.profitMonthPkr ?? 0)}</p>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Total Revenue:</span>
+              <span className="font-mono text-slate-300">{money(stats.revenueMonthPkr ?? 0)}</span>
+            </div>
+          </div>
+
+          {/* All-Time Profit */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-400 uppercase">All-Time Net Profit</span>
+              <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-black text-purple-400">
+                {stats.marginAllTimePercent ?? 0}% Margin
+              </span>
+            </div>
+            <p className="mt-2 text-2xl font-black text-white">{money(stats.profitAllTimePkr ?? 0)}</p>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Lifetime Revenue:</span>
+              <span className="font-mono text-slate-300">{money(stats.revenueAllTimePkr ?? 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Platform Profitability Breakdown */}
+        {Array.isArray(stats.platformProfits) && stats.platformProfits.length > 0 && (
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">
+              📊 Top Platform Margins &amp; Volume Breakdown
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/5 text-[10px] uppercase text-slate-500">
+                    <th className="pb-2">Platform</th>
+                    <th className="pb-2">Orders</th>
+                    <th className="pb-2">Revenue (PKR)</th>
+                    <th className="pb-2">Net Profit (PKR)</th>
+                    <th className="pb-2 text-right">Gross Margin</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 font-mono">
+                  {stats.platformProfits.map((p: any) => (
+                    <tr key={p.platform} className="hover:bg-white/[0.02]">
+                      <td className="py-2.5 font-sans font-bold text-white">
+                        <span className="rounded bg-white/10 px-2 py-0.5 text-[10px]">{p.platform}</span>
+                      </td>
+                      <td className="py-2.5 text-slate-300 font-sans">{p.count}</td>
+                      <td className="py-2.5 text-slate-200">{money(p.revenuePkr)}</td>
+                      <td className="py-2.5 text-[#baff00] font-bold">{money(p.profitPkr)}</td>
+                      <td className="py-2.5 text-right font-sans">
+                        <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-bold ${
+                          p.marginPercent >= 15 ? "bg-emerald-500/10 text-emerald-400" :
+                          p.marginPercent >= 7 ? "bg-[#baff00]/10 text-[#cfff62]" : "bg-amber-500/10 text-amber-400"
+                        }`}>
+                          {p.marginPercent}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="mt-5">
         <ProviderBalancesWidget
           balances={balances}
@@ -928,6 +1135,7 @@ function Dashboard({
 
 function Users({
   users,
+  setUsers,
   q,
   setQ,
   reload,
@@ -935,8 +1143,11 @@ function Users({
   grantBonus,
   resetPass,
   busy,
+  services = [],
+  api,
 }: {
   users: any[];
+  setUsers: React.Dispatch<React.SetStateAction<any[]>>;
   q: string;
   setQ: (v: string) => void;
   reload: () => void;
@@ -944,7 +1155,84 @@ function Users({
   grantBonus: (id: number, nameOrEmail: string, currentBonus: number) => void;
   resetPass: (id: number, email: string) => void;
   busy: boolean;
+  services?: any[];
+  api: (url: string, init?: RequestInit) => Promise<any>;
 }) {
+  const [wholesaleUser, setWholesaleUser] = useState<any | null>(null);
+  const [wholesaleDiscount, setWholesaleDiscount] = useState<number>(0);
+  const [wholesaleRates, setWholesaleRates] = useState<Record<string, number>>({});
+  const [savingWholesale, setSavingWholesale] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [customRatePkr, setCustomRatePkr] = useState("");
+  const [allServicesList, setAllServicesList] = useState<any[]>(services || []);
+
+  const openWholesale = async (u: any) => {
+    setWholesaleUser(u);
+    setWholesaleDiscount(Number(u.customDiscountPercent || 0));
+    setWholesaleRates(u.customRates ? { ...u.customRates } : {});
+    setSelectedServiceId("");
+    setCustomRatePkr("");
+    if (!allServicesList || allServicesList.length === 0) {
+      try {
+        const sData = await api("/api/admin/services");
+        if (sData?.services) {
+          setAllServicesList(sData.services);
+        }
+      } catch (err) {
+        console.error("Failed to load services for wholesale modal", err);
+      }
+    }
+  };
+
+  const handleAddCustomRate = () => {
+    const sId = selectedServiceId.trim();
+    const rateNum = Number(customRatePkr);
+    if (!sId) {
+      alert("Please select a service first.");
+      return;
+    }
+    if (!Number.isFinite(rateNum) || rateNum <= 0) {
+      alert("Please enter a valid rate in PKR per 1k (e.g. 150.00).");
+      return;
+    }
+    setWholesaleRates((prev) => ({
+      ...prev,
+      [sId]: Math.round(rateNum * 100) / 100,
+    }));
+    setSelectedServiceId("");
+    setCustomRatePkr("");
+  };
+
+  const handleSaveWholesale = async () => {
+    if (!wholesaleUser) return;
+    setSavingWholesale(true);
+    try {
+      const res = await api("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set_custom_rates",
+          userId: wholesaleUser.id,
+          customDiscountPercent: wholesaleDiscount,
+          customRates: wholesaleRates,
+        }),
+      });
+      setUsers((prev: any[]) =>
+        prev.map((u) =>
+          u.id === wholesaleUser.id
+            ? { ...u, customDiscountPercent: wholesaleDiscount, customRates: wholesaleRates }
+            : u
+        )
+      );
+      alert(res.message || "✓ Wholesale pricing updated successfully!");
+      setWholesaleUser(null);
+    } catch (err: any) {
+      alert("Failed to save wholesale pricing: " + (err.message || "Unknown error"));
+    } finally {
+      setSavingWholesale(false);
+    }
+  };
+
   return (
     <section className={card + " overflow-hidden"}>
       <div className="flex flex-col gap-3 border-b border-white/10 p-5 md:flex-row">
@@ -955,8 +1243,27 @@ function Users({
           placeholder="Search name or email..."
           className="h-11 flex-1 rounded-xl border border-white/10 bg-[#0b1418] px-4 text-sm outline-none focus:border-[#baff00]/50"
         />
-        <button onClick={reload} className="rounded-xl bg-[#baff00] px-4 py-2 text-sm font-black text-[#07100f]">
+        <button onClick={reload} className="rounded-xl bg-[#baff00] px-4 py-2 text-sm font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer">
           Search
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const rows = users.map((u) => [
+              u.id,
+              u.name,
+              u.email,
+              u.balance || 0,
+              u.orderCount || 0,
+              u.depositCount || 0,
+              u.createdAt ? new Date(u.createdAt).toISOString() : "",
+            ]);
+            downloadCsv("vexaro_users_export.csv", ["ID", "Name", "Email", "Balance PKR", "Orders", "Deposits", "Created At"], rows);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+        >
+          <span>📥</span>
+          <span>Export CSV</span>
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -974,6 +1281,18 @@ function Users({
                 <td className="px-5 py-4">
                   <b>{u.name}</b>
                   <p className="text-xs text-slate-500">{u.email}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {Number(u.customDiscountPercent || 0) > 0 && (
+                      <span className="rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">
+                        ⭐ VIP Reseller: -{u.customDiscountPercent}%
+                      </span>
+                    )}
+                    {u.customRates && Object.keys(u.customRates).length > 0 && (
+                      <span className="rounded bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 text-[10px] font-bold text-cyan-300">
+                        🏷️ {Object.keys(u.customRates).length} Custom Rate{Object.keys(u.customRates).length > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-5 py-4 font-black">
                   <div className="flex items-center gap-1.5 text-sm">
@@ -1013,7 +1332,7 @@ function Users({
                     <button
                       disabled={busy}
                       onClick={() => wallet(u.id, "add")}
-                      className="rounded-lg bg-[#baff00] px-2.5 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                      className="rounded-lg bg-[#baff00] px-2.5 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer"
                       title="Add real deposited funds"
                     >
                       + Real
@@ -1021,7 +1340,7 @@ function Users({
                     <button
                       disabled={busy}
                       onClick={() => wallet(u.id, "deduct")}
-                      className="rounded-lg border border-red-400/20 bg-red-400/10 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20 transition"
+                      className="rounded-lg border border-red-400/20 bg-red-400/10 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20 transition cursor-pointer"
                       title="Deduct real funds"
                     >
                       − Real
@@ -1029,7 +1348,7 @@ function Users({
                     <button
                       disabled={busy}
                       onClick={() => grantBonus(u.id, u.name || u.email, u.bonusBalancePkr)}
-                      className="rounded-lg border border-[#baff00]/40 bg-[#baff00]/10 px-2.5 py-1.5 text-xs font-bold text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition shadow-sm"
+                      className="rounded-lg border border-[#baff00]/40 bg-[#baff00]/10 px-2.5 py-1.5 text-xs font-bold text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition shadow-sm cursor-pointer"
                       title="Grant or top-up promotional bonus credit"
                     >
                       🎁 Add Bonus
@@ -1037,10 +1356,18 @@ function Users({
                     <button
                       disabled={busy}
                       onClick={() => resetPass(u.id, u.email)}
-                      className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-1.5 text-xs font-bold text-yellow-300 hover:bg-yellow-400/20 transition"
+                      className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-1.5 text-xs font-bold text-yellow-300 hover:bg-yellow-400/20 transition cursor-pointer"
                       title="Reset user password"
                     >
                       🔑 Reset
+                    </button>
+                    <button
+                      disabled={busy}
+                      onClick={() => openWholesale(u)}
+                      className="rounded-lg border border-purple-400/30 bg-purple-500/10 px-2.5 py-1.5 text-xs font-bold text-purple-300 hover:bg-purple-500/20 transition cursor-pointer"
+                      title="Set wholesale custom rates & VIP reseller discounts"
+                    >
+                      🏷️ Wholesale
                     </button>
                   </div>
                 </td>
@@ -1050,6 +1377,174 @@ function Users({
         </table>
         {!users.length && <p className="p-10 text-center text-sm text-slate-500">No users found.</p>}
       </div>
+
+      {/* Wholesale & Custom Pricing Modal */}
+      {wholesaleUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-purple-300">
+                    Reseller Wholesale Pricing
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">User #{wholesaleUser.id}</span>
+                </div>
+                <h3 className="mt-1 font-black text-base text-white">{wholesaleUser.name} ({wholesaleUser.email})</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWholesaleUser(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* VIP Global Discount */}
+              <div className="rounded-xl border border-white/5 bg-[#0b1418] p-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Global Reseller Discount %
+                </label>
+                <p className="mt-1 text-xs text-slate-400">
+                  Applied automatically at checkout for all services where no specific fixed custom rate is set.
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    max="95"
+                    step="1"
+                    value={wholesaleDiscount}
+                    onChange={(e) => setWholesaleDiscount(Math.max(0, Math.min(95, Number(e.target.value) || 0)))}
+                    className="w-24 rounded-lg border border-white/10 bg-[#111a1d] px-3 py-2 font-mono text-sm text-white outline-none focus:border-[#baff00]"
+                    placeholder="0"
+                  />
+                  <span className="text-sm font-bold text-slate-400">% off all catalog services</span>
+                </div>
+              </div>
+
+              {/* Service-Specific Custom Fixed Rates */}
+              <div className="rounded-xl border border-white/5 bg-[#0b1418] p-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Fixed Custom Rates (PKR per 1,000 units)
+                </label>
+                <p className="mt-1 text-xs text-slate-400">
+                  Assign custom fixed PKR pricing per 1k for this user on specific high-volume services (overrides global discount).
+                </p>
+
+                {/* Add Custom Rate Bar */}
+                <div className="mt-4 grid gap-3 sm:grid-cols-12 rounded-lg border border-white/10 bg-[#111a1d] p-3">
+                  <div className="sm:col-span-7">
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Select Service</label>
+                    <select
+                      value={selectedServiceId}
+                      onChange={(e) => setSelectedServiceId(e.target.value)}
+                      className="w-full rounded border border-white/10 bg-[#0b1418] px-2.5 py-1.5 text-xs text-white outline-none"
+                    >
+                      <option value="">-- Choose Service --</option>
+                      {allServicesList.map((s) => (
+                        <option key={s.id} value={String(s.id)}>
+                          #{s.id} [{s.platform}] {String(s.name || "").slice(0, 42)} (Std: ₨{Number(s.rate_pkr).toFixed(2)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Custom Rate / 1k</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={customRatePkr}
+                      onChange={(e) => setCustomRatePkr(e.target.value)}
+                      placeholder="₨ PKR"
+                      className="w-full rounded border border-white/10 bg-[#0b1418] px-2.5 py-1.5 text-xs font-mono text-white outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 flex items-end">
+                    <button
+                      type="button"
+                      onClick={handleAddCustomRate}
+                      className="w-full rounded bg-purple-500 hover:bg-purple-600 px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Active Custom Rates List */}
+                <div className="mt-4">
+                  <h4 className="text-[11px] font-bold uppercase text-slate-400 mb-2">
+                    Active Custom Rates ({Object.keys(wholesaleRates).length})
+                  </h4>
+                  {Object.keys(wholesaleRates).length === 0 ? (
+                    <p className="text-xs text-slate-500 italic py-2">No service-specific custom rates assigned yet.</p>
+                  ) : (
+                    <div className="divide-y divide-white/5 border border-white/10 rounded-lg overflow-hidden bg-[#111a1d]">
+                      {Object.entries(wholesaleRates).map(([sId, rate]) => {
+                        const sObj = allServicesList.find((x) => String(x.id) === String(sId));
+                        return (
+                          <div key={sId} className="flex items-center justify-between p-2.5 text-xs">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-white">#{sId}</span>
+                                <span className="text-slate-300 font-medium">
+                                  {sObj ? sObj.name : `Service #${sId}`}
+                                </span>
+                              </div>
+                              {sObj && (
+                                <span className="text-[10px] text-slate-500">
+                                  Standard Retail: ₨{Number(sObj.rate_pkr).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono font-black text-[#baff00]">
+                                ₨{Number(rate).toFixed(2)} / 1k
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = { ...wholesaleRates };
+                                  delete updated[sId];
+                                  setWholesaleRates(updated);
+                                }}
+                                className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 transition cursor-pointer"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-white/10 p-4 bg-[#0b1418]">
+              <button
+                type="button"
+                onClick={() => setWholesaleUser(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingWholesale}
+                onClick={handleSaveWholesale}
+                className="rounded-xl bg-[#baff00] px-5 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer"
+              >
+                {savingWholesale ? "Saving..." : "Save Wholesale Pricing"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1066,7 +1561,7 @@ function DepositsAdmin({
 }: {
   deposits: any[];
   reload: () => void;
-  updateDeposit: (id: string, action: "approve" | "reject") => void;
+  updateDeposit: (id: string, action: "approve" | "reject", customBonusPercent?: number) => void;
   busyId: string;
   previewScreenshot: string | null;
   setPreviewScreenshot: (url: string | null) => void;
@@ -1074,6 +1569,9 @@ function DepositsAdmin({
   setFilter: (f: "All" | "Pending" | "Approved" | "Rejected") => void;
 }) {
   const [q, setQ] = useState("");
+  const [approvingDeposit, setApprovingDeposit] = useState<any | null>(null);
+  const [selectedBonusRate, setSelectedBonusRate] = useState<number | "auto">("auto");
+  const [customBonusRate, setCustomBonusRate] = useState<string>("");
 
   const filtered = useMemo(() => {
     return deposits.filter((d) => {
@@ -1107,12 +1605,34 @@ function DepositsAdmin({
               Review receipts, verify transaction IDs, and approve Easypaisa / JazzCash / SadaPay deposits to credit user wallets.
             </p>
           </div>
-          <button
-            onClick={reload}
-            className="self-start rounded-xl border border-white/10 bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
-          >
-            🔄 Refresh Queue
-          </button>
+          <div className="flex flex-wrap items-center gap-2 self-start">
+            <button
+              type="button"
+              onClick={() => {
+                const rows = filtered.map((d) => [
+                  d.id,
+                  d.transactionId,
+                  d.method,
+                  d.name || "",
+                  d.email || "",
+                  d.amountPkr,
+                  d.bonusPkr || 0,
+                  d.status,
+                  d.createdAt ? new Date(d.createdAt).toISOString() : "",
+                ]);
+                downloadCsv("vexaro_deposits_export.csv", ["ID", "TID", "Method", "User", "Email", "Amount PKR", "Bonus PKR", "Status", "Created At"], rows);
+              }}
+              className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              📥 Export CSV
+            </button>
+            <button
+              onClick={reload}
+              className="rounded-xl border border-white/10 bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer"
+            >
+              🔄 Refresh Queue
+            </button>
+          </div>
         </div>
 
         {/* Counter cards */}
@@ -1219,8 +1739,23 @@ function DepositsAdmin({
                     {d.method}
                   </span>
                 </td>
-                <td className="px-5 py-4 font-black text-sm text-white">
-                  ₨{Number(d.amount).toLocaleString()}
+                <td className="px-5 py-4">
+                  <p className="font-black text-sm text-white">
+                    ₨{Number(d.amount).toLocaleString()}
+                  </p>
+                  {d.status === "Approved" ? (
+                    Number(d.bonusPkr || 0) > 0 ? (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-400/20">
+                        🎁 +₨{Number(d.bonusPkr).toLocaleString()} bonus
+                      </span>
+                    ) : (
+                      <span className="mt-1 text-[10px] text-slate-500 block">No bonus</span>
+                    )
+                  ) : d.status === "Pending" ? (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded bg-[#baff00]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#baff00] border border-[#baff00]/20">
+                      🎁 +₨{Math.round(Number(d.amount) >= 5000 ? Number(d.amount) * 0.10 : Number(d.amount) * 0.05).toLocaleString()} ({Number(d.amount) >= 5000 ? "10%" : "5%"} bonus)
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-5 py-4 font-mono text-[11px] text-slate-300 select-all">
                   {d.transactionId}
@@ -1267,15 +1802,19 @@ function DepositsAdmin({
                     <div className="flex items-center gap-2">
                       <button
                         disabled={!!busyId}
-                        onClick={() => updateDeposit(d.id, "approve")}
-                        className="rounded-lg bg-[#baff00] px-3 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition"
+                        onClick={() => {
+                          setApprovingDeposit(d);
+                          setSelectedBonusRate("auto");
+                          setCustomBonusRate("");
+                        }}
+                        className="rounded-lg bg-[#baff00] px-3 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer"
                       >
                         {busyId === d.id ? "..." : "Approve"}
                       </button>
                       <button
                         disabled={!!busyId}
                         onClick={() => updateDeposit(d.id, "reject")}
-                        className="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20 disabled:opacity-50 transition"
+                        className="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20 disabled:opacity-50 transition cursor-pointer"
                       >
                         Reject
                       </button>
@@ -1298,6 +1837,203 @@ function DepositsAdmin({
           </div>
         )}
       </div>
+
+      {/* Deposit Approval Confirmation & Bonus Rate Modal */}
+      {approvingDeposit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] max-w-lg w-full overflow-hidden rounded-3xl border border-[#baff00]/30 bg-[#111a1d] p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/15 text-lg font-black text-[#baff00]">
+                  💳
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Approve Deposit &amp; Credit Wallet</h3>
+                  <p className="text-xs text-slate-400">Review bonus credit allocation</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setApprovingDeposit(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              >
+                ✕ Cancel
+              </button>
+            </div>
+
+            {/* Deposit Info Card */}
+            <div className="rounded-2xl border border-white/10 bg-[#070d0d] p-4 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Customer:</span>
+                <span className="font-bold text-white">{approvingDeposit.name} ({approvingDeposit.email})</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Channel &amp; TID:</span>
+                <span className="font-mono text-slate-300">{approvingDeposit.method} • {approvingDeposit.transactionId}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-white/5 pt-2 text-sm">
+                <span className="font-bold text-slate-300">Deposited Amount:</span>
+                <span className="font-black text-lg text-white">₨{Number(approvingDeposit.amount).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Bonus Percentage Selection */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Select Deposit Bonus Rate
+                </label>
+                <span className="text-[11px] text-[#baff00] font-semibold">5% – 10% Policy</span>
+              </div>
+
+              {(() => {
+                const autoRate = Number(approvingDeposit.amount) >= 5000 ? 10 : 5;
+                const effectiveRate =
+                  selectedBonusRate === "auto"
+                    ? autoRate
+                    : selectedBonusRate === -1
+                    ? Math.max(0, Math.min(50, Number(customBonusRate) || 0))
+                    : selectedBonusRate;
+                const bonusAmount = Math.round(((Number(approvingDeposit.amount) * effectiveRate) / 100) * 100) / 100;
+                const totalCredited = Number(approvingDeposit.amount) + bonusAmount;
+
+                return (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBonusRate("auto")}
+                        className={`rounded-xl border p-2.5 text-xs font-bold transition text-left cursor-pointer ${
+                          selectedBonusRate === "auto"
+                            ? "border-[#baff00] bg-[#baff00]/15 text-white shadow-sm ring-1 ring-[#baff00]/30"
+                            : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="block text-[10px] text-[#baff00] uppercase font-black">⚡ Tiered Auto</span>
+                        <span className="font-black text-sm">{autoRate}% Bonus</span>
+                        <span className="block text-[10px] text-slate-400">+₨{Math.round(approvingDeposit.amount * (autoRate / 100)).toLocaleString()}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBonusRate(5)}
+                        className={`rounded-xl border p-2.5 text-xs font-bold transition text-left cursor-pointer ${
+                          selectedBonusRate === 5
+                            ? "border-[#baff00] bg-[#baff00]/15 text-white shadow-sm ring-1 ring-[#baff00]/30"
+                            : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="block text-[10px] text-slate-400 uppercase">Standard</span>
+                        <span className="font-black text-sm">5% Bonus</span>
+                        <span className="block text-[10px] text-slate-400">+₨{Math.round(approvingDeposit.amount * 0.05).toLocaleString()}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBonusRate(10)}
+                        className={`rounded-xl border p-2.5 text-xs font-bold transition text-left cursor-pointer ${
+                          selectedBonusRate === 10
+                            ? "border-[#baff00] bg-[#baff00]/15 text-white shadow-sm ring-1 ring-[#baff00]/30"
+                            : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="block text-[10px] text-amber-400 uppercase">VIP Tier</span>
+                        <span className="font-black text-sm">10% Bonus 🔥</span>
+                        <span className="block text-[10px] text-slate-400">+₨{Math.round(approvingDeposit.amount * 0.10).toLocaleString()}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBonusRate(7)}
+                        className={`rounded-xl border p-2 text-xs font-bold transition text-left cursor-pointer ${
+                          selectedBonusRate === 7
+                            ? "border-[#baff00] bg-[#baff00]/15 text-white"
+                            : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span>7% Bonus</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBonusRate(0)}
+                        className={`rounded-xl border p-2 text-xs font-bold transition text-left cursor-pointer ${
+                          selectedBonusRate === 0
+                            ? "border-[#baff00] bg-[#baff00]/15 text-white"
+                            : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span>0% No Bonus</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBonusRate(-1)}
+                        className={`rounded-xl border p-2 text-xs font-bold transition text-left cursor-pointer ${
+                          selectedBonusRate === -1
+                            ? "border-[#baff00] bg-[#baff00]/15 text-white"
+                            : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span>Custom %</span>
+                      </button>
+                    </div>
+
+                    {selectedBonusRate === -1 && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="text-xs text-slate-400">Custom Bonus %:</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="50"
+                          step="1"
+                          placeholder="e.g. 8"
+                          value={customBonusRate}
+                          onChange={(e) => setCustomBonusRate(e.target.value)}
+                          className="w-24 rounded-lg border border-white/10 bg-[#070d0d] px-3 py-1.5 text-xs font-bold text-white outline-none focus:border-[#baff00]"
+                        />
+                        <span className="text-xs text-slate-400">%</span>
+                      </div>
+                    )}
+
+                    {/* Breakdown Summary Box */}
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-300">Real Cash Balance (For Orders):</span>
+                        <span className="font-bold text-white">₨{Number(approvingDeposit.amount).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-emerald-300 font-semibold">🎁 Promotional Bonus ({effectiveRate}%):</span>
+                        <span className="font-black text-emerald-400">+₨{bonusAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="border-t border-emerald-500/20 pt-2 flex items-center justify-between text-sm">
+                        <span className="font-extrabold text-white">Total Customer Balance:</span>
+                        <span className="font-black text-base text-[#baff00]">₨{totalCredited.toLocaleString()} PKR</span>
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        disabled={!!busyId}
+                        onClick={() => {
+                          const depositId = approvingDeposit.id;
+                          setApprovingDeposit(null);
+                          updateDeposit(depositId, "approve", effectiveRate);
+                        }}
+                        className="flex-1 rounded-xl bg-[#baff00] py-3 text-xs sm:text-sm font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer shadow-[0_4px_20px_rgba(186,255,0,0.3)]"
+                      >
+                        {busyId === approvingDeposit.id ? "Crediting..." : `✓ Approve & Credit ₨${totalCredited.toLocaleString()}`}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Proof Screenshot Modal */}
       {previewScreenshot && (
@@ -1379,8 +2115,28 @@ function Orders({
             <option key={x}>{x}</option>
           ))}
         </select>
-        <button onClick={reload} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/10 transition">
+        <button onClick={reload} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/10 transition cursor-pointer">
           Search
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const rows = orders.map((o) => [
+              o.id,
+              o.userEmail || "",
+              o.serviceName || o.serviceId,
+              o.link,
+              o.quantity,
+              o.chargePkr || o.charge || 0,
+              o.status,
+              o.createdAt ? new Date(o.createdAt).toISOString() : "",
+            ]);
+            downloadCsv("vexaro_orders_export.csv", ["Order ID", "User", "Service", "Link", "Quantity", "Charge PKR", "Status", "Created At"], rows);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+        >
+          <span>📥</span>
+          <span>Export CSV</span>
         </button>
         {onSync && (
           <button
@@ -1495,7 +2251,7 @@ function Services({
 }: {
   services: any[];
   setServices: React.Dispatch<React.SetStateAction<any[]>>;
-  save: (s: any) => void;
+  save: (s: any) => Promise<any> | void;
   busy: boolean;
   providers: any[];
   syncProviders: () => void;
@@ -1513,8 +2269,94 @@ function Services({
   const [search, setSearch] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("All");
   const [autoRouteFilter, setAutoRouteFilter] = useState("All");
+  const [providerFilter, setProviderFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [bulkMult, setBulkMult] = useState("1.07");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkStatusLoading, setBulkStatusLoading] = useState(false);
+  const [editingDescService, setEditingDescService] = useState<any | null>(null);
+  const [descContent, setDescContent] = useState<string>("");
+  const [savingDesc, setSavingDesc] = useState(false);
+  const [isAddingService, setIsAddingService] = useState(false);
+  const [savingNew, setSavingNew] = useState(false);
+  const [editingFullService, setEditingFullService] = useState<any | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [newServiceForm, setNewServiceForm] = useState({
+    name: "",
+    platform: "Instagram",
+    category: "",
+    active_provider_id: "pak_smm",
+    active_remote_service_id: "",
+    auto_route: true,
+    base_rate_usd: 0.5,
+    rate_multiplier: 1.07,
+    min: 10,
+    max: 100000,
+    refill: true,
+    cancel: false,
+    is_guaranteed: true,
+    popular: false,
+    enabled: true,
+    description: "",
+  });
+
+  const providerStats = useMemo(() => {
+    const list = [
+      { id: "pak_smm", name: "PAK SMM", short: "PAK SMM", color: "text-blue-400", border: "border-blue-500/30", badge: "bg-blue-500/20 text-blue-300", barBg: "bg-blue-500" },
+      { id: "smooth_smm", name: "Smooth SMM", short: "Smooth", color: "text-emerald-400", border: "border-emerald-500/30", badge: "bg-emerald-500/20 text-emerald-300", barBg: "bg-emerald-500" },
+      { id: "am_smm", name: "AM SMM", short: "AM SMM", color: "text-purple-400", border: "border-purple-500/30", badge: "bg-purple-500/20 text-purple-300", barBg: "bg-purple-500" },
+      { id: "pakistan_smm", name: "Pakistan SMM", short: "Pakistan", color: "text-amber-400", border: "border-amber-500/30", badge: "bg-amber-500/20 text-amber-300", barBg: "bg-amber-500" },
+      { id: "rizvi_smm", name: "Rizvi SMM", short: "Rizvi", color: "text-rose-400", border: "border-rose-500/30", badge: "bg-rose-500/20 text-rose-300", barBg: "bg-rose-500" },
+    ];
+
+    const totalServices = services.length || 1;
+    const counts: Record<string, { activeCount: number; cheapestCount: number; quotesCount: number }> = {
+      pak_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
+      smooth_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
+      am_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
+      pakistan_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
+      rizvi_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
+    };
+
+    services.forEach((s) => {
+      // 1. Determine active provider
+      const activeId = s.active_provider_id || (s.auto_route !== false && s.fallback_queue?.[0]?.providerId) || "";
+      if (counts[activeId]) {
+        counts[activeId].activeCount++;
+      }
+
+      // 2. Determine quotes and cheapest provider
+      const rates = s.provider_rates || {};
+      let lowestPId: string | null = null;
+      let lowestRate = Infinity;
+
+      for (const p of list) {
+        if (rates[p.id] && typeof rates[p.id].rateUsd === "number") {
+          counts[p.id].quotesCount++;
+          if (rates[p.id].rateUsd < lowestRate) {
+            lowestRate = rates[p.id].rateUsd;
+            lowestPId = p.id;
+          }
+        }
+      }
+
+      if (lowestPId && counts[lowestPId]) {
+        counts[lowestPId].cheapestCount++;
+      }
+    });
+
+    return list.map((p) => {
+      const data = counts[p.id] || { activeCount: 0, cheapestCount: 0, quotesCount: 0 };
+      const pct = Math.round((data.activeCount / totalServices) * 1000) / 10;
+      return {
+        ...p,
+        activeCount: data.activeCount,
+        percent: pct,
+        cheapestCount: data.cheapestCount,
+        quotesCount: data.quotesCount,
+      };
+    });
+  }, [services]);
 
   const platforms = useMemo(() => {
     const set = new Set<string>();
@@ -1530,6 +2372,12 @@ function Services({
       if (selectedPlatform !== "All" && s.platform !== selectedPlatform) return false;
       if (autoRouteFilter === "Auto" && s.auto_route === false) return false;
       if (autoRouteFilter === "Manual" && s.auto_route !== false) return false;
+      if (statusFilter === "Enabled" && s.enabled === false) return false;
+      if (statusFilter === "Disabled" && s.enabled !== false) return false;
+      if (providerFilter !== "All") {
+        const activeId = s.active_provider_id || (s.auto_route !== false && s.fallback_queue?.[0]?.providerId) || "";
+        if (activeId !== providerFilter) return false;
+      }
       if (!q) return true;
       return (
         String(s.name || "").toLowerCase().includes(q) ||
@@ -1538,7 +2386,7 @@ function Services({
         String(s.service || s.id || "").includes(q)
       );
     });
-  }, [services, search, selectedPlatform, autoRouteFilter]);
+  }, [services, search, selectedPlatform, autoRouteFilter, providerFilter, statusFilter]);
 
   async function handleBulkMultiplier() {
     const val = Number(bulkMult);
@@ -1569,6 +2417,126 @@ function Services({
     }
   }
 
+  async function handleBulkStatus(targetEnabled: boolean) {
+    const count = filtered.length;
+    if (count === 0) {
+      alert("No services match the current filter.");
+      return;
+    }
+    const actionLabel = targetEnabled ? "ENABLE" : "DISABLE";
+    const targetLabel = selectedPlatform === "All" ? `all ${count} filtered services` : `all ${count} filtered ${selectedPlatform} services`;
+    if (!confirm(`Are you sure you want to ${actionLabel} ${targetLabel}?`)) return;
+
+    try {
+      setBulkStatusLoading(true);
+      const targetIds = filtered.map((s) => Number(s.service || s.id));
+      const res = await api("/api/admin/services", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "bulk_status",
+          enabled: targetEnabled,
+          serviceIds: targetIds,
+        }),
+      });
+      setServices((prev) =>
+        prev.map((s) => (targetIds.includes(Number(s.service || s.id)) ? { ...s, enabled: targetEnabled } : s))
+      );
+      alert(res.message || `Services ${actionLabel.toLowerCase()}d successfully.`);
+    } catch (e: any) {
+      alert(e.message || "Bulk status update failed.");
+    } finally {
+      setBulkStatusLoading(false);
+    }
+  }
+
+  async function handleDeleteService(s: any) {
+    const sId = String(s.service || s.id);
+    if (!confirm(`Are you sure you want to permanently delete service #${sId} ("${s.name}")?\n\nThis will remove it completely from the catalog.`)) {
+      return;
+    }
+    try {
+      await api(`/api/admin/services?id=${encodeURIComponent(sId)}`, {
+        method: "DELETE",
+      });
+      setServices((prev) => prev.filter((x) => String(x.service || x.id) !== sId));
+      alert(`✓ Service #${sId} deleted successfully.`);
+    } catch (e: any) {
+      alert("Failed to delete service: " + (e.message || "Unknown error"));
+    }
+  }
+
+  async function handleCreateService(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newServiceForm.name.trim()) {
+      alert("Please enter a service name.");
+      return;
+    }
+    try {
+      setSavingNew(true);
+      const res = await api("/api/admin/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newServiceForm),
+      });
+      if (res?.service) {
+        setServices((prev) => [res.service, ...prev]);
+        alert("✓ New service created successfully!");
+        setIsAddingService(false);
+      }
+    } catch (e: any) {
+      alert("Failed to create service: " + (e.message || "Unknown error"));
+    } finally {
+      setSavingNew(false);
+    }
+  }
+
+  async function handleUpdateFullService(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingFullService) return;
+    try {
+      setSavingEdit(true);
+      const res = await api("/api/admin/services", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceId: String(editingFullService.service || editingFullService.id),
+          name: editingFullService.name,
+          platform: editingFullService.platform,
+          category: editingFullService.category,
+          min: editingFullService.min,
+          max: editingFullService.max,
+          refill: editingFullService.refill,
+          cancel: editingFullService.cancel,
+          is_guaranteed: editingFullService.is_guaranteed,
+          enabled: editingFullService.enabled,
+          popular: editingFullService.popular,
+          autoRoute: editingFullService.auto_route,
+          activeProviderId: editingFullService.active_provider_id,
+          activeRemoteServiceId: editingFullService.active_remote_service_id,
+          baseRateUsd: editingFullService.base_rate_usd,
+          rateMultiplier: Number(editingFullService.rate_multiplier || 1.07),
+          description: editingFullService.description,
+        }),
+      });
+      if (res?.service) {
+        setServices((prev) =>
+          prev.map((x) =>
+            String(x.service || x.id) === String(editingFullService.service || editingFullService.id)
+              ? { ...x, ...res.service }
+              : x
+          )
+        );
+        alert("✓ Service updated successfully!");
+        setEditingFullService(null);
+      }
+    } catch (e: any) {
+      alert("Failed to update service: " + (e.message || "Unknown error"));
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* 1. Live Upstream Provider Balance Cards */}
@@ -1580,7 +2548,102 @@ function Services({
         onRefresh={onRefreshBalances}
       />
 
-      {/* 2. Rates Matrix Controls & Sync Bar */}
+      {/* 2. Upstream Provider API Utilization & Market Share Breakdown */}
+      <section className={card + " overflow-hidden p-5"}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🔌</span>
+              <h3 className="text-base font-black text-white">Upstream API Service Allocation &amp; Active Utilization</h3>
+              <span className="rounded-full bg-[#baff00]/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-[#cfff62]">
+                {services.length} Total Services
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Live breakdown showing exactly how many catalog services are actively routed to and fulfilled by each upstream provider API. Click any card to filter the matrix table.
+            </p>
+          </div>
+          {providerFilter !== "All" && (
+            <button
+              onClick={() => setProviderFilter("All")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              <span>✕</span>
+              <span>Reset Filter (Showing {providerFilter.replace("_smm", " SMM")})</span>
+            </button>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {providerStats.map((p) => {
+            const isSelected = providerFilter === p.id;
+            return (
+              <div
+                key={p.id}
+                onClick={() => setProviderFilter(isSelected ? "All" : p.id)}
+                className={`group relative flex flex-col justify-between rounded-xl border p-4 transition-all duration-200 cursor-pointer select-none ${
+                  isSelected
+                    ? "border-[#baff00] bg-[#baff00]/10 shadow-[0_0_24px_rgba(186,255,0,0.15)] ring-1 ring-[#baff00]/40"
+                    : `${p.border} bg-[#0b1418] hover:border-white/20 hover:bg-white/[0.03]`
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-white group-hover:text-[#baff00] transition-colors">{p.name}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${p.badge}`}>
+                      {p.short}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-baseline gap-1.5">
+                    <p className={`text-3xl font-black font-mono ${isSelected ? "text-[#baff00]" : p.color}`}>
+                      {p.activeCount}
+                    </p>
+                    <span className="text-xs font-bold text-slate-400">
+                      active ({p.percent}%)
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                    <div
+                      className={`h-full transition-all duration-500 ${isSelected ? "bg-[#baff00]" : p.barBg}`}
+                      style={{ width: `${Math.max(4, Math.min(100, p.percent))}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-1.5 border-t border-white/5 pt-3 text-[11px] text-slate-400">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <span className="text-emerald-400">★</span> Lowest Rate:
+                    </span>
+                    <span className="font-mono font-bold text-emerald-400">{p.cheapestCount} services</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <span>📋</span> Mapped Quotes:
+                    </span>
+                    <span className="font-mono text-slate-300">{p.quotesCount} services</span>
+                  </div>
+                </div>
+
+                <div className="mt-3.5">
+                  <span className={`inline-block w-full rounded-lg py-1.5 text-center text-[10px] font-black uppercase tracking-wider transition ${
+                    isSelected
+                      ? "bg-[#baff00] text-[#07100f] shadow-sm"
+                      : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white"
+                  }`}>
+                    {isSelected ? "✓ Active Filter" : "Filter Services"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 3. Rates Matrix Controls & Sync Bar */}
       <section className={card + " overflow-hidden"}>
         <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -1595,11 +2658,62 @@ function Services({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setNewServiceForm({
+                  name: "",
+                  platform: selectedPlatform !== "All" ? selectedPlatform : "Instagram",
+                  category: "",
+                  active_provider_id: "pak_smm",
+                  active_remote_service_id: "",
+                  auto_route: true,
+                  base_rate_usd: 0.5,
+                  rate_multiplier: 1.07,
+                  min: 10,
+                  max: 100000,
+                  refill: true,
+                  cancel: false,
+                  is_guaranteed: true,
+                  popular: false,
+                  enabled: true,
+                  description: "",
+                });
+                setIsAddingService(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition cursor-pointer"
+            >
+              <span>➕</span>
+              <span>Add New Service</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={bulkStatusLoading || busy || filtered.length === 0}
+              onClick={() => handleBulkStatus(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20 transition disabled:opacity-40 cursor-pointer"
+              title="Enable all currently filtered services"
+            >
+              <span>✓</span>
+              <span>Enable All ({filtered.length})</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={bulkStatusLoading || busy || filtered.length === 0}
+              onClick={() => handleBulkStatus(false)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs font-bold text-rose-300 hover:bg-rose-500/20 transition disabled:opacity-40 cursor-pointer"
+              title="Disable all currently filtered services"
+            >
+              <span>✕</span>
+              <span>Disable All ({filtered.length})</span>
+            </button>
+
             <button
               disabled={syncingProviders}
               onClick={syncProviders}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#baff00] px-4 py-2.5 text-xs font-black uppercase tracking-wider text-[#07100f] shadow-[0_4px_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#baff00] px-4 py-2.5 text-xs font-black uppercase tracking-wider text-[#07100f] shadow-[0_4px_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] disabled:opacity-60 cursor-pointer"
             >
               {syncingProviders ? (
                 <>
@@ -1612,7 +2726,7 @@ function Services({
               ) : (
                 <>
                   <span>⚡</span>
-                  Sync All Providers Now
+                  Sync Providers
                 </>
               )}
             </button>
@@ -1715,11 +2829,34 @@ function Services({
           <select
             value={autoRouteFilter}
             onChange={(e) => setAutoRouteFilter(e.target.value)}
-            className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none"
+            className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
           >
             <option value="All">All Routing Modes</option>
             <option value="Auto">Auto-Route Only</option>
             <option value="Manual">Manual Override Only</option>
+          </select>
+
+          <select
+            value={providerFilter}
+            onChange={(e) => setProviderFilter(e.target.value)}
+            className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
+          >
+            <option value="All">All Upstream APIs ({services.length} services)</option>
+            {providerStats.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.activeCount} active · {p.percent}%)
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
+          >
+            <option value="All">All Statuses</option>
+            <option value="Enabled">🟢 Enabled Only</option>
+            <option value="Disabled">🔴 Disabled Only</option>
           </select>
         </div>
 
@@ -2041,51 +3178,90 @@ function Services({
 
                     {/* Status checkboxes */}
                     <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <label title="Enable / Disable Service" className="cursor-pointer">
+                      <div className="flex items-center justify-center gap-2.5">
+                        <label
+                          title={s.enabled !== false ? "Service is ACTIVE (Click to disable)" : "Service is DISABLED (Click to enable)"}
+                          className="flex items-center gap-1.5 cursor-pointer select-none"
+                        >
                           <input
                             type="checkbox"
                             checked={s.enabled !== false}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const nextVal = e.target.checked;
+                              const updated = { ...s, enabled: nextVal };
                               setServices((v) =>
                                 v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id)
-                                    ? { ...x, enabled: e.target.checked }
-                                    : x
+                                  String(x.service || x.id) === String(s.service || s.id) ? updated : x
                                 )
-                              )
-                            }
-                            className="h-4 w-4 rounded accent-[#baff00]"
+                              );
+                              Promise.resolve(save(updated)).catch(() => {});
+                            }}
+                            className="h-4 w-4 rounded accent-[#baff00] cursor-pointer"
                           />
+                          <span className={`text-[10px] font-bold ${s.enabled !== false ? "text-[#cfff62]" : "text-rose-400"}`}>
+                            {s.enabled !== false ? "Active" : "Off"}
+                          </span>
                         </label>
-                        <label title="Mark as Popular" className="cursor-pointer">
+
+                        <label title="Toggle Hot/Popular Service Badge" className="cursor-pointer">
                           <input
                             type="checkbox"
                             checked={Boolean(s.popular)}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const nextVal = e.target.checked;
+                              const updated = { ...s, popular: nextVal };
                               setServices((v) =>
                                 v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id)
-                                    ? { ...x, popular: e.target.checked }
-                                    : x
+                                  String(x.service || x.id) === String(s.service || s.id) ? updated : x
                                 )
-                              )
-                            }
-                            className="h-4 w-4 rounded accent-amber-400"
+                              );
+                              Promise.resolve(save(updated)).catch(() => {});
+                            }}
+                            className="h-4 w-4 rounded accent-amber-400 cursor-pointer"
                           />
                         </label>
                       </div>
                     </td>
 
-                    {/* Save Button */}
+                    {/* Actions Column */}
                     <td className="px-4 py-3.5 text-center">
-                      <button
-                        disabled={busy}
-                        onClick={() => save(s)}
-                        className="rounded-lg bg-[#baff00] px-3 py-1.5 text-xs font-black text-[#07100f] transition hover:bg-[#d2ff5a] disabled:opacity-50"
-                      >
-                        Save
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingFullService(s)}
+                          className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-black text-emerald-300 transition hover:bg-emerald-500/25 cursor-pointer"
+                          title="Edit everything: Name, Category, Platform, Limits, Rates, Provider & Description"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingDescService(s);
+                            setDescContent(s.description || "");
+                          }}
+                          className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-2 py-1.5 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/20 cursor-pointer"
+                          title="Quick edit description"
+                        >
+                          Desc
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteService(s)}
+                          className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/20 cursor-pointer"
+                          title="Delete service permanently"
+                        >
+                          🗑️
+                        </button>
+                        <button
+                          disabled={busy}
+                          onClick={() => save(s)}
+                          className="rounded-lg bg-[#baff00] px-2.5 py-1.5 text-xs font-black text-[#07100f] transition hover:bg-[#d2ff5a] disabled:opacity-50 cursor-pointer"
+                          title="Save inline changes"
+                        >
+                          Save
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -2097,6 +3273,729 @@ function Services({
           )}
         </div>
       </section>
+
+      {/* Service Description Editor Modal */}
+      {editingDescService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                    {editingDescService.platform || "Service"}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">ID #{editingDescService.service || editingDescService.id}</span>
+                </div>
+                <h3 className="mt-1 font-black text-base text-white line-clamp-1">
+                  {editingDescService.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDescService(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 text-xs text-blue-200">
+                💡 <strong>Custom Service Description:</strong> Enter bullet points, delivery speed, link guidelines, guarantee rules, or refill info. This is displayed live to customers when viewing this service.
+                <p className="mt-1 text-blue-300/80">
+                  Note: Existing service descriptions are never modified automatically. They remain completely unchanged until you write custom details and click Save.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Description Content
+                  </label>
+                  <span className="text-[11px] text-slate-500">
+                    {descContent.length} characters
+                  </span>
+                </div>
+                <textarea
+                  rows={10}
+                  value={descContent}
+                  onChange={(e) => setDescContent(e.target.value)}
+                  placeholder="Enter detailed description, speed, link format, refill instructions..."
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1418] p-4 text-xs font-mono text-slate-200 outline-none focus:border-[#baff00]/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-white/10 p-4 bg-[#0b1418]">
+              <button
+                type="button"
+                onClick={() => setEditingDescService(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingDesc}
+                onClick={async () => {
+                  setSavingDesc(true);
+                  try {
+                    await api("/api/admin/services", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        serviceId: String(editingDescService.service || editingDescService.id),
+                        description: descContent,
+                      }),
+                    });
+                    setServices((prev: any[]) =>
+                      prev.map((item) =>
+                        String(item.service || item.id) === String(editingDescService.service || editingDescService.id)
+                          ? { ...item, description: descContent }
+                          : item
+                      )
+                    );
+                    alert("✓ Service description updated successfully!");
+                    setEditingDescService(null);
+                  } catch (err: any) {
+                    alert("Failed to save description: " + (err.message || "Unknown error"));
+                  } finally {
+                    setSavingDesc(false);
+                  }
+                }}
+                className="rounded-xl bg-[#baff00] px-5 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer"
+              >
+                {savingDesc ? "Saving..." : "Save Description"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Comprehensive Add New Service Modal */}
+      {isAddingService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-black uppercase">
+                    New Catalog Service
+                  </span>
+                </div>
+                <h3 className="mt-1 font-black text-lg text-white">
+                  ➕ Add New Service
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddingService(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateService} className="overflow-y-auto p-6 space-y-5 flex-1">
+              {/* Row 1: Name & Platform */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Service Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newServiceForm.name}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, name: e.target.value })}
+                    placeholder="e.g. Instagram Followers [Non-Drop • Real • 30D Refill]"
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Platform *
+                  </label>
+                  <select
+                    value={newServiceForm.platform}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, platform: e.target.value })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
+                  >
+                    <option value="Instagram">Instagram</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="Telegram">Telegram</option>
+                    <option value="Twitter">Twitter / X</option>
+                    <option value="Spotify">Spotify</option>
+                    <option value="Threads">Threads</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 2: Category & Active Provider */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Category Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newServiceForm.category}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, category: e.target.value })}
+                    placeholder="e.g. Instagram Followers — Guaranteed"
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Fulfillment Provider
+                  </label>
+                  <select
+                    value={newServiceForm.active_provider_id}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, active_provider_id: e.target.value })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
+                  >
+                    <option value="pak_smm">PAK SMM Panels (paksmmpanels.com)</option>
+                    <option value="smooth_smm">Smooth SMM (smoothsmm.com)</option>
+                    <option value="am_smm">AM SMM Panel (amsmmpanel.com)</option>
+                    <option value="pakistan_smm">Pakistan SMM Panel (pakistansmmpanel.pk)</option>
+                    <option value="rizvi_smm">Rizvi SMM Panels (rizvismmpanels.com)</option>
+                    <option value="manual">Manual / Direct Fulfillment</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Remote Service ID & Routing Mode */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Remote Provider Service ID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newServiceForm.active_remote_service_id}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, active_remote_service_id: e.target.value })}
+                    placeholder="e.g. 1024 (leave blank for manual)"
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Routing Automation
+                  </label>
+                  <div className="flex items-center gap-3 h-10">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newServiceForm.auto_route}
+                        onChange={(e) => setNewServiceForm({ ...newServiceForm, auto_route: e.target.checked })}
+                        className="h-4 w-4 rounded accent-[#baff00]"
+                      />
+                      <span className="text-xs font-semibold text-slate-300">
+                        Enable Auto-Route failover
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Base Rate USD & Margin Multiplier */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Wholesale Base Cost ($ USD per 1k)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={newServiceForm.base_rate_usd}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, base_rate_usd: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.50"
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Profit Margin Multiplier (e.g. 1.07 = +7%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.1"
+                    max="20"
+                    value={newServiceForm.rate_multiplier}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, rate_multiplier: parseFloat(e.target.value) || 1.07 })}
+                    placeholder="1.07"
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Live Price Preview Box */}
+              <div className="rounded-xl border border-[#baff00]/20 bg-[#baff00]/5 p-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-[#cfff62]">💰 Live Price Calculator</span>
+                  <span className="text-[10px] font-mono text-slate-400">1 USD = ₨{Number(usdToPkr || 278).toFixed(2)}</span>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-white/5 p-2">
+                    <p className="text-[10px] text-slate-400">Wholesale USD</p>
+                    <p className="text-sm font-black font-mono text-white">${Number(newServiceForm.base_rate_usd || 0).toFixed(4)}</p>
+                  </div>
+                  <div className="rounded-lg bg-white/5 p-2">
+                    <p className="text-[10px] text-slate-400">Retail USD</p>
+                    <p className="text-sm font-black font-mono text-cyan-400">
+                      ${(Number(newServiceForm.base_rate_usd || 0) * Number(newServiceForm.rate_multiplier || 1.07)).toFixed(4)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-[#baff00]/10 border border-[#baff00]/20 p-2">
+                    <p className="text-[10px] text-[#cfff62]">Customer PKR Rate</p>
+                    <p className="text-sm font-black font-mono text-[#baff00]">
+                      ₨{(Number(newServiceForm.base_rate_usd || 0) * Number(newServiceForm.rate_multiplier || 1.07) * (usdToPkr || 278)).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 5: Min & Max Limits */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Minimum Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newServiceForm.min}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, min: parseInt(e.target.value) || 10 })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Maximum Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newServiceForm.max}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, max: parseInt(e.target.value) || 100000 })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Row 6: Feature Toggles */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 cursor-pointer hover:bg-white/5 transition">
+                  <input
+                    type="checkbox"
+                    checked={newServiceForm.enabled}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, enabled: e.target.checked })}
+                    className="h-4 w-4 rounded accent-[#baff00]"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-white">Active</p>
+                    <p className="text-[10px] text-slate-400">Visible to users</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 cursor-pointer hover:bg-white/5 transition">
+                  <input
+                    type="checkbox"
+                    checked={newServiceForm.is_guaranteed}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, is_guaranteed: e.target.checked, refill: e.target.checked })}
+                    className="h-4 w-4 rounded accent-emerald-400"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-emerald-400">Refill ♻</p>
+                    <p className="text-[10px] text-slate-400">Guaranteed refill</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 cursor-pointer hover:bg-white/5 transition">
+                  <input
+                    type="checkbox"
+                    checked={newServiceForm.cancel}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, cancel: e.target.checked })}
+                    className="h-4 w-4 rounded accent-cyan-400"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-white">Cancelable</p>
+                    <p className="text-[10px] text-slate-400">Cancel button</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 cursor-pointer hover:bg-white/5 transition">
+                  <input
+                    type="checkbox"
+                    checked={newServiceForm.popular}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, popular: e.target.checked })}
+                    className="h-4 w-4 rounded accent-amber-400"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-amber-300">Popular ★</p>
+                    <p className="text-[10px] text-slate-400">Badge highlight</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Row 7: Service Description */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                  Service Description &amp; Instructions
+                </label>
+                <textarea
+                  rows={4}
+                  value={newServiceForm.description}
+                  onChange={(e) => setNewServiceForm({ ...newServiceForm, description: e.target.value })}
+                  placeholder="Enter details, speed, link guidelines, guarantee rules..."
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1418] p-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingService(false)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingNew}
+                  className="rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg transition disabled:opacity-50 cursor-pointer"
+                >
+                  {savingNew ? "Creating..." : "✓ Create Service"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Comprehensive Edit Existing Service Modal */}
+      {editingFullService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                    {editingFullService.platform || "Service"}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">
+                    ID #{editingFullService.service || editingFullService.id}
+                  </span>
+                </div>
+                <h3 className="mt-1 font-black text-lg text-white line-clamp-1">
+                  ✏️ Edit Service: {editingFullService.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingFullService(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateFullService} className="overflow-y-auto p-6 space-y-5 flex-1">
+              {/* Row 1: Name & Platform */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Service Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingFullService.name || ""}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, name: e.target.value })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Platform *
+                  </label>
+                  <select
+                    value={editingFullService.platform || "Instagram"}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, platform: e.target.value })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
+                  >
+                    <option value="Instagram">Instagram</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="Telegram">Telegram</option>
+                    <option value="Twitter">Twitter / X</option>
+                    <option value="Spotify">Spotify</option>
+                    <option value="Threads">Threads</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 2: Category & Active Provider */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Category Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingFullService.category || ""}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, category: e.target.value })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Fulfillment Provider
+                  </label>
+                  <select
+                    value={editingFullService.active_provider_id || "pak_smm"}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, active_provider_id: e.target.value, auto_route: false })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
+                  >
+                    <option value="pak_smm">PAK SMM Panels (paksmmpanels.com)</option>
+                    <option value="smooth_smm">Smooth SMM (smoothsmm.com)</option>
+                    <option value="am_smm">AM SMM Panel (amsmmpanel.com)</option>
+                    <option value="pakistan_smm">Pakistan SMM Panel (pakistansmmpanel.pk)</option>
+                    <option value="rizvi_smm">Rizvi SMM Panels (rizvismmpanels.com)</option>
+                    <option value="manual">Manual / Direct Fulfillment</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Remote Service ID & Routing Mode */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Remote Provider Service ID
+                  </label>
+                  <input
+                    type="text"
+                    value={editingFullService.active_remote_service_id || ""}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, active_remote_service_id: e.target.value })}
+                    placeholder="e.g. 1024"
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Routing Automation
+                  </label>
+                  <div className="flex items-center gap-3 h-10">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editingFullService.auto_route !== false}
+                        onChange={(e) => setEditingFullService({ ...editingFullService, auto_route: e.target.checked })}
+                        className="h-4 w-4 rounded accent-[#baff00]"
+                      />
+                      <span className="text-xs font-semibold text-slate-300">
+                        Enable Auto-Route Least-Cost Failover
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Base Rate USD & Margin Multiplier */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Wholesale Base Cost ($ USD per 1k)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={editingFullService.base_rate_usd ?? 0}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, base_rate_usd: parseFloat(e.target.value) || 0 })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Profit Margin Multiplier (e.g. 1.07 = +7%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.1"
+                    max="20"
+                    value={editingFullService.rate_multiplier ?? 1.07}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, rate_multiplier: parseFloat(e.target.value) || 1.07 })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Live Price Preview Box */}
+              <div className="rounded-xl border border-[#baff00]/20 bg-[#baff00]/5 p-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-[#cfff62]">💰 Real-Time Price Calculation</span>
+                  <span className="text-[10px] font-mono text-slate-400">1 USD = ₨{Number(usdToPkr || 278).toFixed(2)}</span>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-white/5 p-2">
+                    <p className="text-[10px] text-slate-400">Base Cost USD</p>
+                    <p className="text-sm font-black font-mono text-white">${Number(editingFullService.base_rate_usd || 0).toFixed(4)}</p>
+                  </div>
+                  <div className="rounded-lg bg-white/5 p-2">
+                    <p className="text-[10px] text-slate-400">Retail USD</p>
+                    <p className="text-sm font-black font-mono text-cyan-400">
+                      ${(Number(editingFullService.base_rate_usd || 0) * Number(editingFullService.rate_multiplier || 1.07)).toFixed(4)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-[#baff00]/10 border border-[#baff00]/20 p-2">
+                    <p className="text-[10px] text-[#cfff62]">Customer PKR Rate</p>
+                    <p className="text-sm font-black font-mono text-[#baff00]">
+                      ₨{(Number(editingFullService.base_rate_usd || 0) * Number(editingFullService.rate_multiplier || 1.07) * (usdToPkr || 278)).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 5: Min & Max Limits */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Minimum Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingFullService.min ?? 10}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, min: parseInt(e.target.value) || 10 })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Maximum Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingFullService.max ?? 100000}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, max: parseInt(e.target.value) || 100000 })}
+                    className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Row 6: Feature Toggles */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 cursor-pointer hover:bg-white/5 transition">
+                  <input
+                    type="checkbox"
+                    checked={editingFullService.enabled !== false}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, enabled: e.target.checked })}
+                    className="h-4 w-4 rounded accent-[#baff00]"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-white">Active</p>
+                    <p className="text-[10px] text-slate-400">Visible to users</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 cursor-pointer hover:bg-white/5 transition">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editingFullService.is_guaranteed || editingFullService.refill)}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, is_guaranteed: e.target.checked, refill: e.target.checked })}
+                    className="h-4 w-4 rounded accent-emerald-400"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-emerald-400">Refill ♻</p>
+                    <p className="text-[10px] text-slate-400">Guaranteed refill</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 cursor-pointer hover:bg-white/5 transition">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editingFullService.cancel)}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, cancel: e.target.checked })}
+                    className="h-4 w-4 rounded accent-cyan-400"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-white">Cancelable</p>
+                    <p className="text-[10px] text-slate-400">Cancel button</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 cursor-pointer hover:bg-white/5 transition">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editingFullService.popular)}
+                    onChange={(e) => setEditingFullService({ ...editingFullService, popular: e.target.checked })}
+                    className="h-4 w-4 rounded accent-amber-400"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-amber-300">Popular ★</p>
+                    <p className="text-[10px] text-slate-400">Badge highlight</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Row 7: Service Description */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                  Service Description &amp; Instructions
+                </label>
+                <textarea
+                  rows={6}
+                  value={editingFullService.description || ""}
+                  onChange={(e) => setEditingFullService({ ...editingFullService, description: e.target.value })}
+                  placeholder="Enter detailed description, speed, link format, refill guidelines..."
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1418] p-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setEditingFullService(null)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="rounded-xl bg-[#baff00] hover:bg-[#d2ff5a] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-[#07100f] shadow-lg transition disabled:opacity-50 cursor-pointer"
+                >
+                  {savingEdit ? "Saving..." : "✓ Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2344,6 +4243,10 @@ const ALL_PERMISSIONS = [
   { key: "users", label: "Customer Accounts", icon: "👥", desc: "View customer directory, emails, and balances" },
   { key: "analytics", label: "Dashboard Analytics", icon: "📊", desc: "Access overview revenue, orders, and system statistics" },
   { key: "withdrawals", label: "Referral Payouts", icon: "💸", desc: "Review and approve affiliate commission withdrawals" },
+  { key: "coupons", label: "Coupons & Vouchers", icon: "🎟️", desc: "Create discount codes, promo vouchers, and usage limits" },
+  { key: "subscriptions", label: "Subscriptions & Tools", icon: "⚡", desc: "Manage ElevateX reseller gateway, automated tools and accounts" },
+  { key: "settings", label: "Platform & Payment Controls", icon: "⚙️", desc: "Configure payment gateways, bank accounts, profit margins, and maintenance mode" },
+  { key: "seo", label: "SEO & Metadata Engine", icon: "🚀", desc: "Edit search meta titles, descriptions, Google Search Console verification, and tracking pixels" },
 ];
 
 function SubAdminsView({
@@ -2366,6 +4269,7 @@ function SubAdminsView({
   const [resetPasswordTarget, setResetPasswordTarget] = useState<any>(null);
 
   // Form states
+  const [addMode, setAddMode] = useState<"create" | "existing">("create");
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -2374,14 +4278,77 @@ function SubAdminsView({
     tickets: true,
   });
 
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [selectedExistingUser, setSelectedExistingUser] = useState<any>(null);
+
   const [editPermissions, setEditPermissions] = useState<Record<string, boolean>>({});
   const [newPasswordInput, setNewPasswordInput] = useState("");
 
   const activeCount = subAdmins.filter((s) => s.isActive !== false).length;
   const suspendedCount = subAdmins.filter((s) => s.isActive === false).length;
 
+  async function searchUsers(q: string) {
+    setUserSearchQuery(q);
+    if (!q.trim() || q.trim().length < 2) {
+      setUserSearchResults([]);
+      return;
+    }
+    setSearchingUsers(true);
+    try {
+      const res = await api(`/api/admin/users?q=${encodeURIComponent(q.trim())}`);
+      if (res?.users) {
+        const existingSubAdminIds = new Set(subAdmins.map((s) => s.id));
+        setUserSearchResults(
+          res.users.filter(
+            (u: any) =>
+              !existingSubAdminIds.has(u.id) &&
+              u.role !== "admin" &&
+              u.role !== "super_admin"
+          )
+        );
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSearchingUsers(false);
+    }
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (addMode === "existing") {
+      if (!selectedExistingUser) {
+        setError("Please search and select an existing user account to promote.");
+        return;
+      }
+      try {
+        setBusy(true);
+        await api("/api/admin/sub-admins", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            existingUserId: selectedExistingUser.id,
+            permissions: newPermissions,
+            password: newPassword.trim() || undefined,
+          }),
+        });
+        setShowAddModal(false);
+        setSelectedExistingUser(null);
+        setUserSearchQuery("");
+        setUserSearchResults([]);
+        setNewPassword("");
+        setNewPermissions({ orders: true, tickets: true });
+        await reload();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to promote user to sub-admin.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     if (!newName.trim() || !newEmail.trim() || !newPassword) return;
     try {
       setBusy(true);
@@ -2492,13 +4459,20 @@ function SubAdminsView({
     }
   }
 
-  function applyPreset(preset: "support" | "finance" | "manager" | "clear") {
+  function applyPreset(preset: "support" | "finance" | "manager" | "all" | "clear", isEdit = false) {
+    const allObj: Record<string, boolean> = {};
+    ALL_PERMISSIONS.forEach((p) => {
+      allObj[p.key] = true;
+    });
+    allObj.full_access = true;
+
+    let nextPerms: Record<string, boolean> = {};
     if (preset === "support") {
-      setNewPermissions({ orders: true, tickets: true });
+      nextPerms = { orders: true, tickets: true };
     } else if (preset === "finance") {
-      setNewPermissions({ deposits: true, withdrawals: true });
+      nextPerms = { deposits: true, withdrawals: true };
     } else if (preset === "manager") {
-      setNewPermissions({
+      nextPerms = {
         orders: true,
         tickets: true,
         deposits: true,
@@ -2507,9 +4481,19 @@ function SubAdminsView({
         users: true,
         analytics: true,
         withdrawals: true,
-      });
+        coupons: true,
+        subscriptions: true,
+      };
+    } else if (preset === "all") {
+      nextPerms = allObj;
     } else {
-      setNewPermissions({});
+      nextPerms = {};
+    }
+
+    if (isEdit) {
+      setEditPermissions(nextPerms);
+    } else {
+      setNewPermissions(nextPerms);
     }
   }
 
@@ -2689,64 +4673,177 @@ function SubAdminsView({
 
       {/* 3. Modal: Add New Sub-Admin */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#0d171a] p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-5 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-xl max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#0d171a] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Header (Sticky) */}
+            <div className="flex items-center justify-between border-b border-white/10 p-5 sm:p-6 pb-4 shrink-0 bg-[#0d171a]">
               <div>
                 <h3 className="text-lg font-black text-white">Add New Sub-Admin</h3>
-                <p className="text-xs text-slate-400">Create staff credentials and specify authorized areas</p>
+                <p className="text-xs text-slate-400">
+                  {addMode === "existing" ? "Promote registered user to staff" : "Create staff credentials and specify authorized areas"}
+                </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-slate-400 hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-slate-400 hover:text-white cursor-pointer transition"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="mt-5 space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g. Bilal Support"
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Email Address (Login)
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="staff@vexarosmm.com"
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]"
-                  />
-                </div>
+            {/* Mode Switcher */}
+            <div className="px-5 sm:px-6 pt-4 pb-1 shrink-0 bg-[#0d171a]">
+              <div className="flex rounded-xl border border-white/10 bg-[#070d0d] p-1 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setAddMode("create")}
+                  className={`flex-1 rounded-lg py-2 transition cursor-pointer ${
+                    addMode === "create" ? "bg-[#baff00] text-[#07100f] font-black shadow-sm" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Create New Staff Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddMode("existing")}
+                  className={`flex-1 rounded-lg py-2 transition cursor-pointer ${
+                    addMode === "existing" ? "bg-[#baff00] text-[#07100f] font-black shadow-sm" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Promote Existing User
+                </button>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Temporary Password
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 6 characters"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]"
-                />
-              </div>
+            {/* Scrollable Form Body */}
+            <form id="add-subadmin-form" onSubmit={handleCreate} className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              {addMode === "existing" ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Search Registered User (Email or Name)
+                    </label>
+                    <div className="relative mt-1">
+                      <input
+                        type="text"
+                        value={userSearchQuery}
+                        onChange={(e) => searchUsers(e.target.value)}
+                        placeholder="Type email or name to find user..."
+                        className="w-full rounded-xl border border-white/10 bg-[#070d0d] pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]"
+                      />
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">🔍</span>
+                    </div>
+                  </div>
+
+                  {searchingUsers && (
+                    <p className="text-[11px] text-slate-400">Searching user database...</p>
+                  )}
+
+                  {userSearchResults.length > 0 && !selectedExistingUser && (
+                    <div className="max-h-40 overflow-y-auto rounded-xl border border-white/10 bg-[#070d0d] divide-y divide-white/5">
+                      {userSearchResults.map((u) => (
+                        <div
+                          key={u.id}
+                          onClick={() => {
+                            setSelectedExistingUser(u);
+                            setUserSearchQuery(u.email);
+                          }}
+                          className="p-2.5 hover:bg-white/5 cursor-pointer flex items-center justify-between text-xs transition"
+                        >
+                          <div>
+                            <p className="font-bold text-white">{u.name}</p>
+                            <p className="text-[11px] font-mono text-slate-400">{u.email}</p>
+                          </div>
+                          <span className="rounded-lg bg-[#baff00]/15 px-2 py-0.5 text-[10px] font-bold text-[#baff00]">
+                            Select →
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedExistingUser && (
+                    <div className="rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>👤 Selected User:</span>
+                          <span className="text-[#baff00]">{selectedExistingUser.name}</span>
+                        </p>
+                        <p className="text-[11px] font-mono text-slate-300">{selectedExistingUser.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedExistingUser(null);
+                          setUserSearchQuery("");
+                        }}
+                        className="rounded-lg bg-white/10 px-2.5 py-1 text-xs text-slate-300 hover:text-white cursor-pointer"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      New Password <span className="text-slate-500 font-normal lowercase">(optional - leave blank to keep user&apos;s existing login password)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Leave blank to preserve current password"
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder="e.g. Bilal Support"
+                        className="mt-1 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Email Address (Login)
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        placeholder="staff@vexarosmm.com"
+                        className="mt-1 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Temporary Password
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Min 6 characters"
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-[#baff00]"
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Permissions Presets */}
               <div className="border-t border-white/10 pt-4">
@@ -2754,32 +4851,39 @@ function SubAdminsView({
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Assign Permissions
                   </label>
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => applyPreset("all")}
+                      className="rounded-lg border border-[#baff00]/30 bg-[#baff00]/15 px-2 py-0.5 text-[10px] font-black text-[#baff00] hover:bg-[#baff00]/25 cursor-pointer"
+                    >
+                      ⚡ Full Control (All 12)
+                    </button>
                     <button
                       type="button"
                       onClick={() => applyPreset("support")}
-                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white"
+                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
                     >
                       Support
                     </button>
                     <button
                       type="button"
                       onClick={() => applyPreset("finance")}
-                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white"
+                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
                     >
                       Finance
                     </button>
                     <button
                       type="button"
                       onClick={() => applyPreset("manager")}
-                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-[#baff00] hover:bg-white/10"
+                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
                     >
-                      All (Manager)
+                      Manager
                     </button>
                     <button
                       type="button"
                       onClick={() => applyPreset("clear")}
-                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-400 hover:text-white"
+                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-400 hover:text-white cursor-pointer"
                     >
                       Clear
                     </button>
@@ -2787,7 +4891,7 @@ function SubAdminsView({
                 </div>
 
                 {/* Permissions Grid */}
-                <div className="mt-3 grid gap-2.5 sm:grid-cols-2 max-h-56 overflow-y-auto pr-1">
+                <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
                   {ALL_PERMISSIONS.map((p) => {
                     const checked = Boolean(newPermissions[p.key]);
                     return (
@@ -2827,33 +4931,39 @@ function SubAdminsView({
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <p>New accounts are created with <b>Active status immediately</b>. No additional activation step is required.</p>
               </div>
-
-              <div className="mt-6 flex justify-end gap-3 border-t border-white/10 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/5"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="rounded-xl bg-[#baff00] px-5 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50"
-                >
-                  {busy ? "Creating..." : "Create Sub-Admin"}
-                </button>
-              </div>
             </form>
+
+            {/* Pinned Action Footer */}
+            <div className="border-t border-white/10 bg-[#091113] p-4 sm:px-6 shrink-0 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/5 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="add-subadmin-form"
+                disabled={busy}
+                className="rounded-xl bg-[#baff00] px-5 py-2.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer shadow-[0_0_15px_rgba(186,255,0,0.25)]"
+              >
+                {busy
+                  ? "Saving..."
+                  : addMode === "existing"
+                  ? "Promote to Sub-Admin →"
+                  : "Create Sub-Admin →"}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* 4. Modal: Edit Permissions */}
       {editPermissionsTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#0d171a] p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-5 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#0d171a] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-white/10 p-5 sm:p-6 pb-4 shrink-0 bg-[#0d171a]">
               <div>
                 <h3 className="text-lg font-black text-white">Edit Permissions</h3>
                 <p className="text-xs text-slate-400">
@@ -2861,15 +4971,58 @@ function SubAdminsView({
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setEditPermissionsTarget(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-slate-400 hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-slate-400 hover:text-white cursor-pointer transition"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSavePermissions} className="mt-4 space-y-4">
-              <div className="grid gap-2.5 sm:grid-cols-2 max-h-72 overflow-y-auto pr-1">
+            {/* Quick Presets Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-5 sm:px-6 py-2.5 border-b border-white/5 bg-[#0a1215] shrink-0">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick Presets:</span>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => applyPreset("all", true)}
+                  className="rounded-lg border border-[#baff00]/30 bg-[#baff00]/15 px-2.5 py-1 text-[10px] font-black text-[#baff00] hover:bg-[#baff00]/25 cursor-pointer"
+                >
+                  ⚡ Full Control (All 12)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("support", true)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  Support
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("finance", true)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  Finance
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("manager", true)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  Manager
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("clear", true)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <form id="edit-perms-form" onSubmit={handleSavePermissions} className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 {ALL_PERMISSIONS.map((p) => {
                   const checked = Boolean(editPermissions[p.key]);
                   return (
@@ -2903,24 +5056,25 @@ function SubAdminsView({
                   );
                 })}
               </div>
-
-              <div className="flex justify-end gap-3 border-t border-white/10 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setEditPermissionsTarget(null)}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/5"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="rounded-xl bg-[#baff00] px-5 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50"
-                >
-                  {busy ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
             </form>
+
+            <div className="border-t border-white/10 bg-[#091113] p-4 sm:px-6 shrink-0 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditPermissionsTarget(null)}
+                className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/5 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-perms-form"
+                disabled={busy}
+                className="rounded-xl bg-[#baff00] px-5 py-2.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer shadow-[0_0_15px_rgba(186,255,0,0.25)]"
+              >
+                {busy ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -3003,24 +5157,6 @@ function AppearanceView() {
       accent: "#10b981",
       accentText: "#ffffff",
     },
-    {
-      id: "midnight",
-      name: "Midnight Navy",
-      desc: "Deep atmospheric space navy background with midnight blue cards, sapphire glow, and sky blue accents.",
-      main: "#060b17",
-      surface: "#0c1529",
-      accent: "#38bdf8",
-      accentText: "#031726",
-    },
-    {
-      id: "purple",
-      name: "Neon Purple",
-      desc: "Vibrant cyberpunk twilight violet background with royal purple cards and neon magenta-lavender accents.",
-      main: "#0a0614",
-      surface: "#140d29",
-      accent: "#c084fc",
-      accentText: "#1e0836",
-    },
   ];
 
   const [activeTheme, setActiveTheme] = useState("dark");
@@ -3034,6 +5170,7 @@ function AppearanceView() {
   const [binanceName, setBinanceName] = useState("Talha Bashir Bhatti");
   const [binanceUsdtAddress, setBinanceUsdtAddress] = useState("0xaa3037450e112ef10406df821803522bc589821c");
   const [binanceNetwork, setBinanceNetwork] = useState("BSC BNB Smart Chain (BEP20)");
+  const [depositBonusSetting, setDepositBonusSetting] = useState("tiered");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -3055,6 +5192,7 @@ function AppearanceView() {
           if (d.settings.binance_name) setBinanceName(d.settings.binance_name);
           if (d.settings.binance_usdt_address) setBinanceUsdtAddress(d.settings.binance_usdt_address);
           if (d.settings.binance_network) setBinanceNetwork(d.settings.binance_network);
+          if (d.settings.deposit_bonus_percentage) setDepositBonusSetting(d.settings.deposit_bonus_percentage);
         }
       })
       .catch((e) => console.error("Failed to load settings:", e));
@@ -3095,6 +5233,7 @@ function AppearanceView() {
           binance_name: binanceName,
           binance_usdt_address: binanceUsdtAddress,
           binance_network: binanceNetwork,
+          deposit_bonus_percentage: depositBonusSetting,
         }),
       });
       const data = await res.json();
@@ -3141,7 +5280,7 @@ function AppearanceView() {
       </div>
 
       {/* Theme Swatch Grid */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2">
         {themes.map((t) => {
           const isCurrentActive = activeTheme === t.id;
           const isPlatformDefault = platformDefaultTheme === t.id;
@@ -3377,6 +5516,80 @@ function AppearanceView() {
             </div>
           </div>
         </div>
+
+        {/* Deposit Approval Bonus Settings Card */}
+        <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6 lg:col-span-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/15 text-xl">🎁</span>
+              <div>
+                <h3 className="text-base font-black text-white">Deposit Approval Bonus (5% – 10%)</h3>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Automatically allocate promotional bonus credit to users when their manual deposit is approved.
+                </p>
+              </div>
+            </div>
+            <span className="rounded-full border border-[#baff00]/30 bg-[#baff00]/10 px-3 py-1 text-xs font-bold text-[#baff00]">
+              Active Policy: {depositBonusSetting === "tiered" ? "Tiered 5% – 10%" : `${depositBonusSetting}% Flat`}
+            </span>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Default Approval Bonus Mode
+            </label>
+            <div className="grid gap-3 sm:grid-cols-4">
+              {[
+                {
+                  id: "tiered",
+                  title: "Tiered (Recommended)",
+                  rate: "5% (₨500–₨5k) / 10% (≥₨5k)",
+                  desc: "5% bonus from ₨500 to ₨4,999; 10% bonus for ₨5,000+ (min ₨500)",
+                },
+                {
+                  id: "5",
+                  title: "Flat 5% Bonus",
+                  rate: "5% on all deposits",
+                  desc: "Fixed 5% promotional credit on all approved amounts",
+                },
+                {
+                  id: "7",
+                  title: "Flat 7% Bonus",
+                  rate: "7% on all deposits",
+                  desc: "Fixed 7% promotional credit on all approved amounts",
+                },
+                {
+                  id: "10",
+                  title: "Flat 10% Bonus",
+                  rate: "10% on all deposits",
+                  desc: "Maximum 10% promotional credit on all approved amounts",
+                },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setDepositBonusSetting(opt.id)}
+                  className={`rounded-xl border p-3.5 text-left transition cursor-pointer ${
+                    depositBonusSetting === opt.id
+                      ? "border-[#baff00] bg-[#baff00]/15 text-white shadow-sm ring-1 ring-[#baff00]/30"
+                      : "border-white/10 bg-[#070d0d] text-slate-400 hover:text-white hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-white">{opt.title}</span>
+                    {depositBonusSetting === opt.id && <span className="text-xs font-bold text-[#baff00]">✓</span>}
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-[#baff00]">{opt.rate}</p>
+                  <p className="mt-1 text-[11px] text-slate-400 leading-relaxed">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[11px] text-slate-500 pt-1">
+              💡 When approving an individual customer deposit in the Deposits tab, administrators can also customize or fine-tune the bonus percentage before confirming.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -3396,9 +5609,13 @@ function SubscriptionsAdmin({
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [apiKeyInput, setApiKeyInput] = useState("");
-  const [apiUrlInput, setApiUrlInput] = useState("https://ggsoma.store/api/partner/v1");
+  const [apiUrlInput, setApiUrlInput] = useState("https://shop.elevatexbyzaid.com/api/v1");
   const [markupInput, setMarkupInput] = useState<number>(7);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [resendKeyInput, setResendKeyInput] = useState("");
+  const [senderEmailInput, setSenderEmailInput] = useState("");
+  const [waGatewayUrlInput, setWaGatewayUrlInput] = useState("");
+  const [waGatewayTokenInput, setWaGatewayTokenInput] = useState("");
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [testLoading, setTestLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -3413,6 +5630,10 @@ function SubscriptionsAdmin({
         setApiKeyInput(res.config.apiKey || "");
         if (res.config.apiUrl) setApiUrlInput(res.config.apiUrl);
         if (typeof res.config.markupPercent === "number") setMarkupInput(res.config.markupPercent);
+        if (res.config.resendApiKey) setResendKeyInput(res.config.resendApiKey);
+        if (res.config.senderEmail) setSenderEmailInput(res.config.senderEmail);
+        if (res.config.whatsappGatewayUrl) setWaGatewayUrlInput(res.config.whatsappGatewayUrl);
+        if (res.config.whatsappGatewayToken) setWaGatewayTokenInput(res.config.whatsappGatewayToken);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load partner bot details");
@@ -3463,6 +5684,10 @@ function SubscriptionsAdmin({
           apiKey: apiKeyInput.trim(),
           apiUrl: apiUrlInput.trim(),
           markupPercent: Number(markupInput) || 7,
+          resendApiKey: resendKeyInput.trim(),
+          senderEmail: senderEmailInput.trim(),
+          whatsappGatewayUrl: waGatewayUrlInput.trim(),
+          whatsappGatewayToken: waGatewayTokenInput.trim(),
         }),
       });
       setSaveSuccess(true);
@@ -3511,22 +5736,25 @@ function SubscriptionsAdmin({
       {/* 1. Header & Live Overview */}
       <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-gradient-to-r from-[#0d171a] via-[#122226] to-[#0d171a] p-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full border border-[#baff00]/30 bg-[#baff00]/10 px-3 py-1 text-xs font-bold text-[#baff00]">
-              🤖 TELEGRAM BOT PARTNER API
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-3 py-1 text-xs font-bold text-[#00D4FF]">
+              ⚡ ELEVATEX RESELLER GATEWAY
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-slate-300 font-mono">
+              Reseller: {data?.balance?.label || "Talha Bashir"} • ID: {data?.balance?.user_id || "8672881616"}
             </span>
             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
               isHealthy ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-red-500/10 text-red-400 border border-red-500/30"
             }`}>
               <span className={`h-2 w-2 rounded-full ${isHealthy ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
-              {isHealthy ? "API ONLINE" : "OFFLINE"}
+              {isHealthy ? "GATEWAY ONLINE" : "OFFLINE"}
             </span>
           </div>
           <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">
-            Telegram Bot Subscriptions &amp; Tools Automation
+            ElevateX Subscriptions &amp; Digital Products Automation
           </h2>
           <p className="mt-1 text-xs sm:text-sm text-slate-400 max-w-2xl">
-            Instant automated order placement and live delivery for ChatGPT Plus, Canva Pro, streaming passes, and SEO software via the GGSoma Telegram Bot Partner API network.
+            Instant automated wholesale orders &amp; live automated delivery for AI tools, streaming, subscriptions, and software via the ElevateX Reseller Gateway.
           </p>
         </div>
 
@@ -3555,33 +5783,41 @@ function SubscriptionsAdmin({
         {/* Card 1: API Status */}
         <div className={card + " p-5 space-y-2"}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Bot Service Status</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Gateway Status</span>
             <span className="text-lg">⚡</span>
           </div>
           <p className="text-2xl font-black text-white">
             {isHealthy ? "Operational" : "Offline"}
           </p>
-          <p className="text-xs text-slate-500 font-mono">
-            {data?.health?.service || "partner-api"} v{data?.health?.version || 1}
+          <p className="text-xs text-slate-500 font-mono truncate">
+            {data?.config?.apiUrl || "shop.elevatexbyzaid.com/api/v1"}
           </p>
         </div>
 
         {/* Card 2: Live Bot Balance */}
         <div className={card + " p-5 space-y-2"}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Bot Wallet Balance</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Reseller Wallet Balance</span>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
               isFunded ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
             }`}>
-              {isFunded ? "FUNDED" : "LOW BALANCE"}
+              {isFunded ? "FUNDED" : "TOPUP REQUIRED"}
             </span>
           </div>
-          <p className="text-2xl font-black text-[#baff00]">
-            ${balanceUsd.toFixed(2)} <span className="text-xs font-normal text-slate-400">USD</span>
+          <p className="text-2xl font-black text-[#00D4FF]">
+            ${balanceUsd.toFixed(2)} <span className="text-xs font-normal text-slate-400">USDT</span>
           </p>
-          <p className="text-xs text-slate-400">
-            {isFunded ? "Ready for instant purchases" : "Top up bot wallet via Telegram"}
-          </p>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>≈ ₨{Number(data?.balance?.balance_pkr || 0).toLocaleString()} PKR</span>
+            <a
+              href="https://t.me/exzshop_bot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#00D4FF] hover:underline font-semibold"
+            >
+              Topup @exzshop_bot ↗
+            </a>
+          </div>
         </div>
 
         {/* Card 3: Active Products & Real Stock */}
@@ -3623,9 +5859,9 @@ function SubscriptionsAdmin({
       <section className={card + " p-6 space-y-5"}>
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div>
-            <h3 className="text-lg font-black text-white">Partner API Credentials &amp; Margin Rules</h3>
+            <h3 className="text-lg font-black text-white">ElevateX Reseller Credentials &amp; Margin Rules</h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Securely authenticate with <code className="text-[#baff00] font-mono">https://ggsoma.store/api/partner/v1</code>. Saved directly to database settings.
+              Securely authenticate with <code className="text-[#00D4FF] font-mono">https://shop.elevatexbyzaid.com/api/v1</code>. Saved directly to database settings.
             </p>
           </div>
           {saveSuccess && (
@@ -3640,12 +5876,12 @@ function SubscriptionsAdmin({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Partner API Secret Key
+                ElevateX Reseller API Key
               </label>
               <button
                 type="button"
                 onClick={() => setShowApiKey(!showApiKey)}
-                className="text-[11px] text-[#baff00] hover:underline"
+                className="text-[11px] text-[#00D4FF] hover:underline"
               >
                 {showApiKey ? "Hide Key" : "Show Key"}
               </button>
@@ -3655,13 +5891,21 @@ function SubscriptionsAdmin({
                 type={showApiKey ? "text" : "password"}
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
-                placeholder="sk_live_..."
-                className="w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white outline-none focus:border-[#baff00] placeholder-slate-600"
+                placeholder="elx_live_..."
+                className="w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white outline-none focus:border-[#00D4FF] placeholder-slate-600"
               />
             </div>
-            <p className="text-[11px] text-slate-500">
-              Generated from the official GGSoma Telegram Partner Bot portal.
-            </p>
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <span>Account: Talha Bashir (ID: 8672881616)</span>
+              <a
+                href="https://shop.elevatexbyzaid.com/api/v1/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#00D4FF] hover:underline"
+              >
+                View API Docs ↗
+              </a>
+            </div>
           </div>
 
           {/* API Endpoint URL */}
@@ -3673,10 +5917,10 @@ function SubscriptionsAdmin({
               type="text"
               value={apiUrlInput}
               onChange={(e) => setApiUrlInput(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white outline-none focus:border-[#baff00]"
+              className="w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
             />
             <p className="text-[11px] text-slate-500">
-              Standard endpoint: <code className="text-slate-400">https://ggsoma.store/api/partner/v1</code>
+              Standard endpoint: <code className="text-slate-400">https://shop.elevatexbyzaid.com/api/v1</code>
             </p>
           </div>
 
@@ -3726,6 +5970,90 @@ function SubscriptionsAdmin({
           </div>
         </div>
 
+        {/* Automated Gmail & WhatsApp Notification Gateway Settings */}
+        <div className="rounded-2xl border border-white/10 bg-[#070e10] p-5 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base">📢</span>
+            <h4 className="text-sm font-black text-white">Automated Delivery Dispatch (Gmail & WhatsApp)</h4>
+            <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
+              Live Engine Active
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            When a buyer enters their Gmail or WhatsApp number, credentials and activation links are delivered instantly on-screen, saved in their dashboard, and sent as a live alert to your Telegram bot. You can also configure automated direct inbox/WhatsApp text delivery below:
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Resend Email API Key */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                Resend Email API Key (for Automated Gmail)
+              </label>
+              <input
+                type="password"
+                value={resendKeyInput}
+                onChange={(e) => setResendKeyInput(e.target.value)}
+                placeholder="re_..."
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
+              />
+              <p className="text-[10px] text-slate-500">
+                Free 3,000 emails/mo from <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-[#00D4FF] hover:underline">resend.com ↗</a>
+              </p>
+            </div>
+
+            {/* Sender Email Address */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                Sender Email Address
+              </label>
+              <input
+                type="text"
+                value={senderEmailInput}
+                onChange={(e) => setSenderEmailInput(e.target.value)}
+                placeholder="Vexaro Subscriptions <orders@vexarosmm.com>"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
+              />
+              <p className="text-[10px] text-slate-500">
+                Default: orders@vexarosmm.com
+              </p>
+            </div>
+
+            {/* WhatsApp Gateway URL */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                WhatsApp Gateway Webhook URL (Optional)
+              </label>
+              <input
+                type="text"
+                value={waGatewayUrlInput}
+                onChange={(e) => setWaGatewayUrlInput(e.target.value)}
+                placeholder="https://api.ultramsg.com/instance.../messages/chat"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
+              />
+              <p className="text-[10px] text-slate-500">
+                UltraMsg / GreenAPI / WhatsApp Cloud API webhook endpoint
+              </p>
+            </div>
+
+            {/* WhatsApp Gateway Token */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                WhatsApp Gateway Token
+              </label>
+              <input
+                type="password"
+                value={waGatewayTokenInput}
+                onChange={(e) => setWaGatewayTokenInput(e.target.value)}
+                placeholder="Bearer token or instance key"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
+              />
+              <p className="text-[10px] text-slate-500">
+                Direct 1-click WhatsApp buttons work automatically in admin table without gateway.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/10">
           <div className="flex items-center gap-2">
@@ -3743,7 +6071,7 @@ function SubscriptionsAdmin({
               ) : (
                 <>
                   <span>⚡</span>
-                  Test Bot Connection
+                  Test Gateway Connection
                 </>
               )}
             </button>
@@ -3763,9 +6091,9 @@ function SubscriptionsAdmin({
             type="button"
             onClick={handleSaveConfig}
             disabled={saveLoading}
-            className="rounded-xl bg-[#baff00] px-6 py-2.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition disabled:opacity-50 shadow-[0_4px_14px_rgba(186,255,0,0.2)]"
+            className="rounded-xl bg-[#00D4FF] px-6 py-2.5 text-xs font-black text-[#0B1F3A] hover:bg-[#38bdf8] transition disabled:opacity-50 shadow-[0_4px_14px_rgba(0,212,255,0.25)]"
           >
-            {saveLoading ? "Saving..." : "Save Bot Configuration"}
+            {saveLoading ? "Saving..." : "Save Gateway Configuration"}
           </button>
         </div>
       </section>
@@ -3775,7 +6103,7 @@ function SubscriptionsAdmin({
         <section className={card + " overflow-hidden"}>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-5">
             <div>
-              <h3 className="text-base font-black text-white">Live Products Synced from Bot API</h3>
+              <h3 className="text-base font-black text-white">Live Products Synced from ElevateX Gateway</h3>
               <p className="text-xs text-slate-400">
                 {data.sampleProducts.length} automated products • {data?.inStockCount ?? 0} ready in stock • {data?.outOfStockCount ?? 0} awaiting supplier restock.
               </p>
@@ -3907,7 +6235,27 @@ function SubscriptionsAdmin({
                   <tr key={sub.id} className="hover:bg-white/[.02]">
                     <td className="px-5 py-3.5">
                       <strong className="text-white block">{sub.user_email || "User #" + sub.user_id}</strong>
-                      <span className="text-[10px] text-slate-400">{sub.delivery_contact}</span>
+                      {sub.delivery_contact?.includes("@") ? (
+                        <a
+                          href={`mailto:${sub.delivery_contact}`}
+                          className="text-[10px] text-blue-400 hover:underline flex items-center gap-1 mt-0.5"
+                          title="Send Email"
+                        >
+                          <span>✉️</span>
+                          <span className="truncate max-w-[140px]">{sub.delivery_contact}</span>
+                        </a>
+                      ) : (
+                        <a
+                          href={`https://wa.me/${String(sub.delivery_contact || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hello! Here are your credentials for ${sub.tool_name}:\n\n${sub.license_or_access}\n\nInstructions: ${sub.instructions || "Active in your Vexaro dashboard"}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 font-bold"
+                          title="Open WhatsApp Chat"
+                        >
+                          <span>📱</span>
+                          <span className="truncate max-w-[140px]">WhatsApp: {sub.delivery_contact} ↗</span>
+                        </a>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-white font-bold">
                       {sub.tool_name}
@@ -3956,6 +6304,644 @@ function SubscriptionsAdmin({
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function CouponsAdmin({
+  api,
+  setError,
+  money,
+}: {
+  api: (url: string, init?: RequestInit) => Promise<any>;
+  setError: (msg: string) => void;
+  money: (n: number) => string;
+}) {
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [redemptions, setRedemptions] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalCoupons: 0,
+    activeCoupons: 0,
+    totalRedemptions: 0,
+    totalPrizeAwardedPkr: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // New coupon form state
+  const [code, setCode] = useState("");
+  const [prizePkr, setPrizePkr] = useState("50");
+  const [rewardType, setRewardType] = useState<"bonus" | "real">("bonus");
+  const [maxUses, setMaxUses] = useState("");
+  const [perUserLimit, setPerUserLimit] = useState("1");
+  const [isWelcomeOnly, setIsWelcomeOnly] = useState(false);
+  const [expiresAt, setExpiresAt] = useState("");
+  const [description, setDescription] = useState("");
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const res = await api("/api/admin/coupons");
+      setCoupons(res.coupons || []);
+      setRedemptions(res.recentRedemptions || []);
+      if (res.stats) setStats(res.stats);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load coupons.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const generateRandomCode = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let random = "";
+    for (let i = 0; i < 6; i++) {
+      random += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCode(`VX${random}`);
+  };
+
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) {
+      alert("Please enter a coupon code.");
+      return;
+    }
+    const prize = Number(prizePkr);
+    if (!Number.isFinite(prize) || prize <= 0) {
+      alert("Please enter a valid positive prize amount in PKR.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: code.trim().toUpperCase(),
+          prizePkr: prize,
+          rewardType,
+          maxUses: maxUses.trim() ? Number(maxUses) : null,
+          perUserLimit: Number(perUserLimit) || 1,
+          isWelcomeOnly,
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+          description: description.trim() || undefined,
+        }),
+      });
+
+      alert(`✓ Coupon "${code.trim().toUpperCase()}" created successfully with prize ₨${prize.toLocaleString()}!`);
+      setShowCreateModal(false);
+      setCode("");
+      setPrizePkr("50");
+      setMaxUses("");
+      setIsWelcomeOnly(false);
+      setDescription("");
+      setExpiresAt("");
+      await loadData();
+    } catch (e) {
+      alert("❌ " + (e instanceof Error ? e.message : "Failed to create coupon."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleActive = async (coupon: any) => {
+    try {
+      const nextActive = !coupon.is_active;
+      await api("/api/admin/coupons", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: coupon.id,
+          isActive: nextActive,
+        }),
+      });
+      setCoupons((prev) =>
+        prev.map((c) => (c.id === coupon.id ? { ...c, is_active: nextActive } : c))
+      );
+    } catch (e) {
+      alert("❌ " + (e instanceof Error ? e.message : "Failed to update coupon status."));
+    }
+  };
+
+  const handleDelete = async (coupon: any) => {
+    if (!confirm(`Are you sure you want to delete coupon "${coupon.code}"?`)) return;
+    try {
+      await api(`/api/admin/coupons?id=${encodeURIComponent(coupon.id)}`, {
+        method: "DELETE",
+      });
+      setCoupons((prev) => prev.filter((c) => c.id !== coupon.id));
+      alert(`✓ Coupon "${coupon.code}" deleted.`);
+    } catch (e) {
+      alert("❌ " + (e instanceof Error ? e.message : "Failed to delete coupon."));
+    }
+  };
+
+  const copyCode = (codeText: string) => {
+    try {
+      navigator.clipboard.writeText(codeText);
+      setCopiedCode(codeText);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch {}
+  };
+
+  const filteredCoupons = coupons.filter(
+    (c) =>
+      c.code.toLowerCase().includes(search.toLowerCase().trim()) ||
+      (c.description || "").toLowerCase().includes(search.toLowerCase().trim())
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header & Quick Action */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-white flex items-center gap-2">
+            <span>🎟️</span> Promotional Coupon &amp; Bonus Manager
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Create coupons with customizable prize amounts in PKR, set usage limits, and reward new or existing users.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (!code) generateRandomCode();
+            setShowCreateModal(true);
+          }}
+          className="rounded-xl bg-[#baff00] px-5 py-2.5 text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.25)] hover:bg-[#d2ff5a] hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer flex items-center gap-2"
+        >
+          <span>＋</span> Add New Coupon &amp; Prize
+        </button>
+      </div>
+
+      {/* KPI Stats Grid */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Coupons</p>
+          <p className="mt-2 text-2xl sm:text-3xl font-black text-white">{stats.totalCoupons}</p>
+          <span className="text-[10px] text-slate-500">Configured campaigns</span>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Coupons</p>
+          <p className="mt-2 text-2xl sm:text-3xl font-black text-[#baff00]">{stats.activeCoupons}</p>
+          <span className="text-[10px] text-emerald-400">Ready to redeem</span>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Redemptions</p>
+          <p className="mt-2 text-2xl sm:text-3xl font-black text-white">{stats.totalRedemptions}</p>
+          <span className="text-[10px] text-cyan-400">Total times used</span>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-4 sm:p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Prize Awarded</p>
+          <p className="mt-2 text-2xl sm:text-3xl font-black text-[#baff00]">
+            {money(stats.totalPrizeAwardedPkr)}
+          </p>
+          <span className="text-[10px] text-slate-500">Total PKR credited</span>
+        </div>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative min-w-[260px] flex-1 max-w-md">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search coupons by code or note..."
+            className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition focus:border-[#baff00]"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={loadData}
+          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition cursor-pointer"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      {/* Coupons Table Card */}
+      <section className="rounded-2xl border border-white/10 bg-[#111a1d] overflow-hidden">
+        <div className="border-b border-white/10 bg-[#0b1418] px-5 py-3.5 flex items-center justify-between">
+          <h3 className="text-sm font-black text-white">All Promotional Coupons</h3>
+          <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-slate-400">
+            {filteredCoupons.length} COUPONS
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[850px]">
+            <thead className="bg-[#0b1418]/60 text-xs uppercase text-slate-500 border-b border-white/5">
+              <tr>
+                <th className="px-5 py-3.5">Coupon Code</th>
+                <th className="px-5 py-3.5">Prize Amount</th>
+                <th className="px-5 py-3.5">Reward Type</th>
+                <th className="px-5 py-3.5">Usage / Limits</th>
+                <th className="px-5 py-3.5">Expiry Date</th>
+                <th className="px-5 py-3.5">Status</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-xs">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
+                    Loading promotional coupons...
+                  </td>
+                </tr>
+              ) : filteredCoupons.length > 0 ? (
+                filteredCoupons.map((c) => {
+                  const isExpired = c.expires_at && new Date(c.expires_at) < new Date();
+                  const isExhausted = c.max_uses !== null && c.used_count >= c.max_uses;
+
+                  return (
+                    <tr key={c.id} className="hover:bg-white/[.02] transition">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <strong className="font-mono text-sm font-black text-white tracking-wider">
+                            {c.code}
+                          </strong>
+                          <button
+                            type="button"
+                            onClick={() => copyCode(c.code)}
+                            title="Copy Code"
+                            className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-slate-300 hover:bg-[#baff00] hover:text-[#07100f] hover:border-[#baff00] transition cursor-pointer"
+                          >
+                            {copiedCode === c.code ? "✓ Copied" : "Copy"}
+                          </button>
+                        </div>
+                        {c.description && (
+                          <p className="mt-0.5 text-[11px] text-slate-400">{c.description}</p>
+                        )}
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <span className="font-mono text-sm font-black text-[#baff00]">
+                          ₨{Number(c.prize_pkr).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-slate-400 ml-1">PKR</span>
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1 items-start">
+                          {c.reward_type === "real" ? (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                              💵 Real Cash
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-[#baff00]/30 bg-[#baff00]/10 px-2 py-0.5 text-[10px] font-bold text-[#cfff62]">
+                              🎁 Bonus Credit
+                            </span>
+                          )}
+                          {c.is_welcome_only && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[9px] font-black uppercase text-amber-300">
+                              🌟 New Users Only
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-white">
+                            {c.used_count} / {c.max_uses !== null ? c.max_uses : "∞"}
+                          </span>
+                          {isExhausted && (
+                            <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[9px] font-bold text-red-300">
+                              Limit Reached
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 block">
+                          Limit {c.per_user_limit || 1} per user
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        {c.expires_at ? (
+                          <div>
+                            <span className={isExpired ? "text-red-400 font-bold" : "text-slate-300"}>
+                              {new Date(c.expires_at).toLocaleDateString()}
+                            </span>
+                            {isExpired && (
+                              <span className="block text-[9px] text-red-400 uppercase font-black">Expired</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500">Never expires</span>
+                        )}
+                      </td>
+
+                      <td className="px-5 py-3.5">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(c)}
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase transition cursor-pointer border ${
+                            c.is_active && !isExpired && !isExhausted
+                              ? "border-emerald-500/40 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                              : "border-red-500/40 bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                          }`}
+                        >
+                          {c.is_active && !isExpired && !isExhausted ? "● Active" : "○ Inactive"}
+                        </button>
+                      </td>
+
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(c)}
+                            title={c.is_active ? "Deactivate" : "Activate"}
+                            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white transition"
+                          >
+                            {c.is_active ? "Disable" : "Enable"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(c)}
+                            title="Delete Coupon"
+                            className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-300 hover:bg-red-500/20 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-500">
+                    No coupons found. Click &quot;Add New Coupon &amp; Prize&quot; above to create one.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Recent Redemptions History */}
+      <section className="rounded-2xl border border-white/10 bg-[#111a1d] overflow-hidden">
+        <div className="border-b border-white/10 bg-[#0b1418] px-5 py-3.5 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-black text-white">Recent Coupon Redemptions</h3>
+            <p className="text-[11px] text-slate-400">Audit log of users who claimed coupon prizes</p>
+          </div>
+          <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-slate-400">
+            {redemptions.length} CLAIMS
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[700px]">
+            <thead className="bg-[#0b1418]/60 text-xs uppercase text-slate-500 border-b border-white/5">
+              <tr>
+                <th className="px-5 py-3">User</th>
+                <th className="px-5 py-3">Coupon Code</th>
+                <th className="px-5 py-3">Prize Credited</th>
+                <th className="px-5 py-3">Reward Type</th>
+                <th className="px-5 py-3">Redeemed At</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-xs">
+              {redemptions.length > 0 ? (
+                redemptions.map((r) => (
+                  <tr key={r.id} className="hover:bg-white/[.02]">
+                    <td className="px-5 py-3">
+                      <strong className="text-white block">{r.user_name || "User #" + r.user_id}</strong>
+                      <span className="text-[10px] text-slate-400">{r.user_email}</span>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className="font-mono font-bold text-white bg-white/5 px-2 py-0.5 rounded">
+                        {r.coupon_code}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 font-mono font-black text-[#baff00]">
+                      ₨{Number(r.prize_pkr).toLocaleString()}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className="text-[10px] uppercase font-bold text-slate-300">
+                        {r.reward_type === "real" ? "Real Balance" : "Bonus Credit"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-slate-400 text-[11px]">
+                      {new Date(r.created_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-slate-500">
+                    No coupon redemptions recorded yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Create Coupon Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#111a1d] p-6 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <span>🎟️</span> Create New Promotional Coupon
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Set the coupon code and its reward prize in PKR.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCoupon} className="mt-5 space-y-4">
+              {/* Code */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Coupon Code
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generateRandomCode}
+                    className="text-[11px] font-bold text-[#baff00] hover:underline"
+                  >
+                    🎲 Generate Random
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+                  placeholder="e.g. WELCOME100, BONUS50, EID2026"
+                  required
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-2.5 font-mono text-sm font-black tracking-wider text-white placeholder-slate-600 outline-none focus:border-[#baff00]"
+                />
+              </div>
+
+              {/* Prize Amount & Type */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Prize Amount (₨ PKR)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100000"
+                    step="1"
+                    value={prizePkr}
+                    onChange={(e) => setPrizePkr(e.target.value)}
+                    required
+                    placeholder="50"
+                    className="w-full rounded-xl border border-[#baff00]/30 bg-[#0b1316] px-4 py-2.5 text-sm font-black text-[#baff00] outline-none focus:border-[#baff00]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Reward Credit Type
+                  </label>
+                  <select
+                    value={rewardType}
+                    onChange={(e) => setRewardType(e.target.value as "bonus" | "real")}
+                    className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-[#baff00]"
+                  >
+                    <option value="bonus">🎁 Bonus Credit (For Orders)</option>
+                    <option value="real">💵 Real Balance (Deposited Cash)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Limits */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Max Total Redemptions
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxUses}
+                    onChange={(e) => setMaxUses(e.target.value)}
+                    placeholder="Unlimited if blank"
+                    className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-2.5 text-xs text-white placeholder-slate-600 outline-none focus:border-[#baff00]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Per User Limit
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={perUserLimit}
+                    onChange={(e) => setPerUserLimit(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-2.5 text-xs text-white outline-none focus:border-[#baff00]"
+                  />
+                </div>
+              </div>
+
+              {/* Expiry Date */}
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Expiry Date <span className="text-slate-500 lowercase">(optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-2.5 text-xs text-white outline-none focus:border-[#baff00]"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Campaign Note / Description <span className="text-slate-500 lowercase">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="e.g. YouTube influencer giveaway, Telegram community promotion"
+                  className="w-full rounded-xl border border-white/10 bg-[#0b1316] px-4 py-2.5 text-xs text-white placeholder-slate-600 outline-none focus:border-[#baff00]"
+                />
+              </div>
+
+              {/* Welcome Bonus Flag */}
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isWelcomeOnly}
+                    onChange={(e) => setIsWelcomeOnly(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-white/20 bg-[#0b1316] text-[#baff00] focus:ring-[#baff00]"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-white block">
+                      🌟 New Users Only (Welcome Bonus Coupon)
+                    </span>
+                    <span className="text-[11px] text-slate-400 block leading-tight mt-0.5">
+                      If checked, users who already claimed a signup bonus will be strictly blocked from redeeming this coupon code.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="rounded-xl bg-[#baff00] px-5 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition"
+                >
+                  {submitting ? "Creating..." : "Save & Activate Coupon"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

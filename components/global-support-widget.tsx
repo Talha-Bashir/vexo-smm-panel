@@ -1,10 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 
 export function GlobalSupportWidget() {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  // Completely hide customer-facing widget on all /admin pages to avoid blocking admin controls
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   // Close when clicking outside or pressing Escape
   useEffect(() => {
@@ -32,7 +39,7 @@ export function GlobalSupportWidget() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-20 md:bottom-5 lg:bottom-6 right-3 sm:right-5 lg:right-6 z-50 flex flex-col items-end print:hidden select-none"
+      className="fixed bottom-20 md:bottom-5 right-4 sm:right-5 z-40 flex flex-col items-end print:hidden select-none"
     >
       {/* Help Popup Drawer */}
       {open && (

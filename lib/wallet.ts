@@ -31,6 +31,7 @@ export function ensureWalletSchema() {
         );
 
         ALTER TABLE vexo_deposits ADD COLUMN IF NOT EXISTS screenshot TEXT;
+        ALTER TABLE vexo_deposits ADD COLUMN IF NOT EXISTS bonus_pkr NUMERIC(14,2) NOT NULL DEFAULT 0;
 
         CREATE INDEX IF NOT EXISTS vexo_deposits_user_created_idx
           ON vexo_deposits(user_id, created_at DESC);
@@ -141,7 +142,7 @@ export async function getUserWallet(userId: number) {
 
   const deposits = await db.query(
     `SELECT id, method, amount_pkr, transaction_id, status,
-            created_at, reviewed_at, rejection_reason
+            created_at, reviewed_at, rejection_reason, COALESCE(bonus_pkr, 0) AS bonus_pkr
      FROM vexo_deposits
      WHERE user_id = $1
      ORDER BY created_at DESC
@@ -175,6 +176,7 @@ export async function getUserWallet(userId: number) {
       createdAt: row.created_at,
       reviewedAt: row.reviewed_at,
       rejectionReason: row.rejection_reason,
+      bonusPkr: Number(row.bonus_pkr ?? 0),
     })),
     transactions: transactions.rows.map((row) => ({
       id: row.id,
@@ -426,3 +428,40 @@ export async function refundFailedOrder(orderId: string, reason: string) {
     client.release();
   }
 }
+
+/**
+ * Calculates promotional deposit bonus percentage and PKR credit.
+ * Default policy:
+ * - Under ₨5,000 deposit: 5% bonus
+ * - ₨5,000+ deposit: 10% bonus
+ * Or respects admin setting if a custom fixed percentage is configured.
+ */
+export function calculateDepositBonus(
+  amountPkr: number,
+  bonusSetting: string = "tiered"
+): { ratePercent: number; bonusPkr: number } {
+  const amount = Number(amountPkr);
+  // Minimum required deposit to receive any bonus is ₨500
+  if (!Number.isFinite(amount) || amount < 500) {
+    return { ratePercent: 0, bonusPkr: 0 };
+  }
+
+  let ratePercent = 5;
+  const clean = (bonusSetting || "tiered").trim().toLowerCase();
+
+  if (clean === "tiered" || clean === "5-10" || clean === "5-10%" || clean === "auto") {
+    // 5% bonus for ₨500–₨4,999, 10% VIP bonus for ₨5,000+
+    ratePercent = amount >= 5000 ? 10 : 5;
+  } else {
+    const parsed = parseFloat(clean);
+    if (Number.isFinite(parsed) && parsed > 0 && parsed <= 50) {
+      ratePercent = parsed;
+    } else {
+      ratePercent = amount >= 5000 ? 10 : 5;
+    }
+  }
+
+  const bonusPkr = Math.round(((amount * ratePercent) / 100) * 100) / 100;
+  return { ratePercent, bonusPkr };
+}
+

@@ -208,11 +208,11 @@ export function MassOrderPage({
               Enter one order per line: <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-[#baff00]">service_id | link | quantity</code>
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={insertSample}
               type="button"
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-300 hover:border-[#baff00]/40 hover:text-[#baff00] transition"
+              className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:border-[#baff00]/40 hover:text-[#baff00] transition cursor-pointer"
             >
               📋 Insert Sample Format
             </button>
@@ -223,7 +223,7 @@ export function MassOrderPage({
                 setErrorMessage("");
               }}
               type="button"
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-white transition"
+              className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-bold text-slate-400 hover:text-white transition cursor-pointer"
             >
               Clear
             </button>
@@ -240,7 +240,7 @@ export function MassOrderPage({
             }}
             rows={10}
             placeholder={`102 | https://instagram.com/p/PostId1 | 1000\n105 | https://tiktok.com/@username/video/123 | 500\n102 | https://instagram.com/p/PostId2 | 2000`}
-            className="w-full rounded-2xl border border-white/10 bg-[#07100f] p-4 font-mono text-sm leading-6 text-white placeholder:text-slate-600 outline-none focus:border-[#baff00]/50 transition"
+            className="w-full rounded-2xl border border-white/10 bg-[#07100f] p-4 font-mono text-sm leading-6 text-white placeholder:text-slate-600/60 placeholder:italic outline-none focus:border-[#baff00]/50 transition"
           />
         </div>
 

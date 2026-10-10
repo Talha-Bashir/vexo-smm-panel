@@ -32,6 +32,7 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [hasReferralParam, setHasReferralParam] = useState(false);
+  const [couponCode, setCouponCode] = useState("WELCOME50");
   const [botToken, setBotToken] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [error, setError] = useState("");
@@ -74,6 +75,10 @@ export default function SignupPage() {
       if (ref) {
         setReferralCode(ref.trim().toUpperCase());
         setHasReferralParam(true);
+      }
+      const promo = params.get("coupon") || params.get("promo") || params.get("code");
+      if (promo) {
+        setCouponCode(promo.trim().toUpperCase());
       }
     } catch {
       // ignore
@@ -121,6 +126,7 @@ export default function SignupPage() {
           email: email.trim(),
           password,
           referralCode: referralCode.trim(),
+          couponCode: couponCode.trim().toUpperCase(),
           botToken,
           honeypot,
           deviceFingerprint,
@@ -169,12 +175,12 @@ export default function SignupPage() {
             </p>
           </div>
 
-          {/* Welcome Promotional Bonus Notice */}
+          {/* Welcome Promo Coupon Notice */}
           <div className="mt-4 rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 p-3 text-xs text-[#baff00] flex items-start gap-2.5">
-            <span className="mt-0.5 shrink-0 text-base">🎁</span>
+            <span className="mt-0.5 shrink-0 text-base">🎟️</span>
             <div>
-              <strong className="text-white block font-black">Rs. 50 Welcome Bonus Credit</strong>
-              Genuine new accounts receive ₨50 promotional credit instantly on signup to test our services!
+              <strong className="text-white block font-black">Coupon Bonus System Active</strong>
+              Enter coupon code <span className="underline font-black text-white">WELCOME50</span> or any official promotional code to claim your free wallet prize!
             </div>
           </div>
 
@@ -276,6 +282,30 @@ export default function SignupPage() {
                   <Icon name={showConfirmPassword ? "eyeOff" : "eye"} size={17} />
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span>Promo Coupon Code</span>
+                <span className="text-[11px] font-semibold lowercase tracking-normal text-[#baff00]">
+                  optional bonus prize
+                </span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. WELCOME50"
+                  className="w-full rounded-xl border border-[#baff00]/30 bg-[#0b1316] px-4 py-3 pr-24 font-mono text-base font-bold tracking-wider uppercase text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/20 sm:text-sm"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-[#baff00]/30 bg-[#baff00]/10 px-2 py-0.5 text-[10px] font-black text-[#baff00]">
+                  🎟️ COUPON
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                New accounts can use <span className="font-bold text-[#baff00]">WELCOME50</span> for ₨50 promotional credit!
+              </p>
             </div>
 
             <div>

@@ -84,6 +84,22 @@ export async function GET() {
       // Table may not exist yet or empty
     }
 
+    let resendApiKey = "";
+    let senderEmail = "";
+    let whatsappGatewayUrl = "";
+    let whatsappGatewayToken = "";
+    try {
+      const notifRes = await db.query(
+        `SELECT key, value FROM vexo_platform_settings WHERE key IN ('resend_api_key', 'sender_email', 'whatsapp_gateway_url', 'whatsapp_gateway_token')`
+      );
+      for (const row of notifRes.rows) {
+        if (row.key === "resend_api_key") resendApiKey = row.value || "";
+        if (row.key === "sender_email") senderEmail = row.value || "";
+        if (row.key === "whatsapp_gateway_url") whatsappGatewayUrl = row.value || "";
+        if (row.key === "whatsapp_gateway_token") whatsappGatewayToken = row.value || "";
+      }
+    } catch {}
+
     return NextResponse.json({
       success: true,
       config: {
@@ -94,6 +110,10 @@ export async function GET() {
           : "",
         apiKey: config.apiKey,
         markupPercent: config.markupPercent,
+        resendApiKey,
+        senderEmail,
+        whatsappGatewayUrl,
+        whatsappGatewayToken,
       },
       health,
       balance,
@@ -148,21 +168,62 @@ export async function POST(req: Request) {
 
       await setGGSomaConfig({ apiKey, apiUrl, markupPercent }, g.user?.id);
 
+      // Save automated notification settings
+      const client = await db.connect();
+      try {
+        if (body.resendApiKey !== undefined) {
+          await client.query(
+            `INSERT INTO vexo_platform_settings (key, value, updated_at, updated_by)
+             VALUES ('resend_api_key', $1, NOW(), $2)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+            [String(body.resendApiKey).trim(), g.user?.id || null]
+          );
+        }
+        if (body.senderEmail !== undefined) {
+          await client.query(
+            `INSERT INTO vexo_platform_settings (key, value, updated_at, updated_by)
+             VALUES ('sender_email', $1, NOW(), $2)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+            [String(body.senderEmail).trim(), g.user?.id || null]
+          );
+        }
+        if (body.whatsappGatewayUrl !== undefined) {
+          await client.query(
+            `INSERT INTO vexo_platform_settings (key, value, updated_at, updated_by)
+             VALUES ('whatsapp_gateway_url', $1, NOW(), $2)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+            [String(body.whatsappGatewayUrl).trim(), g.user?.id || null]
+          );
+        }
+        if (body.whatsappGatewayToken !== undefined) {
+          await client.query(
+            `INSERT INTO vexo_platform_settings (key, value, updated_at, updated_by)
+             VALUES ('whatsapp_gateway_token', $1, NOW(), $2)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+            [String(body.whatsappGatewayToken).trim(), g.user?.id || null]
+          );
+        }
+      } finally {
+        client.release();
+      }
+
       await logAdminActivity(
         g.user?.id || 1,
         "UPDATE_PARTNER_BOT_CONFIG",
         "Settings",
-        "ggsoma_bot",
+        "elevatex_bot",
         {
           hasApiKey: Boolean(apiKey),
           apiUrl,
           markupPercent,
+          hasResendKey: Boolean(body.resendApiKey),
+          hasWhatsAppGateway: Boolean(body.whatsappGatewayUrl),
         }
       );
 
       return NextResponse.json({
         success: true,
-        message: "Telegram Bot Partner API configuration saved successfully!",
+        message: "ElevateX Gateway & Automated Notification settings saved successfully!",
       });
     }
 

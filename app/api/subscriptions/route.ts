@@ -10,6 +10,7 @@ import {
   createGGSomaOrder,
   type GGSomaProduct,
 } from "@/lib/ggsoma-api";
+import { dispatchSubscriptionNotifications } from "@/lib/subscription-notifier";
 
 export const dynamic = "force-dynamic";
 
@@ -540,7 +541,7 @@ export async function GET() {
         const balRes = await getGGSomaBalance();
         if (balRes.ok && balRes.balance) botBalance = balRes.balance;
       } catch (err) {
-        console.warn("GGSoma Bot catalog fetch warning, using fallback:", err);
+        console.warn("ElevateX Gateway catalog fetch warning, using fallback:", err);
       }
     }
 
@@ -819,11 +820,34 @@ export async function POST(req: Request) {
 
       await client.query("COMMIT");
 
+      // Trigger automated delivery notifications (Email / WhatsApp + Admin Telegram Alert)
+      const dispatch = await dispatchSubscriptionNotifications({
+        subscriptionId: subRes.rows[0].id,
+        userEmail: user.email,
+        toolName: catalogItem.name,
+        planDuration: plan.duration,
+        pricePkr: plan.pricePkr,
+        deliveryContact,
+        deliveryType,
+        licenseOrAccess: licenseKey,
+        instructions,
+      }).catch((err) => {
+        console.error("[SubscriptionNotifier] Notification error:", err);
+        return {
+          contactType: "unknown" as const,
+          emailSent: false,
+          whatsAppSent: false,
+          directWhatsAppLink: null,
+          adminAlertSent: false,
+        };
+      });
+
       return NextResponse.json({
         success: true,
         message: `Successfully subscribed to ${catalogItem.name}!`,
         subscription: subRes.rows[0],
         balancePkr: newBalancePkr,
+        dispatch,
       });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});

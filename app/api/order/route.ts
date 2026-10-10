@@ -70,6 +70,7 @@ export async function POST(request: Request) {
     let max = 100000;
     let preferredProviderId: string | undefined = undefined;
     let maxAllowedCostUsd: number | undefined = undefined;
+    let effectiveBaseUsd = 0;
 
     // 1. Check vexo_routed_services
     const isNum = /^\d+$/.test(serviceId);
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
       serviceName = routed.name;
       platform = platform || routed.platform || "SMM";
 
-      let effectiveBaseUsd = Number(routed.base_rate_usd || 0);
+      effectiveBaseUsd = Number(routed.base_rate_usd || 0);
 
       if (routed.auto_route !== false) {
         const balances = await getCachedProviderBalances();
@@ -140,6 +141,29 @@ export async function POST(request: Request) {
       max = Number(legacyService.max);
       rate = getVexoRate(legacyService.rate, rateMultiplier, liveUsdToPkr);
       charge = calculateLiveChargePkr(rate, numericQuantity, isPackageService(legacyService.type, min, max));
+    }
+
+    // Apply custom user wholesale rate or global account discount if configured
+    try {
+      const userPricingRes = await db.query(
+        `SELECT custom_discount_percent, custom_rates FROM vexo_users WHERE id = $1 LIMIT 1`,
+        [Number(user.id)]
+      );
+      const userPricing = userPricingRes.rows[0];
+      if (userPricing) {
+        const customRates = (userPricing.custom_rates || {}) as Record<string, number>;
+        const customDiscount = Number(userPricing.custom_discount_percent || 0);
+
+        if (customRates[serviceId] && Number(customRates[serviceId]) > 0) {
+          rate = Number(customRates[serviceId]);
+          const isPkg = isPackageService(undefined, min, max);
+          charge = calculateLiveChargePkr(rate, numericQuantity, isPkg);
+        } else if (customDiscount > 0) {
+          charge = Math.max(0.1, Math.round(charge * (1 - customDiscount / 100) * 100) / 100);
+        }
+      }
+    } catch (pricingErr) {
+      console.warn("Could not check custom pricing:", pricingErr);
     }
 
     if (!Number.isFinite(min) || !Number.isFinite(max) || numericQuantity < min || numericQuantity > max) {
@@ -200,12 +224,18 @@ export async function POST(request: Request) {
       try {
         await markOrderProviderSuccess(vexoOrderId, providerOrderId);
 
-        // Record provider and failover history in order record
+        const isPkg = isPackageService(undefined, min, max);
+        const costUsd = effectiveBaseUsd > 0
+          ? (isPkg ? effectiveBaseUsd : (effectiveBaseUsd * numericQuantity) / 1000)
+          : Math.round((charge / 1.07 / liveUsdToPkr) * 10000) / 10000;
+        const costPkr = Math.round(costUsd * liveUsdToPkr * 100) / 100;
+
+        // Record provider, wholesale cost, and failover history in order record
         await db.query(
           `UPDATE vexo_orders
-           SET provider_id = $1, failover_attempts = $2
-           WHERE id = $3`,
-          [dispatchResult.providerId || null, JSON.stringify(dispatchResult.failoverAttempts), vexoOrderId]
+           SET provider_id = $1, failover_attempts = $2, cost_pkr = $3, cost_usd = $4
+           WHERE id = $5`,
+          [dispatchResult.providerId || null, JSON.stringify(dispatchResult.failoverAttempts), costPkr, costUsd, vexoOrderId]
         );
 
         // Award 5% referral commission if user was invited by another user

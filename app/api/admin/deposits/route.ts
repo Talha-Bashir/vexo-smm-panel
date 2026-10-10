@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminPermission } from "@/lib/admin-guard";
-import { ensureWalletSchema } from "@/lib/wallet";
+import { ensureWalletSchema, calculateDepositBonus } from "@/lib/wallet";
+import { getPlatformSetting } from "@/lib/admin";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export async function GET() {
     const result = await db.query(`
       SELECT d.id, d.user_id, u.name, u.email, d.method, d.amount_pkr,
              d.transaction_id, d.screenshot, d.status, d.created_at, d.reviewed_at,
-             d.rejection_reason
+             d.rejection_reason, COALESCE(d.bonus_pkr, 0) AS bonus_pkr
       FROM vexo_deposits d
       JOIN vexo_users u ON u.id = d.user_id
       ORDER BY CASE WHEN d.status = 'Pending' THEN 0 ELSE 1 END, d.created_at DESC
@@ -36,6 +37,7 @@ export async function GET() {
         createdAt: row.created_at,
         reviewedAt: row.reviewed_at,
         rejectionReason: row.rejection_reason,
+        bonusPkr: Number(row.bonus_pkr || 0),
       })),
     });
   } catch (error) {
@@ -86,13 +88,32 @@ export async function PATCH(request: Request) {
     }
 
     if (action === "approve") {
+      const depositBonusSetting = await getPlatformSetting("deposit_bonus_percentage", "tiered");
+      const depositAmountPkr = Number(deposit.amount_pkr);
+
+      let ratePercent = 5;
+      let bonusPkr = 0;
+
+      if (body?.bonusPercent !== undefined && Number.isFinite(Number(body.bonusPercent)) && Number(body.bonusPercent) >= 0) {
+        ratePercent = Number(body.bonusPercent);
+        bonusPkr = Math.round(((depositAmountPkr * ratePercent) / 100) * 100) / 100;
+      } else if (body?.bonusAmount !== undefined && Number.isFinite(Number(body.bonusAmount)) && Number(body.bonusAmount) >= 0) {
+        bonusPkr = Math.round(Number(body.bonusAmount) * 100) / 100;
+        ratePercent = depositAmountPkr > 0 ? Math.round((bonusPkr / depositAmountPkr) * 100) : 0;
+      } else {
+        const calc = calculateDepositBonus(depositAmountPkr, depositBonusSetting);
+        ratePercent = calc.ratePercent;
+        bonusPkr = calc.bonusPkr;
+      }
+
       await client.query(
-        `INSERT INTO vexo_wallets (user_id, balance_pkr)
-         VALUES ($1, $2)
+        `INSERT INTO vexo_wallets (user_id, balance_pkr, bonus_balance_pkr)
+         VALUES ($1, $2, $3)
          ON CONFLICT (user_id)
          DO UPDATE SET balance_pkr = vexo_wallets.balance_pkr + EXCLUDED.balance_pkr,
+                       bonus_balance_pkr = COALESCE(vexo_wallets.bonus_balance_pkr, 0) + EXCLUDED.bonus_balance_pkr,
                        updated_at = NOW()`,
-        [deposit.user_id, deposit.amount_pkr]
+        [deposit.user_id, deposit.amount_pkr, bonusPkr]
       );
 
       await client.query(
@@ -103,12 +124,39 @@ export async function PATCH(request: Request) {
         [deposit.user_id, deposit.amount_pkr, String(deposit.id), `Deposit ${deposit.id} approved by admin`]
       );
 
+      if (bonusPkr > 0) {
+        await client.query(
+          `INSERT INTO vexo_wallet_transactions
+            (user_id, type, amount_pkr, reference_type, reference_id, description)
+           VALUES ($1, 'Credit', $2, 'deposit_bonus', $3, $4)
+           ON CONFLICT (reference_type, reference_id) DO NOTHING`,
+          [
+            deposit.user_id,
+            bonusPkr,
+            `deposit_bonus_${deposit.id}`,
+            `🎁 Deposit Bonus (${ratePercent}% bonus on ₨${depositAmountPkr.toLocaleString()} deposit)`,
+          ]
+        );
+      }
+
       await client.query(
         `UPDATE vexo_deposits
-         SET status = 'Approved', reviewed_at = NOW(), reviewed_by = $2, rejection_reason = NULL, screenshot = NULL
+         SET status = 'Approved', bonus_pkr = $3, reviewed_at = NOW(), reviewed_by = $2, rejection_reason = NULL, screenshot = NULL
          WHERE id = $1`,
-        [deposit.id, Number(admin.id)]
+        [deposit.id, Number(admin.id), bonusPkr]
       );
+
+      await client.query("COMMIT");
+
+      return NextResponse.json({
+        success: true,
+        status: "Approved",
+        bonusPkr,
+        ratePercent,
+        message: bonusPkr > 0
+          ? `Deposit approved! Credited ₨${depositAmountPkr.toLocaleString()} balance + ₨${bonusPkr.toLocaleString()} (${ratePercent}%) promotional bonus.`
+          : "Deposit approved and wallet credited.",
+      });
     } else {
       await client.query(
         `UPDATE vexo_deposits
@@ -116,15 +164,15 @@ export async function PATCH(request: Request) {
          WHERE id = $1`,
         [deposit.id, Number(admin.id), rejectionReason || "Payment could not be verified."]
       );
+
+      await client.query("COMMIT");
+
+      return NextResponse.json({
+        success: true,
+        status: "Rejected",
+        message: "Deposit rejected.",
+      });
     }
-
-    await client.query("COMMIT");
-
-    return NextResponse.json({
-      success: true,
-      status: action === "approve" ? "Approved" : "Rejected",
-      message: action === "approve" ? "Deposit approved and wallet credited." : "Deposit rejected.",
-    });
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     console.error("VEXO ADMIN DEPOSIT ACTION ERROR:", error);
