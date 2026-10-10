@@ -4,8 +4,8 @@ import Link from "next/link";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "TikTok SMM Panel – Instant TikTok Followers, Likes & FYP Views",
-  description: "Go viral on TikTok with VEXARO's fast TikTok SMM panel. Buy high-retention TikTok followers, likes, shares, and views at wholesale prices.",
+  title: "TikTok SMM Panel Pakistan – Buy Followers, Likes & Views with Easypaisa",
+  description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Rs 50 free signup bonus.",
   keywords: [
     "smm panel",
     "best smm panel",
@@ -23,8 +23,8 @@ export const metadata: Metadata = {
     canonical: "https://vexarosmm.com/tiktok-services",
   },
   openGraph: {
-    title: "TikTok SMM Panel – Instant TikTok Followers, Likes & FYP Views",
-    description: "Go viral on TikTok with VEXARO's fast TikTok SMM panel. Buy high-retention TikTok followers, likes, shares, and views at wholesale prices.",
+    title: "TikTok SMM Panel Pakistan – Buy Followers, Likes & Views with Easypaisa",
+    description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Rs 50 free signup bonus.",
     url: "https://vexarosmm.com/tiktok-services",
     siteName: "VEXARO SMM Services",
     type: "website",
@@ -44,7 +44,7 @@ const jsonLd = {
         url: SITE_URL,
       },
       serviceType: "TikTok Services",
-      description: "Go viral on TikTok with VEXARO's fast TikTok SMM panel. Buy high-retention TikTok followers, likes, shares, and views at wholesale prices.",
+      description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Rs 50 free signup bonus.",
       areaServed: ["Worldwide", "Pakistan"],
     },
     {
