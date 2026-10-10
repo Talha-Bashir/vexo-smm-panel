@@ -4,8 +4,8 @@ import Link from "next/link";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "Instagram SMM Panel – Buy Real Followers, Likes, Views & Reels Growth",
-  description: "Scale your Instagram profile with the #1 Instagram SMM panel. Instant delivery of followers, likes, comments, and reels views with 30-day auto-refill.",
+  title: "Instagram SMM Panel Pakistan – Buy Followers, Likes & Reels Views with JazzCash",
+  description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Rs 50 free signup bonus.",
   keywords: [
     "smm panel",
     "best smm panel",
@@ -23,8 +23,8 @@ export const metadata: Metadata = {
     canonical: "https://vexarosmm.com/instagram-services",
   },
   openGraph: {
-    title: "Instagram SMM Panel – Buy Real Followers, Likes, Views & Reels Growth",
-    description: "Scale your Instagram profile with the #1 Instagram SMM panel. Instant delivery of followers, likes, comments, and reels views with 30-day auto-refill.",
+    title: "Instagram SMM Panel Pakistan – Buy Followers, Likes & Reels Views with JazzCash",
+    description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Rs 50 free signup bonus.",
     url: "https://vexarosmm.com/instagram-services",
     siteName: "VEXARO SMM Services",
     type: "website",
@@ -44,7 +44,7 @@ const jsonLd = {
         url: SITE_URL,
       },
       serviceType: "Instagram Services",
-      description: "Scale your Instagram profile with the #1 Instagram SMM panel. Instant delivery of followers, likes, comments, and reels views with 30-day auto-refill.",
+      description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Rs 50 free signup bonus.",
       areaServed: ["Worldwide", "Pakistan"],
     },
     {
