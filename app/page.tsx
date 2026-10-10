@@ -946,11 +946,11 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
-                <p className="text-fluid-h2 font-black text-white text-[clamp(1rem,2.5vw,1.4rem)]">
-                  JazzCash • Easypaisa • SadaPay
+                <p className="text-fluid-h2 font-black text-white">
+                  Local Payments
                 </p>
                 <p className="mt-1 text-xs sm:text-sm font-semibold text-slate-300">
-                  Local PK Payments
+                  JazzCash • Easypaisa • SadaPay
                 </p>
               </div>
             </div>
