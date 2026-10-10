@@ -268,13 +268,6 @@ const structuredData = {
         price: "0",
         priceCurrency: "PKR",
       },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.9",
-        reviewCount: "18450",
-        bestRating: "5",
-        worstRating: "1",
-      },
     },
     {
       "@type": "FAQPage",
