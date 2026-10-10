@@ -4,8 +4,8 @@ import Link from "next/link";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "Telegram SMM Panel – Channel Members & Post Views Provider",
-  description: "Boost your Telegram channels and groups with VEXARO SMM panel. High-speed delivery for channel members, group members, and post view increments.",
+  title: "Telegram SMM Panel Pakistan – Channel Members & Post Views",
+  description: "Boost your Telegram channels and groups in Pakistan. Channel members, group members and post views with instant delivery and local PK payments.",
   keywords: [
     "smm panel",
     "best smm panel",
@@ -23,8 +23,8 @@ export const metadata: Metadata = {
     canonical: "https://vexarosmm.com/telegram-services",
   },
   openGraph: {
-    title: "Telegram SMM Panel – Channel Members & Post Views Provider",
-    description: "Boost your Telegram channels and groups with VEXARO SMM panel. High-speed delivery for channel members, group members, and post view increments.",
+    title: "Telegram SMM Panel Pakistan – Channel Members & Post Views",
+    description: "Boost your Telegram channels and groups in Pakistan. Channel members, group members and post views with instant delivery and local PK payments.",
     url: "https://vexarosmm.com/telegram-services",
     siteName: "VEXARO SMM Services",
     type: "website",
@@ -44,7 +44,7 @@ const jsonLd = {
         url: SITE_URL,
       },
       serviceType: "Telegram Services",
-      description: "Boost your Telegram channels and groups with VEXARO SMM panel. High-speed delivery for channel members, group members, and post view increments.",
+      description: "Boost your Telegram channels and groups in Pakistan. Channel members, group members and post views with instant delivery and local PK payments.",
       areaServed: ["Worldwide", "Pakistan"],
     },
     {
