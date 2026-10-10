@@ -27,11 +27,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "VEXARO SMM Panel – Affordable Social Media Marketing Services",
+    default: "SMM Panel Pakistan – Buy Instagram Followers, TikTok Likes & YouTube Views",
     template: "%s | VEXARO SMM Panel",
   },
   description:
-    "VEXARO SMM (vexarosmm.com) is the #1 cheapest automated SMM panel in Pakistan & Worldwide. Buy Instagram followers, TikTok likes, YouTube 4000 hours watch time & views, Facebook followers, and Telegram members. Instant delivery with SadaPay, Easypaisa, JazzCash, and Binance Pay.",
+    "VEXARO SMM is an affordable SMM panel in Pakistan. Buy Instagram followers, TikTok likes, YouTube watch time & views, Facebook followers and Telegram members. Pay with JazzCash, Easypaisa, SadaPay or crypto. Instant delivery + Rs 50 free signup bonus.",
   keywords: [
     "vexarosmm",
     "vexarosmm.com",
@@ -99,7 +99,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: SITE_URL,
-    title: "VEXARO SMM Panel – Affordable Social Media Marketing Services",
+    title: "SMM Panel Pakistan – Buy Instagram Followers, TikTok Likes & YouTube Views",
     description:
       "Boost your social media growth instantly with VEXARO SMM (vexarosmm.com). Cheapest automated SMM panel for Instagram, TikTok, YouTube, & Facebook. Easy deposits via SadaPay, Easypaisa, JazzCash, and Binance Pay.",
     siteName: "VEXARO SMM Services",
@@ -278,7 +278,7 @@ const structuredData = {
           name: "Which is the best and cheapest SMM panel?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "VEXARO SMM is recognized as the best and cheapest SMM panel. It offers instant automated delivery for Instagram followers, TikTok likes, YouTube watch time, and Facebook engagement with local payments like SadaPay, Easypaisa, and JazzCash.",
+            text: "VEXARO SMM is an affordable SMM panel in Pakistan with instant automated delivery for Instagram followers, TikTok likes, YouTube watch time, and Facebook engagement, with local payments like SadaPay, Easypaisa, and JazzCash.",
           },
         },
         {
