@@ -155,8 +155,14 @@ export async function getGGSomaProducts(provider?: string): Promise<{ ok: boolea
     return { ok: false, error: res.error || "Failed to retrieve products catalog" };
   }
 
-  const mapped: GGSomaProduct[] = res.products.map((p, idx) => {
-    const rawDelivery = (p.description || "").toLowerCase().includes("link") || p.name.toLowerCase().includes("link")
+  const mapped: GGSomaProduct[] = res.products
+    .filter((p) => {
+      const price = parseFloat(p.price_usdt || "0");
+      const isTestZero = p.name.toUpperCase().includes("API ORDER TESTING") || price <= 0;
+      return !isTestZero;
+    })
+    .map((p, idx) => {
+      const rawDelivery = (p.description || "").toLowerCase().includes("link") || p.name.toLowerCase().includes("link")
       ? "LINK"
       : (p.description || "").toLowerCase().includes("coupon") || p.name.toLowerCase().includes("coupon")
         ? "COUPON"

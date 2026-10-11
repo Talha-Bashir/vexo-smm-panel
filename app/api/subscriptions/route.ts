@@ -488,7 +488,7 @@ export async function GET() {
             const cat = inferCategory(p);
             const markup = 1 + (config.markupPercent || 8) / 100;
             const priceUsd = Number((Number(p.yourPrice || 10) * markup).toFixed(2));
-            const pricePkr = Math.round(priceUsd * 278);
+            const pricePkr = Math.max(10, Math.round(priceUsd * 278));
 
             const inStock = Boolean(p.stock ? (p.stock.inStock && (p.stock.count == null || p.stock.count > 0)) : true);
             const stockCount = p.stock?.count != null ? Number(p.stock.count) : (inStock ? 1 : 0);
@@ -633,7 +633,7 @@ export async function POST(req: Request) {
             const cat = inferCategory(match);
             const markup = 1 + (config.markupPercent || 8) / 100;
             const priceUsd = Number((Number(match.yourPrice || 10) * markup).toFixed(2));
-            const pricePkr = Math.round(priceUsd * 278);
+            const pricePkr = Math.max(10, Math.round(priceUsd * 278));
 
             const matchInStock = Boolean(match.stock ? (match.stock.inStock && (match.stock.count == null || match.stock.count > 0)) : true);
             const matchCount = match.stock?.count != null ? Number(match.stock.count) : (matchInStock ? 1 : 0);
@@ -682,6 +682,13 @@ export async function POST(req: Request) {
     const plan = catalogItem.plans.find((p) => p.duration === planDuration) || catalogItem.plans[0];
     if (!plan) {
       return NextResponse.json({ success: false, error: "Invalid plan duration." }, { status: 400 });
+    }
+
+    if (plan.pricePkr <= 0) {
+      return NextResponse.json({
+        success: false,
+        error: "This test product has an invalid price (₨0) and cannot be ordered through the provider gateway.",
+      }, { status: 400 });
     }
 
     // Live stock verification check
