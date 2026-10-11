@@ -75,6 +75,7 @@ export function SubscriptionsPage({
 
   // Purchase modal state
   const [purchasingTool, setPurchasingTool] = useState<ToolProduct | null>(null);
+  const [purchaseQuantity, setPurchaseQuantity] = useState<number>(1);
   const [deliveryContact, setDeliveryContact] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [purchaseError, setPurchaseError] = useState<string>("");
@@ -208,6 +209,7 @@ export function SubscriptionsPage({
 
   function openPurchaseModal(tool: ToolProduct) {
     setPurchasingTool(tool);
+    setPurchaseQuantity(1);
     setPurchaseError("");
     setPurchaseSuccess(null);
     setPurchaseDispatch(null);
@@ -233,8 +235,15 @@ export function SubscriptionsPage({
       return;
     }
 
-    if (walletBalancePkr < plan.pricePkr) {
-      setPurchaseError(`Insufficient wallet balance. You need ₨${plan.pricePkr.toLocaleString()}, but your balance is ₨${walletBalancePkr.toLocaleString()}.`);
+    const qty = Math.max(1, purchaseQuantity || 1);
+    if (plan.stockCount !== undefined && plan.stockCount < qty) {
+      setPurchaseError(`Requested quantity (${qty}) exceeds available stock (${plan.stockCount}).`);
+      return;
+    }
+
+    const totalPkr = plan.pricePkr * qty;
+    if (walletBalancePkr < totalPkr) {
+      setPurchaseError(`Insufficient wallet balance. Total for ${qty}x is ₨${totalPkr.toLocaleString()}, but your balance is ₨${walletBalancePkr.toLocaleString()}.`);
       return;
     }
 
@@ -247,6 +256,7 @@ export function SubscriptionsPage({
           toolId: purchasingTool.id,
           planDuration: plan.duration,
           deliveryContact: deliveryContact.trim(),
+          quantity: qty,
         }),
       });
 
@@ -985,8 +995,11 @@ export function SubscriptionsPage({
                     const isPlanOutOfStock = plan.inStock === false || (plan.stockCount !== undefined && plan.stockCount <= 0);
                     const safeBalance = Number(walletBalancePkr) || 0;
                     const safePrice = Number(plan.pricePkr) || 0;
-                    const canAfford = safeBalance >= safePrice;
                     const priceUsd = plan.priceUsd ?? (safePrice > 0 ? Number((safePrice / 278).toFixed(2)) : 0);
+                    const qty = Math.max(1, purchaseQuantity || 1);
+                    const totalSafePrice = safePrice * qty;
+                    const totalUsd = priceUsd * qty;
+                    const canAfford = safeBalance >= totalSafePrice;
 
                     return (
                       <>
@@ -1018,6 +1031,49 @@ export function SubscriptionsPage({
                           </div>
                         )}
 
+                        {/* Order Quantity Selector */}
+                        <div className="flex items-center justify-between rounded-2xl bg-[#070e10] p-3.5 border border-white/10 text-xs">
+                          <div>
+                            <span className="block font-bold text-white">Order Quantity</span>
+                            <span className="text-[10px] text-slate-400">
+                              {plan.stockCount !== undefined ? `Stock available: ${plan.stockCount} units` : "Select units or licenses"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setPurchaseQuantity((q) => Math.max(1, q - 1))}
+                              disabled={purchaseQuantity <= 1}
+                              className="h-8 w-8 rounded-xl border border-white/10 bg-white/5 text-sm font-bold text-slate-200 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center cursor-pointer"
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              max={plan.stockCount && plan.stockCount > 0 ? plan.stockCount : 100}
+                              value={purchaseQuantity}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 1;
+                                const max = plan.stockCount && plan.stockCount > 0 ? plan.stockCount : 100;
+                                setPurchaseQuantity(Math.max(1, Math.min(max, val)));
+                              }}
+                              className="w-14 rounded-xl border border-white/10 bg-black/40 py-1.5 text-center font-mono text-sm font-black text-white focus:border-[#baff00] outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const max = plan.stockCount && plan.stockCount > 0 ? plan.stockCount : 100;
+                                setPurchaseQuantity((q) => Math.min(max, q + 1));
+                              }}
+                              disabled={plan.stockCount !== undefined && purchaseQuantity >= plan.stockCount}
+                              className="h-8 w-8 rounded-xl border border-white/10 bg-white/5 text-sm font-bold text-slate-200 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
                         {/* Price & Wallet Breakdown Card */}
                         <div className="rounded-2xl bg-[#070e10] p-4 border border-white/10 space-y-2.5 text-xs">
                           <div className="flex justify-between items-center">
@@ -1028,9 +1084,9 @@ export function SubscriptionsPage({
                           </div>
 
                           <div className="flex justify-between items-baseline pt-1 border-t border-white/5">
-                            <span className="text-slate-400">Subscription Price:</span>
+                            <span className="text-slate-400">{qty > 1 ? "Unit Price:" : "Subscription Price:"}</span>
                             <div className="text-right">
-                              <span className="font-bold text-[#baff00] text-base">
+                              <span className={`font-bold ${qty > 1 ? "text-slate-200" : "text-[#baff00] text-base"}`}>
                                 ₨{safePrice.toLocaleString()} PKR
                               </span>
                               <span className="text-[11px] text-slate-400 ml-1.5">
@@ -1038,6 +1094,20 @@ export function SubscriptionsPage({
                               </span>
                             </div>
                           </div>
+
+                          {qty > 1 && (
+                            <div className="flex justify-between items-baseline pt-1 border-t border-white/5">
+                              <span className="text-slate-400">Total Price ({qty}x Units):</span>
+                              <div className="text-right">
+                                <span className="font-bold text-[#baff00] text-base">
+                                  ₨{totalSafePrice.toLocaleString()} PKR
+                                </span>
+                                <span className="text-[11px] text-slate-400 ml-1.5">
+                                  (${totalUsd.toFixed(2)} USD)
+                                </span>
+                              </div>
+                            </div>
+                          )}
 
                           <div className="flex justify-between items-baseline pt-1 border-t border-white/5">
                             <span className="text-slate-400">Your Wallet Balance:</span>
@@ -1056,10 +1126,10 @@ export function SubscriptionsPage({
                           <div className="flex justify-between items-center pt-1 border-t border-white/5">
                             <span className="text-slate-400">Remaining Balance:</span>
                             <span className={`font-bold ${canAfford ? "text-[#baff00]" : "text-red-400"}`}>
-                              ₨{Math.max(0, safeBalance - safePrice).toLocaleString()} PKR
+                              ₨{Math.max(0, safeBalance - totalSafePrice).toLocaleString()} PKR
                               {!canAfford && (
                                 <span className="text-[10px] text-red-400 ml-1 font-normal">
-                                  (Short by ₨{(safePrice - safeBalance).toLocaleString()} PKR)
+                                  (Short by ₨{(totalSafePrice - safeBalance).toLocaleString()} PKR)
                                 </span>
                               )}
                             </span>
@@ -1147,7 +1217,7 @@ export function SubscriptionsPage({
                                   <span>Activating...</span>
                                 </>
                               ) : (
-                                <span>Confirm &amp; Pay ₨{safePrice.toLocaleString()} (${priceUsd.toFixed(2)})</span>
+                                <span>Confirm &amp; Pay ₨{totalSafePrice.toLocaleString()} (${totalUsd.toFixed(2)})</span>
                               )}
                             </button>
                           ) : (
@@ -1159,7 +1229,7 @@ export function SubscriptionsPage({
                               }}
                               className="rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-[0_4px_14px_rgba(251,191,36,0.25)]"
                             >
-                              Add Funds to Wallet (₨{(safePrice - safeBalance).toLocaleString()} needed)
+                              Add Funds to Wallet (₨{(totalSafePrice - safeBalance).toLocaleString()} needed)
                             </button>
                           )}
                         </div>

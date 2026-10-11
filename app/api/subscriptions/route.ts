@@ -613,6 +613,7 @@ export async function POST(req: Request) {
     const toolId = String(body.toolId || "").trim();
     const planDuration = String(body.planDuration || "").trim();
     const deliveryContact = String(body.deliveryContact || "").trim();
+    const quantity = Math.max(1, Math.min(100, parseInt(body.quantity) || 1));
 
     if (!toolId) return NextResponse.json({ success: false, error: "Tool ID is required." }, { status: 400 });
     if (!planDuration) return NextResponse.json({ success: false, error: "Plan duration is required." }, { status: 400 });
@@ -701,14 +702,22 @@ export async function POST(req: Request) {
       }, { status: 409 });
     }
 
-    // Check wallet balance
-    const wallet = await getUserWallet(user.id);
-    if (wallet.balancePkr < plan.pricePkr) {
+    if (plan.stockCount !== undefined && plan.stockCount < quantity) {
       return NextResponse.json({
         success: false,
-        error: `Insufficient wallet balance. This subscription costs ₨${plan.pricePkr.toLocaleString()}, but your balance is ₨${wallet.balancePkr.toLocaleString()}.`,
+        error: `Requested quantity (${quantity}) exceeds available stock (${plan.stockCount}).`,
+      }, { status: 400 });
+    }
+
+    // Check wallet balance
+    const totalPricePkr = plan.pricePkr * quantity;
+    const wallet = await getUserWallet(user.id);
+    if (wallet.balancePkr < totalPricePkr) {
+      return NextResponse.json({
+        success: false,
+        error: `Insufficient wallet balance. Total cost for ${quantity}x is ₨${totalPricePkr.toLocaleString()}, but your balance is ₨${wallet.balancePkr.toLocaleString()}.`,
         balancePkr: wallet.balancePkr,
-        requiredPkr: plan.pricePkr,
+        requiredPkr: totalPricePkr,
       }, { status: 402 });
     }
 
@@ -717,7 +726,7 @@ export async function POST(req: Request) {
     let instructions = "";
     let providerOrderCode: string | null = null;
 
-    // Check if fulfillable via GGSoma Telegram Bot Partner API
+    // Check if fulfillable via GGSoma / ElevateX Telegram Bot Partner API
     const isBotProduct = catalogItem.isPartnerBot || Boolean(catalogItem.productSlug) || (config.apiKey && !catalogItem.id.includes("wa_") && !catalogItem.id.includes("tg_"));
 
     if (config.apiKey && isBotProduct) {
@@ -726,7 +735,7 @@ export async function POST(req: Request) {
 
       const botOrder = await createGGSomaOrder({
         productSlug: targetSlug,
-        quantity: 1,
+        quantity,
         externalOrderId,
       });
 
@@ -743,16 +752,16 @@ export async function POST(req: Request) {
       deliveryType = botOrder.deliveryType || "LINK";
 
       if (botOrder.deliveryType === "LINK") {
-        licenseKey = botOrder.delivery?.link || botOrder.orderCode || "Activation Link Sent";
-        instructions = botOrder.delivery?.instructions || `Open this activation link to complete setup: ${licenseKey}`;
+        licenseKey = botOrder.delivery?.content || botOrder.delivery?.link || botOrder.orderCode || "Activation Link Sent";
+        instructions = botOrder.delivery?.instructions || `Open this activation link to complete setup:\n${licenseKey}`;
       } else if (botOrder.deliveryType === "COUPON") {
-        licenseKey = botOrder.delivery?.code || botOrder.orderCode || "Voucher Code";
-        instructions = botOrder.delivery?.instructions || `Redeem this coupon code within the validity period: ${licenseKey}`;
+        licenseKey = botOrder.delivery?.content || botOrder.delivery?.code || botOrder.orderCode || "Voucher Code";
+        instructions = botOrder.delivery?.instructions || `Redeem this coupon code within the validity period:\n${licenseKey}`;
       } else if (botOrder.deliveryType === "READY_ACCOUNT") {
         licenseKey = botOrder.delivery?.content || botOrder.orderCode || "Account Allocated";
         instructions = botOrder.delivery?.instructions || "Use the login credentials above to access your account.";
       } else {
-        licenseKey = botOrder.orderCode || `VEXARO-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+        licenseKey = botOrder.delivery?.content || botOrder.orderCode || `VEXARO-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
         instructions = "Your subscription has been activated successfully via the partner network.";
       }
     } else {
@@ -791,7 +800,7 @@ export async function POST(req: Request) {
          SET balance_pkr = balance_pkr - $1, updated_at = NOW()
          WHERE user_id = $2 AND balance_pkr >= $1
          RETURNING balance_pkr`,
-        [plan.pricePkr, user.id]
+        [totalPricePkr, user.id]
       );
 
       if (updateBal.rows.length === 0) {
@@ -800,12 +809,13 @@ export async function POST(req: Request) {
       }
 
       const newBalancePkr = Number(updateBal.rows[0].balance_pkr);
+      const durationLabel = quantity > 1 ? `${plan.duration} (Qty: ${quantity})` : plan.duration;
 
       // Record transaction
       await client.query(
         `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
          VALUES ($1, 'Debit', $2, 'Subscription', $3, $4)`,
-        [user.id, plan.pricePkr, licenseKey, `Subscription: ${catalogItem.name} (${plan.duration})`]
+        [user.id, totalPricePkr, licenseKey, `Subscription: ${catalogItem.name} (${durationLabel})`]
       );
 
       // Record subscription
@@ -819,8 +829,8 @@ export async function POST(req: Request) {
           catalogItem.id,
           catalogItem.name,
           catalogItem.category,
-          plan.duration,
-          plan.pricePkr,
+          durationLabel,
+          totalPricePkr,
           deliveryContact,
           licenseKey,
           instructions,
@@ -837,8 +847,8 @@ export async function POST(req: Request) {
         subscriptionId: subRes.rows[0].id,
         userEmail: user.email,
         toolName: catalogItem.name,
-        planDuration: plan.duration,
-        pricePkr: plan.pricePkr,
+        planDuration: durationLabel,
+        pricePkr: totalPricePkr,
         deliveryContact,
         deliveryType,
         licenseOrAccess: licenseKey,
