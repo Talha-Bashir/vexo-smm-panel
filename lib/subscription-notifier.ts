@@ -123,7 +123,7 @@ export async function sendSubscriptionEmail(params: {
   instructions?: string;
 }): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   const resendApiKey = await getNotificationSetting("resend_api_key", "RESEND_API_KEY");
-  const senderEmail = (await getNotificationSetting("sender_email", "SENDER_EMAIL")) || "Vexaro Subscriptions <orders@vexarosmm.com>";
+  const senderEmail = (await getNotificationSetting("sender_email", "SENDER_EMAIL")) || "Vexaro Subscriptions <onboarding@resend.dev>";
 
   if (!resendApiKey) {
     return {
