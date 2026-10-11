@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BLOG_POSTS, BLOG_CATEGORIES, getCombinedBlogPosts } from "@/lib/blog-data";
+import { getAllBlogAnalytics, type BlogAnalyticsSummary } from "@/lib/blog-analytics";
+import { BlogFeedTracker } from "@/components/blog-feed-tracker";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +50,21 @@ export const metadata: Metadata = {
   },
 };
 
+const FALLBACK_ANALYTICS: BlogAnalyticsSummary = {
+  totalViews: 0,
+  totalImpressions: 0,
+  totalLikes: 0,
+  totalShares: 0,
+  averageCtr: 0,
+  topArticle: null,
+  articles: {},
+};
+
 export default async function BlogIndexPage() {
-  const allPosts = await getCombinedBlogPosts();
+  const [allPosts, analytics] = await Promise.all([
+    getCombinedBlogPosts(),
+    getAllBlogAnalytics().catch(() => FALLBACK_ANALYTICS),
+  ]);
   const featuredPost = allPosts.find((p) => p.featured) || allPosts[0];
   const regularPosts = allPosts.filter((p) => p.slug !== featuredPost.slug);
 
@@ -172,6 +187,9 @@ export default async function BlogIndexPage() {
 
       {/* Main Content Area */}
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 flex-1 w-full space-y-12">
+        {/* Passive Feed Impression Tracker */}
+        <BlogFeedTracker slugs={allPosts.map((p) => p.slug)} />
+
         {/* Featured Post Banner */}
         {featuredPost && (
           <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-[#0c1815] to-[#07100f] p-6 sm:p-10 shadow-2xl group hover:border-[#baff00]/40 transition-all duration-300">
@@ -188,6 +206,14 @@ export default async function BlogIndexPage() {
                   </span>
                   <span className="text-xs text-slate-400">
                     • {featuredPost.readTime}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#baff00]/10 border border-[#baff00]/20 px-2.5 py-0.5 text-[11px] font-bold text-[#baff00]">
+                    <span>👁️</span>
+                    <span>{(analytics.articles[featuredPost.slug]?.views ?? 0).toLocaleString()} views</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 text-[11px] font-bold text-rose-300">
+                    <span>❤️</span>
+                    <span>{(analytics.articles[featuredPost.slug]?.likes ?? 0).toLocaleString()}</span>
                   </span>
                 </div>
 
@@ -239,7 +265,7 @@ export default async function BlogIndexPage() {
               Latest Growth Strategies &amp; Tutorials
             </h3>
             <span className="text-xs text-slate-400 font-semibold">
-              {BLOG_POSTS.length} Comprehensive Articles
+              {allPosts.length} Articles {analytics.totalViews > 0 ? `• ${analytics.totalViews.toLocaleString()} Total Reads` : ""}
             </span>
           </div>
 
@@ -254,7 +280,14 @@ export default async function BlogIndexPage() {
                     <span className="rounded-lg bg-white/5 border border-white/10 px-2.5 py-1 text-[11px] font-bold text-slate-300">
                       {post.category}
                     </span>
-                    <span>{post.readTime}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-slate-300 font-medium">
+                        <span className="text-xs">👁️</span>
+                        <span>{(analytics.articles[post.slug]?.views ?? 0).toLocaleString()}</span>
+                      </span>
+                      <span>•</span>
+                      <span>{post.readTime}</span>
+                    </div>
                   </div>
 
                   <Link href={`/blog/${post.slug}`}>

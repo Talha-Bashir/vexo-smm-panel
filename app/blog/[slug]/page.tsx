@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BLOG_POSTS, type BlogPost, getCombinedBlogPosts, getPostBySlug } from "@/lib/blog-data";
+import { getArticleMetrics } from "@/lib/blog-analytics";
+import { BlogViewTracker } from "@/components/blog-view-tracker";
+import { BlogReactionWidget } from "@/components/blog-reaction-widget";
 
 export const dynamicParams = true;
 
@@ -67,7 +70,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params;
-  const post = await getPostBySlug(slug);
+  const [post, metrics] = await Promise.all([
+    getPostBySlug(slug),
+    getArticleMetrics(slug).catch(() => ({
+      slug,
+      views: 0,
+      impressions: 0,
+      uniqueReaders: 0,
+      likes: 0,
+      shares: 0,
+      ctr: 0,
+      lastViewedAt: null,
+    })),
+  ]);
 
   if (!post) {
     notFound();
@@ -194,11 +209,26 @@ export default async function BlogPostPage({ params }: PageProps) {
 
       {/* Article Main */}
       <main className="mx-auto max-w-4xl px-4 py-10 sm:py-16 sm:px-6 flex-1 w-full space-y-10">
+        {/* Passive Reader View Tracker */}
+        <BlogViewTracker slug={post.slug} />
+
         {/* Article Header */}
         <header className="space-y-4">
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="rounded-full border border-lime-400/30 bg-lime-400/10 px-3 py-1 text-xs font-bold text-[#baff00]">
               {post.category}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-xs text-slate-300">
+              <span className="text-xs">👁️</span>
+              <span className="font-semibold text-white">{metrics.views.toLocaleString()}</span> reads
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-xs text-slate-300">
+              <span className="text-xs">👥</span>
+              <span className="font-semibold text-white">{metrics.uniqueReaders.toLocaleString()}</span> readers
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 text-xs text-rose-300">
+              <span className="text-xs">❤️</span>
+              <span className="font-semibold text-rose-200">{metrics.likes}</span> helpful
             </span>
             <span className="text-xs text-slate-400">• {post.readTime}</span>
             <span className="text-xs text-slate-400">• Updated {post.updatedAt}</span>
@@ -325,6 +355,13 @@ export default async function BlogPostPage({ params }: PageProps) {
             </section>
           ))}
         </article>
+
+        {/* Reader Feedback & Helpful Reaction Widget */}
+        <BlogReactionWidget
+          slug={post.slug}
+          initialLikes={metrics.likes}
+          initialShares={metrics.shares}
+        />
 
         {/* In-Article Promotion Card */}
         <div className="rounded-3xl border border-[#baff00]/30 bg-gradient-to-br from-[#0c1a16] via-[#091512] to-[#07100f] p-8 sm:p-10 shadow-2xl text-center space-y-4">

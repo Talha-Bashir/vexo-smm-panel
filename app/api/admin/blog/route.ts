@@ -3,6 +3,7 @@ import { requireAdminPermission } from "@/lib/admin-guard";
 import { db } from "@/lib/db";
 import { ensureAdminSchema, logAdminActivity } from "@/lib/admin";
 import { BLOG_POSTS } from "@/lib/blog-data";
+import { getAllBlogAnalytics, updateArticleMetricsAdmin } from "@/lib/blog-analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +22,16 @@ export async function GET() {
 
     await ensureAdminSchema();
 
-    const res = await db.query(
-      `SELECT id, slug, title, meta_title, meta_description, summary, category, tags,
-              author_name, author_role, read_time, cover_icon, published, content_markdown,
-              created_at, updated_at
-       FROM vexo_blog_posts
-       ORDER BY created_at DESC`
-    );
+    const [res, analytics] = await Promise.all([
+      db.query(
+        `SELECT id, slug, title, meta_title, meta_description, summary, category, tags,
+                author_name, author_role, read_time, cover_icon, published, content_markdown,
+                created_at, updated_at
+         FROM vexo_blog_posts
+         ORDER BY created_at DESC`
+      ),
+      getAllBlogAnalytics(),
+    ]);
 
     const dbPosts = res.rows.map((r) => ({
       id: r.id,
@@ -71,9 +75,30 @@ export async function GET() {
       updatedAt: p.updatedAt,
     }));
 
+    const allArticles = [...dbPosts, ...defaultArticles].map((p) => ({
+      ...p,
+      metrics: analytics.articles[p.slug] || {
+        slug: p.slug,
+        views: 0,
+        impressions: 0,
+        uniqueReaders: 0,
+        likes: 0,
+        shares: 0,
+        ctr: 0,
+      },
+    }));
+
     return NextResponse.json({
       success: true,
-      posts: [...dbPosts, ...defaultArticles],
+      posts: allArticles,
+      analyticsSummary: {
+        totalViews: analytics.totalViews,
+        totalImpressions: analytics.totalImpressions,
+        totalLikes: analytics.totalLikes,
+        totalShares: analytics.totalShares,
+        averageCtr: analytics.averageCtr,
+        topArticle: analytics.topArticle,
+      },
     });
   } catch (err: unknown) {
     console.error("GET /api/admin/blog error:", err);
@@ -167,6 +192,21 @@ export async function PATCH(req: Request) {
 
     if (!id && !slug) {
       return NextResponse.json({ success: false, error: "Post ID or slug is required." }, { status: 400 });
+    }
+
+    // Check if updating metrics directly
+    if (body.action === "calibrate_metrics" && slug) {
+      const updatedMetrics = await updateArticleMetricsAdmin(slug, {
+        views: body.views !== undefined ? Number(body.views) : undefined,
+        impressions: body.impressions !== undefined ? Number(body.impressions) : undefined,
+        likes: body.likes !== undefined ? Number(body.likes) : undefined,
+      });
+      await logAdminActivity(Number(g.user!.id), "blog_calibrate_metrics", "blog_post", slug, body);
+      return NextResponse.json({
+        success: true,
+        message: "Article metrics updated successfully.",
+        metrics: updatedMetrics,
+      });
     }
 
     const title = String(body.title || "").trim();
