@@ -740,10 +740,11 @@ export async function POST(req: Request) {
       });
 
       if (!botOrder.ok) {
-        const errorMsg = botOrder.error?.message || "Product is currently out of stock with upstream provider.";
+        const rawMsg = botOrder.error?.message || "Product is currently out of stock with upstream provider.";
+        const cleanMsg = rawMsg.replace(/\.+$/, "");
         return NextResponse.json({
           success: false,
-          error: `Provider Fulfillment Notice: ${errorMsg}. Your wallet balance was not charged.`,
+          error: `Provider Fulfillment Notice: ${cleanMsg}. Your wallet balance was not charged.`,
           code: botOrder.error?.code || "FAILED",
         }, { status: 400 });
       }

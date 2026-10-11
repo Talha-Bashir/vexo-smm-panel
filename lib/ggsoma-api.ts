@@ -159,7 +159,8 @@ export async function getGGSomaProducts(provider?: string): Promise<{ ok: boolea
     .filter((p) => {
       const price = parseFloat(p.price_usdt || "0");
       const isTestZero = p.name.toUpperCase().includes("API ORDER TESTING") || price <= 0;
-      return !isTestZero;
+      const isManual = p.id.startsWith("MAN-");
+      return !isTestZero && !isManual;
     })
     .map((p, idx) => {
       const rawDelivery = (p.description || "").toLowerCase().includes("link") || p.name.toLowerCase().includes("link")
