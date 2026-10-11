@@ -31,7 +31,14 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const response = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", p);
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 
   // Attach CORS headers to all API responses
   if (p.startsWith("/api/")) {
@@ -45,14 +52,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/",
-    "/dashboard",
-    "/dashboard/:path*",
-    "/login",
-    "/signup",
-    "/forgot-password",
-    "/admin",
-    "/admin/:path*",
-    "/api/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|robots.txt|sitemap.xml|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

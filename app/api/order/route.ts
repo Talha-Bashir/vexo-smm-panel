@@ -15,6 +15,8 @@ import {
 } from "@/lib/wallet";
 import { getCachedProviderBalances, resolveEffectiveServicePricing } from "@/lib/balance-routing";
 
+import { checkMaintenanceApiBlock } from "@/lib/maintenance";
+
 type RizviService = {
   service: number;
   name: string;
@@ -29,6 +31,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const maintenanceBlock = await checkMaintenanceApiBlock();
+    if (maintenanceBlock) return maintenanceBlock;
+
     const user = await getRequestUser();
     if (!user) {
       return NextResponse.json({ success: false, error: "Authentication required." }, { status: 401 });

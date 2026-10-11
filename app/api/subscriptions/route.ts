@@ -596,8 +596,13 @@ export async function GET() {
   }
 }
 
+import { checkMaintenanceApiBlock } from "@/lib/maintenance";
+
 export async function POST(req: Request) {
   try {
+    const maintenanceBlock = await checkMaintenanceApiBlock();
+    if (maintenanceBlock) return maintenanceBlock;
+
     await ensureSubscriptionsSchema();
     const user = await getRequestUser();
     if (!user) {

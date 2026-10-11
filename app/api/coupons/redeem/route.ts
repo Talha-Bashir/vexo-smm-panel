@@ -9,9 +9,14 @@ export async function OPTIONS(request: Request) {
   return handleCorsPreflight(request.headers.get("origin"));
 }
 
+import { checkMaintenanceApiBlock } from "@/lib/maintenance";
+
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
+
+  const maintenanceBlock = await checkMaintenanceApiBlock();
+  if (maintenanceBlock) return maintenanceBlock;
 
   try {
     const user = await getRequestUser();

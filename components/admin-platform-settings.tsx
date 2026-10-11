@@ -150,6 +150,40 @@ export function PlatformSettingsView() {
     }
   }
 
+  const [instantToggling, setInstantToggling] = useState(false);
+
+  async function handleToggleMaintenance(desiredState: "true" | "false") {
+    setInstantToggling(true);
+    setMsg("");
+    setErr("");
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          site_maintenance_mode: desiredState,
+          site_maintenance_message: maintenanceMsg,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to update maintenance mode");
+      }
+      setMaintenanceMode(desiredState);
+      setMsg(
+        desiredState === "true"
+          ? "⚠️ Maintenance Mode is now ACTIVE. Public visitors see the full-screen Maintenance screen."
+          : "✓ Maintenance Mode is now OFF. Platform is online and accessible to all visitors."
+      );
+      setTimeout(() => setMsg(""), 6000);
+    } catch (e: any) {
+      setErr(e.message || "Failed to toggle maintenance mode");
+    } finally {
+      setInstantToggling(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* 1. Header Card */}
@@ -183,30 +217,48 @@ export function PlatformSettingsView() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Maintenance Mode */}
         <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 text-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400 text-base">
                 ⚠️
               </span>
               <div>
-                <h3 className="text-sm font-black text-white">Maintenance Mode</h3>
-                <p className="text-[11px] text-slate-400">Display maintenance banner across public and customer pages.</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black text-white">Maintenance Mode</h3>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                      maintenanceMode === "true"
+                        ? "border border-amber-500/40 bg-amber-500/20 text-amber-300 animate-pulse"
+                        : "border border-emerald-500/40 bg-emerald-500/20 text-emerald-300"
+                    }`}
+                  >
+                    {maintenanceMode === "true" ? "ACTIVE (LOCKED)" : "OFF (ONLINE)"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Locks down public and customer pages with a full-screen Maintenance screen. Only admins can access the site.
+                </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setMaintenanceMode(maintenanceMode === "true" ? "false" : "true")}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition cursor-pointer ${
-                maintenanceMode === "true" ? "bg-amber-400" : "bg-white/20"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-[#07100f] transition ${
-                  maintenanceMode === "true" ? "translate-x-6" : "translate-x-1"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={instantToggling || loading}
+                onClick={() => handleToggleMaintenance(maintenanceMode === "true" ? "false" : "true")}
+                className={`rounded-xl px-4 py-2 text-xs font-black transition cursor-pointer disabled:opacity-50 shadow-md ${
+                  maintenanceMode === "true"
+                    ? "bg-emerald-400 text-[#07100f] hover:bg-emerald-300"
+                    : "bg-amber-400 text-[#07100f] hover:bg-amber-300"
                 }`}
-              />
-            </button>
+              >
+                {instantToggling
+                  ? "Updating..."
+                  : maintenanceMode === "true"
+                  ? "🟢 Turn OFF Maintenance (Go Online)"
+                  : "⚠️ Turn ON Maintenance (Lock Site)"}
+              </button>
+            </div>
           </div>
 
           <div>
@@ -217,7 +269,7 @@ export function PlatformSettingsView() {
               type="text"
               value={maintenanceMsg}
               onChange={(e) => setMaintenanceMsg(e.target.value)}
-              placeholder="We are upgrading our servers. Orders continue executing normally."
+              placeholder="We are upgrading our servers and provider networks. We will be back online shortly!"
               className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070d0d] px-3.5 py-2.5 text-xs text-white focus:border-[#baff00] outline-none"
             />
           </div>

@@ -1,8 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import { GlobalSupportWidget } from "@/components/global-support-widget";
+import { MaintenanceScreen } from "@/components/maintenance-screen";
+import { getRequestUser } from "@/lib/request-user";
 import "./globals.css";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -358,6 +364,20 @@ export default async function RootLayout({
   const isMaintenance = settings.site_maintenance_mode === "true";
   const maintenanceMsg = settings.site_maintenance_message;
 
+  // Resolve request pathname and user role for maintenance mode logic
+  const headerList = await headers();
+  const pathname = headerList.get("x-pathname") || "";
+  const user = await getRequestUser().catch(() => null);
+  const isAdmin = Boolean(user && (user.is_admin || user.is_super_admin));
+  const isStaffRoute =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/admin");
+
+  // Determine whether to display the full maintenance screen
+  const showMaintenanceScreen = isMaintenance && !isAdmin && !isStaffRoute;
+
   return (
     <html
       lang="en"
@@ -466,29 +486,50 @@ fbq('track', 'PageView');`,
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className={`${plusJakartaSans.className} min-h-full flex flex-col bg-[#0a1110] text-slate-100 font-sans`} suppressHydrationWarning>
-        {/* Maintenance Banner */}
-        {isMaintenance && (
-          <aside aria-label="System Notice" className="relative z-50 flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-center text-xs font-bold text-amber-300">
-            <span>⚠️</span>
-            <span>{maintenanceMsg || "Platform Maintenance Mode is currently active."}</span>
-          </aside>
-        )}
-        {/* Broadcast Announcement Banner */}
-        {!isMaintenance && noticeEnabled && noticeText && (
-          <aside aria-label="Special Announcement" className="relative z-50 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 via-[#baff00] to-emerald-500 px-4 py-2 text-center text-xs font-black text-[#07100f] shadow-md">
-            <span>📢</span>
-            <span>{noticeText}</span>
-          </aside>
-        )}
-        {children}
-        {customBody && (
-          <div
-            id="vexo-custom-body-injection"
-            dangerouslySetInnerHTML={{ __html: customBody }}
+      <body className={`${plusJakartaSans.className} min-h-full flex flex-col bg-[#07100f] text-slate-100 font-sans`} suppressHydrationWarning>
+        {showMaintenanceScreen ? (
+          <MaintenanceScreen
+            message={maintenanceMsg}
+            whatsappNumber={settings.support_whatsapp_number}
+            telegramUsername={settings.support_telegram_username}
+            supportEmail={settings.support_email}
           />
+        ) : (
+          <>
+            {/* Maintenance Mode: Admin Preview Banner */}
+            {isMaintenance && isAdmin && (
+              <aside aria-label="Admin Maintenance Preview" className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/40 bg-amber-500/20 px-4 py-2 text-center text-xs font-black text-amber-200 backdrop-blur-md">
+                <div className="flex items-center gap-2 mx-auto">
+                  <span>⚠️</span>
+                  <span>MAINTENANCE MODE ACTIVE (ADMIN PREVIEW MODE) — Public visitors see the full-screen Maintenance screen.</span>
+                </div>
+                <a
+                  href="/admin?tab=Settings"
+                  className="rounded-lg bg-amber-400 px-2.5 py-1 text-[11px] font-black text-[#07100f] hover:bg-amber-300 ml-auto"
+                >
+                  Turn Off in Settings
+                </a>
+              </aside>
+            )}
+
+            {/* Broadcast Announcement Banner */}
+            {!isMaintenance && noticeEnabled && noticeText && (
+              <aside aria-label="Special Announcement" className="relative z-50 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 via-[#baff00] to-emerald-500 px-4 py-2 text-center text-xs font-black text-[#07100f] shadow-md">
+                <span>📢</span>
+                <span>{noticeText}</span>
+              </aside>
+            )}
+
+            {children}
+            {customBody && (
+              <div
+                id="vexo-custom-body-injection"
+                dangerouslySetInnerHTML={{ __html: customBody }}
+              />
+            )}
+            <GlobalSupportWidget />
+          </>
         )}
-        <GlobalSupportWidget />
         <Analytics />
       </body>
     </html>

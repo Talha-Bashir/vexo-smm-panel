@@ -110,6 +110,8 @@ export default function Admin() {
   const [balancesLastChecked, setBalancesLastChecked] = useState<string | null>(null);
   const [balancesError, setBalancesError] = useState<string | null>(null);
   const [syncingOrders, setSyncingOrders] = useState(false);
+  const [maintenanceActive, setMaintenanceActive] = useState(false);
+  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
 
   async function api(url: string, init?: RequestInit) {
     const r = await fetch(url, { ...init, credentials: "include", cache: "no-store" });
@@ -150,6 +152,12 @@ export default function Admin() {
   async function load() {
     setError("");
     try {
+      api("/api/admin/settings")
+        .then((sData) => {
+          setMaintenanceActive(sData?.settings?.site_maintenance_mode === "true");
+        })
+        .catch(() => {});
+
       if (tab === "Dashboard") {
         setStats((await api("/api/admin/overview")).stats);
         fetchProviderBalances().catch(() => {});
@@ -557,6 +565,56 @@ export default function Admin() {
             </button>
           </div>
         </header>
+
+        {maintenanceActive && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/50 bg-amber-500/10 p-4 text-amber-200 shadow-[0_0_30px_rgba(245,158,11,0.15)]">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-xl border border-amber-500/30">
+                ⚠️
+              </span>
+              <div>
+                <p className="text-sm font-black text-amber-300 tracking-wide uppercase">
+                  Platform Maintenance Mode is Currently Active
+                </p>
+                <p className="text-xs text-amber-200/80">
+                  All public visitors and customers see the Maintenance screen. Only administrators can access the site.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={togglingMaintenance}
+                onClick={async () => {
+                  setTogglingMaintenance(true);
+                  try {
+                    await api("/api/admin/settings", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ site_maintenance_mode: "false" }),
+                    });
+                    setMaintenanceActive(false);
+                    alert("✓ Platform Maintenance Mode has been turned OFF. The website is now online for all visitors!");
+                  } catch (e: any) {
+                    alert("Failed to turn off maintenance mode: " + (e?.message || "Error"));
+                  } finally {
+                    setTogglingMaintenance(false);
+                  }
+                }}
+                className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {togglingMaintenance ? "Disabling..." : "🟢 Turn Off Maintenance (Go Online)"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("Settings")}
+                className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-amber-400/20 transition cursor-pointer"
+              >
+                Settings
+              </button>
+            </div>
+          </div>
+        )}
 
         <nav className="mb-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {visibleTabs.map((t) => (

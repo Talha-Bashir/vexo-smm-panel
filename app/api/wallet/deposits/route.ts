@@ -13,8 +13,13 @@ const METHODS = new Set([
   "Binance (USDT / Pay ID)",
 ]);
 
+import { checkMaintenanceApiBlock } from "@/lib/maintenance";
+
 export async function POST(request: Request) {
   try {
+    const maintenanceBlock = await checkMaintenanceApiBlock();
+    if (maintenanceBlock) return maintenanceBlock;
+
     const user = await getRequestUser();
     if (!user) {
       return NextResponse.json({ success: false, error: "Authentication required." }, { status: 401 });
