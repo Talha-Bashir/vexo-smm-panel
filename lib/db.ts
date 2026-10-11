@@ -49,6 +49,7 @@ export async function ensureDatabase() {
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{}';
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES vexo_users(id) ON DELETE SET NULL;
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(32);
 
         CREATE INDEX IF NOT EXISTS vexo_users_referral_code_idx ON vexo_users(referral_code);
         CREATE INDEX IF NOT EXISTS vexo_users_referred_by_idx ON vexo_users(referred_by);

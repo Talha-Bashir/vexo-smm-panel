@@ -88,15 +88,21 @@ export async function GET() {
     let senderEmail = "";
     let whatsappGatewayUrl = "";
     let whatsappGatewayToken = "";
+    let brevoApiKey = "";
+    let brevoWhatsappTemplateId = "";
+    let brevoSenderNumber = "";
     try {
       const notifRes = await db.query(
-        `SELECT key, value FROM vexo_platform_settings WHERE key IN ('resend_api_key', 'sender_email', 'whatsapp_gateway_url', 'whatsapp_gateway_token')`
+        `SELECT key, value FROM vexo_platform_settings WHERE key IN ('resend_api_key', 'sender_email', 'whatsapp_gateway_url', 'whatsapp_gateway_token', 'brevo_api_key', 'brevo_whatsapp_template_id', 'brevo_sender_number')`
       );
       for (const row of notifRes.rows) {
         if (row.key === "resend_api_key") resendApiKey = row.value || "";
         if (row.key === "sender_email") senderEmail = row.value || "";
         if (row.key === "whatsapp_gateway_url") whatsappGatewayUrl = row.value || "";
         if (row.key === "whatsapp_gateway_token") whatsappGatewayToken = row.value || "";
+        if (row.key === "brevo_api_key") brevoApiKey = row.value || "";
+        if (row.key === "brevo_whatsapp_template_id") brevoWhatsappTemplateId = row.value || "";
+        if (row.key === "brevo_sender_number") brevoSenderNumber = row.value || "";
       }
     } catch {}
 
@@ -114,6 +120,9 @@ export async function GET() {
         senderEmail,
         whatsappGatewayUrl,
         whatsappGatewayToken,
+        brevoApiKey,
+        brevoWhatsappTemplateId,
+        brevoSenderNumber,
       },
       health,
       balance,
@@ -201,6 +210,30 @@ export async function POST(req: Request) {
              VALUES ('whatsapp_gateway_token', $1, NOW(), $2)
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
             [String(body.whatsappGatewayToken).trim(), g.user?.id || null]
+          );
+        }
+        if (body.brevoApiKey !== undefined) {
+          await client.query(
+            `INSERT INTO vexo_platform_settings (key, value, updated_at, updated_by)
+             VALUES ('brevo_api_key', $1, NOW(), $2)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+            [String(body.brevoApiKey).trim(), g.user?.id || null]
+          );
+        }
+        if (body.brevoWhatsappTemplateId !== undefined) {
+          await client.query(
+            `INSERT INTO vexo_platform_settings (key, value, updated_at, updated_by)
+             VALUES ('brevo_whatsapp_template_id', $1, NOW(), $2)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+            [String(body.brevoWhatsappTemplateId).trim(), g.user?.id || null]
+          );
+        }
+        if (body.brevoSenderNumber !== undefined) {
+          await client.query(
+            `INSERT INTO vexo_platform_settings (key, value, updated_at, updated_by)
+             VALUES ('brevo_sender_number', $1, NOW(), $2)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+            [String(body.brevoSenderNumber).trim(), g.user?.id || null]
           );
         }
       } finally {

@@ -5674,6 +5674,9 @@ function SubscriptionsAdmin({
   const [senderEmailInput, setSenderEmailInput] = useState("");
   const [waGatewayUrlInput, setWaGatewayUrlInput] = useState("");
   const [waGatewayTokenInput, setWaGatewayTokenInput] = useState("");
+  const [brevoApiKeyInput, setBrevoApiKeyInput] = useState("");
+  const [brevoTemplateIdInput, setBrevoTemplateIdInput] = useState("");
+  const [brevoSenderNumberInput, setBrevoSenderNumberInput] = useState("");
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [testLoading, setTestLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -5692,6 +5695,9 @@ function SubscriptionsAdmin({
         if (res.config.senderEmail) setSenderEmailInput(res.config.senderEmail);
         if (res.config.whatsappGatewayUrl) setWaGatewayUrlInput(res.config.whatsappGatewayUrl);
         if (res.config.whatsappGatewayToken) setWaGatewayTokenInput(res.config.whatsappGatewayToken);
+        if (res.config.brevoApiKey) setBrevoApiKeyInput(res.config.brevoApiKey);
+        if (res.config.brevoWhatsappTemplateId) setBrevoTemplateIdInput(String(res.config.brevoWhatsappTemplateId));
+        if (res.config.brevoSenderNumber) setBrevoSenderNumberInput(res.config.brevoSenderNumber);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load partner bot details");
@@ -5746,6 +5752,9 @@ function SubscriptionsAdmin({
           senderEmail: senderEmailInput.trim(),
           whatsappGatewayUrl: waGatewayUrlInput.trim(),
           whatsappGatewayToken: waGatewayTokenInput.trim(),
+          brevoApiKey: brevoApiKeyInput.trim(),
+          brevoWhatsappTemplateId: brevoTemplateIdInput.trim(),
+          brevoSenderNumber: brevoSenderNumberInput.trim(),
         }),
       });
       setSaveSuccess(true);
@@ -6107,6 +6116,73 @@ function SubscriptionsAdmin({
               />
               <p className="text-[10px] text-slate-500">
                 Direct 1-click WhatsApp buttons work automatically in admin table without gateway.
+              </p>
+            </div>
+
+            {/* Brevo WhatsApp Integration */}
+            <div className="sm:col-span-2 pt-3 border-t border-white/10 mt-2">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">💬</span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                  Brevo WhatsApp Automation &amp; Events
+                </h4>
+                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300 border border-emerald-500/30">
+                  Meta Official API
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+                When customers enter their WhatsApp number at checkout or save it in their profile, Vexaro automatically saves their contact to Brevo with the <strong>WHATSAPP</strong> attribute and fires the <strong>order_completed</strong> event to trigger your Brevo automated WhatsApp campaign.
+              </p>
+            </div>
+
+            {/* Brevo API Key */}
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                Brevo API Key (v3)
+              </label>
+              <input
+                type="password"
+                value={brevoApiKeyInput}
+                onChange={(e) => setBrevoApiKeyInput(e.target.value)}
+                placeholder="xkeysib-..."
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-emerald-400"
+              />
+              <p className="text-[10px] text-slate-500">
+                Get your free API key from Brevo dashboard &gt; SMTP &amp; API &gt; API Keys (<a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">brevo.com ↗</a>)
+              </p>
+            </div>
+
+            {/* Brevo WhatsApp Template ID */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                Brevo WhatsApp Template ID (Optional)
+              </label>
+              <input
+                type="number"
+                value={brevoTemplateIdInput}
+                onChange={(e) => setBrevoTemplateIdInput(e.target.value)}
+                placeholder="e.g. 1"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-emerald-400"
+              />
+              <p className="text-[10px] text-slate-500">
+                Optional: ID of approved Meta template if using direct Brevo API instead of event automation
+              </p>
+            </div>
+
+            {/* Brevo Sender Number */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                Brevo Sender WhatsApp Number (Optional)
+              </label>
+              <input
+                type="text"
+                value={brevoSenderNumberInput}
+                onChange={(e) => setBrevoSenderNumberInput(e.target.value)}
+                placeholder="e.g. 923176437013"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-emerald-400"
+              />
+              <p className="text-[10px] text-slate-500">
+                Your verified Meta Business WhatsApp number with country code
               </p>
             </div>
           </div>

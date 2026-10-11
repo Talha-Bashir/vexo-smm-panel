@@ -11,6 +11,7 @@ import {
   type GGSomaProduct,
 } from "@/lib/ggsoma-api";
 import { dispatchSubscriptionNotifications } from "@/lib/subscription-notifier";
+import { triggerOrderWhatsAppBrevo } from "@/lib/brevo";
 
 export const dynamic = "force-dynamic";
 
@@ -864,6 +865,21 @@ export async function POST(req: Request) {
           adminAlertSent: false,
         };
       });
+
+      // Trigger Brevo WhatsApp contact sync and order_completed event
+      const subWhatsApp = (dispatch?.contactType === "whatsapp" ? deliveryContact : user.whatsapp) || "";
+      if (subWhatsApp) {
+        triggerOrderWhatsAppBrevo({
+          email: user.email,
+          name: user.name,
+          whatsappPhone: subWhatsApp,
+          orderId: subRes.rows[0].id,
+          serviceName: catalogItem.name,
+          quantity,
+          amountPkr: totalPricePkr,
+          platform: "Subscriptions",
+        }).catch((bErr) => console.warn("[Subscriptions] Brevo automation warning:", bErr));
+      }
 
       return NextResponse.json({
         success: true,

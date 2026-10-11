@@ -96,6 +96,7 @@ export function ensureWalletSchema() {
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS provider_response JSONB;
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS start_count VARCHAR(50);
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS remains VARCHAR(50);
+        ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(32);
 
         CREATE TABLE IF NOT EXISTS vexo_order_refills (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -212,6 +213,7 @@ export async function reserveWalletForOrder(input: {
   quantity: number;
   ratePkr: number;
   chargePkr: number;
+  whatsapp?: string;
 }) {
   await ensureWalletSchema();
 
@@ -267,8 +269,8 @@ export async function reserveWalletForOrder(input: {
 
     const orderResult = await client.query(
       `INSERT INTO vexo_orders
-        (user_id, idempotency_key, service_id, service_name, platform, link, quantity, rate_pkr, rate, charge_pkr, bonus_charge_pkr, real_charge_pkr, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11, 'Payment Reserved')
+        (user_id, idempotency_key, service_id, service_name, platform, link, quantity, rate_pkr, rate, charge_pkr, bonus_charge_pkr, real_charge_pkr, status, whatsapp)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11, 'Payment Reserved', $12)
        RETURNING id, charge_pkr, bonus_charge_pkr, real_charge_pkr, status, created_at`,
       [
         input.userId,
@@ -282,6 +284,7 @@ export async function reserveWalletForOrder(input: {
         chargePkr,
         bonusChargePkr,
         realChargePkr,
+        input.whatsapp || null,
       ]
     );
 
