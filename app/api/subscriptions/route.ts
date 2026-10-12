@@ -463,8 +463,15 @@ async function ensureSubscriptionsSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
-    ALTER TABLE vexo_tool_subscriptions ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(50) DEFAULT 'LICENSE_KEY';
-    ALTER TABLE vexo_tool_subscriptions ADD COLUMN IF NOT EXISTS provider_order_code VARCHAR(100);
+    ALTER TABLE vexo_tool_subscriptions ADD COLUMN IF NOT EXISTS delivery_type TEXT DEFAULT 'LICENSE_KEY';
+    ALTER TABLE vexo_tool_subscriptions ADD COLUMN IF NOT EXISTS provider_order_code TEXT;
+    ALTER TABLE vexo_tool_subscriptions ALTER COLUMN tool_id TYPE TEXT;
+    ALTER TABLE vexo_tool_subscriptions ALTER COLUMN tool_name TYPE TEXT;
+    ALTER TABLE vexo_tool_subscriptions ALTER COLUMN category TYPE TEXT;
+    ALTER TABLE vexo_tool_subscriptions ALTER COLUMN plan_duration TYPE TEXT;
+    ALTER TABLE vexo_tool_subscriptions ALTER COLUMN delivery_contact TYPE TEXT;
+    ALTER TABLE vexo_tool_subscriptions ALTER COLUMN delivery_type TYPE TEXT;
+    ALTER TABLE vexo_tool_subscriptions ALTER COLUMN provider_order_code TYPE TEXT;
 
     CREATE INDEX IF NOT EXISTS vexo_tool_subs_user_idx ON vexo_tool_subscriptions(user_id, created_at DESC);
   `);
@@ -814,14 +821,7 @@ export async function POST(req: Request) {
       const newBalancePkr = Number(updateBal.rows[0].balance_pkr);
       const durationLabel = quantity > 1 ? `${plan.duration} (Qty: ${quantity})` : plan.duration;
 
-      // Record transaction
-      await client.query(
-        `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
-         VALUES ($1, 'Debit', $2, 'Subscription', $3, $4)`,
-        [user.id, totalPricePkr, licenseKey, `Subscription: ${catalogItem.name} (${durationLabel})`]
-      );
-
-      // Record subscription
+      // 1. Record subscription first
       const subRes = await client.query(
         `INSERT INTO vexo_tool_subscriptions
          (user_id, tool_id, tool_name, category, plan_duration, price_pkr, delivery_contact, status, license_or_access, instructions, delivery_type, provider_order_code, expires_at)
@@ -841,6 +841,15 @@ export async function POST(req: Request) {
           providerOrderCode,
           expiresAt,
         ]
+      );
+
+      const subscriptionId = subRes.rows[0].id;
+
+      // 2. Record wallet debit transaction referencing subscription ID
+      await client.query(
+        `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
+         VALUES ($1, 'Debit', $2, 'Subscription', $3, $4)`,
+        [user.id, totalPricePkr, String(subscriptionId), `Subscription: ${catalogItem.name} (${durationLabel})`]
       );
 
       await client.query("COMMIT");

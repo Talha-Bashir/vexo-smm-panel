@@ -47,11 +47,14 @@ export function ensureWalletSchema() {
           user_id INTEGER NOT NULL REFERENCES vexo_users(id) ON DELETE CASCADE,
           type VARCHAR(20) NOT NULL CHECK (type IN ('Credit', 'Debit', 'Refund')),
           amount_pkr NUMERIC(14,2) NOT NULL CHECK (amount_pkr > 0),
-          reference_type VARCHAR(40),
-          reference_id VARCHAR(120),
+          reference_type TEXT,
+          reference_id TEXT,
           description TEXT NOT NULL,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+
+        ALTER TABLE vexo_wallet_transactions ALTER COLUMN reference_id TYPE TEXT;
+        ALTER TABLE vexo_wallet_transactions ALTER COLUMN reference_type TYPE TEXT;
 
         CREATE INDEX IF NOT EXISTS vexo_wallet_transactions_user_created_idx
           ON vexo_wallet_transactions(user_id, created_at DESC);
