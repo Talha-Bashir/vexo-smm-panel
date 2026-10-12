@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { parseAccessDetails } from "@/lib/account-credentials-parser";
+import { StructuredCredentialsCard } from "@/components/structured-credentials-card";
 
 export interface ToolPlan {
   duration: string;
@@ -45,27 +47,8 @@ export interface UserSubscription {
   created_at: string;
 }
 
-function getAccessDetails(license: string, deliveryType?: string) {
-  const text = (license || "").trim();
-  const cleanedText = text.replace(/^__CREDENTIAL__:\s*/i, "").trim();
-  const isUrl = text.startsWith("http://") || text.startsWith("https://");
-
-  const extractedUrlMatch = cleanedText.match(/https?:\/\/[^\s|]+/i);
-  const embeddedUrl = extractedUrlMatch ? extractedUrlMatch[0] : null;
-
-  const isLink = (deliveryType === "LINK" && isUrl) || isUrl;
-  const isCoupon = deliveryType === "COUPON";
-  const isReadyAccount =
-    deliveryType === "READY_ACCOUNT" ||
-    (!isLink && !isCoupon && (text.includes(":") || text.includes("@") || text.includes("__CREDENTIAL__")));
-
-  return {
-    raw: cleanedText,
-    isLink,
-    isCoupon,
-    isReadyAccount,
-    url: isLink ? text : embeddedUrl,
-  };
+function getAccessDetails(license: string, deliveryType?: string, toolName?: string) {
+  return parseAccessDetails(license, deliveryType, toolName);
 }
 
 export function SubscriptionsPage({
@@ -697,7 +680,7 @@ export function SubscriptionsPage({
                 const expiresDate = new Date(sub.expires_at);
                 const isExpired = expiresDate.getTime() < Date.now();
                 const daysRemaining = Math.max(0, Math.ceil((expiresDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-                const details = getAccessDetails(sub.license_or_access, sub.delivery_type);
+                const details = getAccessDetails(sub.license_or_access, sub.delivery_type, sub.tool_name);
 
                 return (
                   <div
@@ -788,33 +771,11 @@ export function SubscriptionsPage({
                           </div>
                         </div>
                       ) : details.isReadyAccount ? (
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] uppercase font-bold text-purple-400">👤 Account Login Credentials</span>
-                            <div className="flex items-center gap-1.5">
-                              {details.url && (
-                                <a
-                                  href={details.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 flex items-center gap-1"
-                                >
-                                  <span>Webmail / 2FA ↗</span>
-                                </a>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(details.raw, "Account credentials copied!")}
-                                className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/30"
-                              >
-                                📋 Copy All
-                              </button>
-                            </div>
-                          </div>
-                          <div className="rounded-lg border border-purple-500/30 bg-[#120717] p-2.5 font-mono text-xs text-purple-200 select-all whitespace-pre-wrap break-all leading-relaxed">
-                            {details.raw}
-                          </div>
-                        </div>
+                        <StructuredCredentialsCard
+                          details={details}
+                          toolName={sub.tool_name}
+                          onCopy={copyToClipboard}
+                        />
                       ) : (
                         <div>
                           <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">License / Access Key</span>
@@ -887,7 +848,11 @@ export function SubscriptionsPage({
 
                 <div className="rounded-xl border border-white/10 bg-[#060c0d] p-4 text-left space-y-3 text-xs">
                   {(() => {
-                    const details = getAccessDetails(purchaseSuccess.license_or_access, purchaseSuccess.delivery_type);
+                    const details = getAccessDetails(
+                      purchaseSuccess.license_or_access,
+                      purchaseSuccess.delivery_type,
+                      purchasingTool?.name || purchaseSuccess.tool_name
+                    );
                     if (details.isLink) {
                       return (
                         <div>
@@ -937,33 +902,11 @@ export function SubscriptionsPage({
                     }
                     if (details.isReadyAccount) {
                       return (
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] uppercase font-bold text-purple-400">👤 Account Login Credentials</span>
-                            <div className="flex items-center gap-2">
-                              {details.url && (
-                                <a
-                                  href={details.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="rounded bg-cyan-500/20 px-2.5 py-1 text-[10px] font-bold text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 flex items-center gap-1"
-                                >
-                                  <span>Webmail / 2FA ↗</span>
-                                </a>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(details.raw, "Account credentials copied!")}
-                                className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/30"
-                              >
-                                📋 Copy All
-                              </button>
-                            </div>
-                          </div>
-                          <div className="rounded-lg border border-purple-500/30 bg-[#120717] p-2.5 font-mono text-xs text-purple-200 select-all whitespace-pre-wrap break-all leading-relaxed">
-                            {details.raw}
-                          </div>
-                        </div>
+                        <StructuredCredentialsCard
+                          details={details}
+                          toolName={purchasingTool?.name || purchaseSuccess.tool_name}
+                          onCopy={copyToClipboard}
+                        />
                       );
                     }
                     return (

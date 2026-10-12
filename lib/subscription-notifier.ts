@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { sendTelegramNotification } from "@/lib/balance-monitor/telegram";
 import { isApiEnabled } from "@/lib/api-manager";
+import { parseAccessDetails } from "@/lib/account-credentials-parser";
 
 /**
  * Helper to fetch a platform setting from vexo_platform_settings or process.env
@@ -53,30 +54,79 @@ export async function sendSubscriptionEmail(params: {
     };
   }
 
-  const isLink = params.deliveryType === "LINK" || params.licenseOrAccess.startsWith("http");
-  const isCoupon = params.deliveryType === "COUPON";
-  const isAccount = params.deliveryType === "READY_ACCOUNT";
+  const parsed = parseAccessDetails(params.licenseOrAccess, params.deliveryType, params.toolName);
+  const isLink = parsed.isLink;
+  const isCoupon = parsed.isCoupon;
+  const isAccount = parsed.isReadyAccount;
 
-  const credentialsHtml = isLink
-    ? `<div style="background:#071418;border:1px solid rgba(0,212,255,0.3);border-radius:12px;padding:16px;margin:20px 0;text-align:center;">
+  let credentialsHtml = "";
+  if (isLink) {
+    credentialsHtml = `
+      <div style="background:#071418;border:1px solid rgba(0,212,255,0.3);border-radius:12px;padding:16px;margin:20px 0;text-align:center;">
         <p style="color:#64748b;font-size:12px;margin:0 0 8px 0;text-transform:uppercase;font-weight:700;">🔗 Direct Activation URL</p>
         <a href="${params.licenseOrAccess}" style="display:inline-block;background:#00d4ff;color:#061224;font-weight:800;font-size:14px;padding:12px 28px;border-radius:10px;text-decoration:none;margin-bottom:10px;">Open Activation Link ↗</a>
         <p style="color:#94a3b8;font-size:11px;font-family:monospace;word-break:break-all;margin:8px 0 0 0;">${params.licenseOrAccess}</p>
-      </div>`
-    : isCoupon
-    ? `<div style="background:#171304;border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:16px;margin:20px 0;text-align:center;">
+      </div>`;
+  } else if (isCoupon) {
+    credentialsHtml = `
+      <div style="background:#171304;border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:16px;margin:20px 0;text-align:center;">
         <p style="color:#fbbf24;font-size:12px;margin:0 0 6px 0;text-transform:uppercase;font-weight:700;">🎟️ Voucher Code</p>
         <div style="font-family:monospace;font-size:20px;font-weight:900;color:#fbbf24;letter-spacing:2px;">${params.licenseOrAccess}</div>
-      </div>`
-    : isAccount
-    ? `<div style="background:#140d29;border:1px solid rgba(192,132,252,0.3);border-radius:12px;padding:16px;margin:20px 0;">
-        <p style="color:#c084fc;font-size:12px;margin:0 0 8px 0;text-transform:uppercase;font-weight:700;">👤 Account Credentials</p>
-        <pre style="color:#faf5ff;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-all;margin:0;">${params.licenseOrAccess}</pre>
-      </div>`
-    : `<div style="background:#091215;border:1px solid rgba(186,255,0,0.3);border-radius:12px;padding:16px;margin:20px 0;text-align:center;">
+      </div>`;
+  } else if (isAccount) {
+    const accountsHtml = parsed.accounts.map((acc, idx) => {
+      const portalUrl = acc.portalUrl || parsed.defaultPortalUrl;
+      const providerName = acc.providerName || parsed.defaultProviderName;
+      return `
+        <div style="background:#0d181c;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;">
+          ${parsed.accounts.length > 1 ? `<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">Account #${idx + 1}</div>` : ""}
+          <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">
+            ${portalUrl ? `<a href="${portalUrl}" style="display:inline-block;background:#22d3ee;color:#07100f;font-weight:800;font-size:12px;padding:8px 16px;border-radius:8px;text-decoration:none;">🌐 Sign In at ${providerName} ↗</a>` : ""}
+            ${acc.codeUrl ? `<a href="${acc.codeUrl}" style="display:inline-block;background:#10b981;color:#07100f;font-weight:800;font-size:12px;padding:8px 16px;border-radius:8px;text-decoration:none;">📩 Get Verification Code ↗</a>` : ""}
+          </div>
+          ${acc.email ? `
+            <div style="margin-bottom:8px;">
+              <span style="font-size:10px;text-transform:uppercase;font-weight:700;color:#94a3b8;display:block;">Account Email:</span>
+              <div style="background:#04090b;border:1px solid rgba(255,255,255,0.08);padding:8px 12px;border-radius:8px;font-family:monospace;font-size:13px;color:#ffffff;font-weight:bold;">${acc.email}</div>
+            </div>` : ""}
+          ${acc.password ? `
+            <div style="margin-bottom:8px;">
+              <span style="font-size:10px;text-transform:uppercase;font-weight:700;color:#94a3b8;display:block;">Password:</span>
+              <div style="background:#04090b;border:1px solid rgba(255,255,255,0.08);padding:8px 12px;border-radius:8px;font-family:monospace;font-size:13px;color:#baff00;font-weight:bold;">${acc.password}</div>
+            </div>` : ""}
+          ${acc.backupEmail || acc.backupPortal ? `
+            <div style="background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:8px;font-size:11px;color:#94a3b8;margin-top:8px;">
+              ${acc.backupEmail ? `<div>Backup 2FA Email: <strong style="color:#ffffff;">${acc.backupEmail}</strong></div>` : ""}
+              ${acc.backupPortal ? `<div style="margin-top:4px;"><a href="${acc.backupPortal}" style="color:#22d3ee;text-decoration:none;">Open Backup Portal ↗</a></div>` : ""}
+            </div>` : ""}
+        </div>
+      `;
+    }).join("");
+
+    credentialsHtml = `
+      <div style="margin:20px 0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="color:#10b981;font-size:11px;font-weight:800;text-transform:uppercase;">⚡ Ready Account Credentials</span>
+        </div>
+        ${accountsHtml}
+        <div style="background:#071317;border:1px solid rgba(34,211,238,0.25);border-radius:12px;padding:14px;margin-top:12px;">
+          <div style="color:#22d3ee;font-size:11px;font-weight:800;text-transform:uppercase;margin-bottom:8px;">📖 4 Easy Steps to Login</div>
+          <table width="100%" style="font-size:11px;color:#cbd5e1;line-height:1.5;">
+            <tr><td style="padding:3px 0;width:24px;vertical-align:top;font-weight:bold;color:#22d3ee;">1.</td><td style="padding:3px 0;">Click <strong>&ldquo;Sign In&rdquo;</strong> above (use a Private/Incognito browser tab for best results).</td></tr>
+            <tr><td style="padding:3px 0;width:24px;vertical-align:top;font-weight:bold;color:#22d3ee;">2.</td><td style="padding:3px 0;">Copy and enter your <strong>Email</strong> and <strong>Password</strong> into the login page.</td></tr>
+            <tr><td style="padding:3px 0;width:24px;vertical-align:top;font-weight:bold;color:#10b981;">3.</td><td style="padding:3px 0;">If prompted for a security or verification code, click <strong>&ldquo;Get Verification Code&rdquo;</strong> to view it.</td></tr>
+            <tr><td style="padding:3px 0;width:24px;vertical-align:top;font-weight:bold;color:#baff00;">4.</td><td style="padding:3px 0;">Paste the code to finish logging in. You now have full access to your account!</td></tr>
+          </table>
+        </div>
+      </div>
+    `;
+  } else {
+    credentialsHtml = `
+      <div style="background:#091215;border:1px solid rgba(186,255,0,0.3);border-radius:12px;padding:16px;margin:20px 0;text-align:center;">
         <p style="color:#94a3b8;font-size:12px;margin:0 0 6px 0;text-transform:uppercase;font-weight:700;">License Key</p>
         <div style="font-family:monospace;font-size:16px;font-weight:800;color:#baff00;">${params.licenseOrAccess}</div>
       </div>`;
+  }
 
   const htmlBody = `
     <!DOCTYPE html>
