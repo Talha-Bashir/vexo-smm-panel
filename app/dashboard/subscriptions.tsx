@@ -45,6 +45,29 @@ export interface UserSubscription {
   created_at: string;
 }
 
+function getAccessDetails(license: string, deliveryType?: string) {
+  const text = (license || "").trim();
+  const cleanedText = text.replace(/^__CREDENTIAL__:\s*/i, "").trim();
+  const isUrl = text.startsWith("http://") || text.startsWith("https://");
+
+  const extractedUrlMatch = cleanedText.match(/https?:\/\/[^\s|]+/i);
+  const embeddedUrl = extractedUrlMatch ? extractedUrlMatch[0] : null;
+
+  const isLink = (deliveryType === "LINK" && isUrl) || isUrl;
+  const isCoupon = deliveryType === "COUPON";
+  const isReadyAccount =
+    deliveryType === "READY_ACCOUNT" ||
+    (!isLink && !isCoupon && (text.includes(":") || text.includes("@") || text.includes("__CREDENTIAL__")));
+
+  return {
+    raw: cleanedText,
+    isLink,
+    isCoupon,
+    isReadyAccount,
+    url: isLink ? text : embeddedUrl,
+  };
+}
+
 export function SubscriptionsPage({
   walletBalancePkr,
   selectedCurrency,
@@ -674,9 +697,7 @@ export function SubscriptionsPage({
                 const expiresDate = new Date(sub.expires_at);
                 const isExpired = expiresDate.getTime() < Date.now();
                 const daysRemaining = Math.max(0, Math.ceil((expiresDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-                const isLink = sub.delivery_type === "LINK" || sub.license_or_access?.startsWith("http");
-                const isCoupon = sub.delivery_type === "COUPON";
-                const isReadyAccount = sub.delivery_type === "READY_ACCOUNT";
+                const details = getAccessDetails(sub.license_or_access, sub.delivery_type);
 
                 return (
                   <div
@@ -689,17 +710,17 @@ export function SubscriptionsPage({
                           <span className="rounded-md bg-white/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                             {sub.category}
                           </span>
-                          {isLink && (
+                          {details.isLink && (
                             <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold text-cyan-300">
                               🔗 Link
                             </span>
                           )}
-                          {isCoupon && (
+                          {details.isCoupon && (
                             <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                               🎟️ Coupon
                             </span>
                           )}
-                          {isReadyAccount && (
+                          {details.isReadyAccount && (
                             <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300">
                               👤 Ready Account
                             </span>
@@ -719,7 +740,7 @@ export function SubscriptionsPage({
 
                     {/* License & Instructions */}
                     <div className="rounded-xl border border-white/10 bg-[#060c0d] p-3.5 space-y-3 text-xs">
-                      {isLink ? (
+                      {details.isLink ? (
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] uppercase font-bold text-cyan-400">🔗 Activation Link</span>
@@ -728,11 +749,11 @@ export function SubscriptionsPage({
                           <div className="flex items-center gap-2">
                             <input
                               readOnly
-                              value={sub.license_or_access}
+                              value={details.raw}
                               className="w-full select-all rounded-lg border border-cyan-500/30 bg-[#041217] px-2.5 py-1.5 font-mono text-xs text-cyan-300 outline-none truncate"
                             />
                             <a
-                              href={sub.license_or_access}
+                              href={details.raw}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="shrink-0 rounded-lg bg-cyan-400 px-3 py-1.5 text-xs font-black text-[#07100f] hover:bg-cyan-300 transition flex items-center gap-1"
@@ -741,7 +762,7 @@ export function SubscriptionsPage({
                             </a>
                             <button
                               type="button"
-                              onClick={() => copyToClipboard(sub.license_or_access, "Activation link copied!")}
+                              onClick={() => copyToClipboard(details.raw, "Activation link copied!")}
                               className="shrink-0 rounded-lg border border-white/10 bg-white/5 p-1.5 text-slate-300 hover:text-white"
                               title="Copy URL"
                             >
@@ -749,47 +770,59 @@ export function SubscriptionsPage({
                             </button>
                           </div>
                         </div>
-                      ) : isCoupon ? (
+                      ) : details.isCoupon ? (
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] uppercase font-bold text-amber-400">🎟️ Redeemable Coupon / Promo Code</span>
                             <span className="text-[10px] text-slate-400">Use on official platform</span>
                           </div>
                           <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-[#171304] px-3 py-2 font-mono text-xs font-black text-amber-300">
-                            <span className="select-all tracking-wider text-sm">{sub.license_or_access}</span>
+                            <span className="select-all tracking-wider text-sm">{details.raw}</span>
                             <button
                               type="button"
-                              onClick={() => copyToClipboard(sub.license_or_access, "Coupon code copied!")}
+                              onClick={() => copyToClipboard(details.raw, "Coupon code copied!")}
                               className="rounded-lg bg-amber-400 px-2.5 py-1 text-xs font-black text-[#07100f] hover:bg-amber-300 transition"
                             >
                               Copy Code
                             </button>
                           </div>
                         </div>
-                      ) : isReadyAccount ? (
+                      ) : details.isReadyAccount ? (
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] uppercase font-bold text-purple-400">👤 Account Login Credentials</span>
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(sub.license_or_access, "Account credentials copied!")}
-                              className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/30"
-                            >
-                              📋 Copy All
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              {details.url && (
+                                <a
+                                  href={details.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 flex items-center gap-1"
+                                >
+                                  <span>Webmail / 2FA ↗</span>
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(details.raw, "Account credentials copied!")}
+                                className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/30"
+                              >
+                                📋 Copy All
+                              </button>
+                            </div>
                           </div>
-                          <div className="rounded-lg border border-purple-500/30 bg-[#120717] p-2.5 font-mono text-xs text-purple-200 select-all whitespace-pre-wrap break-all">
-                            {sub.license_or_access}
+                          <div className="rounded-lg border border-purple-500/30 bg-[#120717] p-2.5 font-mono text-xs text-purple-200 select-all whitespace-pre-wrap break-all leading-relaxed">
+                            {details.raw}
                           </div>
                         </div>
                       ) : (
                         <div>
                           <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">License / Access Key</span>
                           <div className="flex items-center justify-between rounded-lg bg-black/40 px-2.5 py-1.5 font-mono text-xs text-[#baff00]">
-                            <span className="select-all truncate">{sub.license_or_access}</span>
+                            <span className="select-all truncate">{details.raw}</span>
                             <button
                               type="button"
-                              onClick={() => copyToClipboard(sub.license_or_access, "License key copied!")}
+                              onClick={() => copyToClipboard(details.raw, "License key copied!")}
                               className="ml-2 text-slate-400 hover:text-white"
                               title="Copy to clipboard"
                             >
@@ -853,79 +886,103 @@ export function SubscriptionsPage({
                 </p>
 
                 <div className="rounded-xl border border-white/10 bg-[#060c0d] p-4 text-left space-y-3 text-xs">
-                  {purchaseSuccess.delivery_type === "LINK" || purchaseSuccess.license_or_access?.startsWith("http") ? (
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-cyan-400 block mb-1.5">🔗 Direct Activation URL</span>
-                      <div className="flex items-center gap-2">
-                        <input
-                          readOnly
-                          value={purchaseSuccess.license_or_access}
-                          className="w-full select-all rounded-lg border border-cyan-500/30 bg-[#041217] px-2.5 py-2 font-mono text-xs text-cyan-300 outline-none truncate"
-                        />
-                        <a
-                          href={purchaseSuccess.license_or_access}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shrink-0 rounded-lg bg-cyan-400 px-3 py-2 text-xs font-black text-[#07100f] hover:bg-cyan-300 transition"
-                        >
-                          Open Link ↗
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(purchaseSuccess.license_or_access, "Activation link copied!")}
-                          className="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 hover:text-white"
-                          title="Copy URL"
-                        >
-                          📋
-                        </button>
+                  {(() => {
+                    const details = getAccessDetails(purchaseSuccess.license_or_access, purchaseSuccess.delivery_type);
+                    if (details.isLink) {
+                      return (
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-cyan-400 block mb-1.5">🔗 Direct Activation URL</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              readOnly
+                              value={details.raw}
+                              className="w-full select-all rounded-lg border border-cyan-500/30 bg-[#041217] px-2.5 py-2 font-mono text-xs text-cyan-300 outline-none truncate"
+                            />
+                            <a
+                              href={details.raw}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 rounded-lg bg-cyan-400 px-3 py-2 text-xs font-black text-[#07100f] hover:bg-cyan-300 transition"
+                            >
+                              Open Link ↗
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(details.raw, "Activation link copied!")}
+                              className="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 hover:text-white"
+                              title="Copy URL"
+                            >
+                              📋
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (details.isCoupon) {
+                      return (
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-amber-400 block mb-1.5">🎟️ Redeemable Coupon Code</span>
+                          <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-[#171304] px-3 py-2 font-mono text-base font-black text-amber-300">
+                            <span className="select-all tracking-wider">{details.raw}</span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(details.raw, "Coupon code copied!")}
+                              className="rounded-lg bg-amber-400 px-3 py-1 text-xs font-black text-[#07100f] hover:bg-amber-300 transition"
+                            >
+                              Copy Code
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (details.isReadyAccount) {
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] uppercase font-bold text-purple-400">👤 Account Login Credentials</span>
+                            <div className="flex items-center gap-2">
+                              {details.url && (
+                                <a
+                                  href={details.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="rounded bg-cyan-500/20 px-2.5 py-1 text-[10px] font-bold text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 flex items-center gap-1"
+                                >
+                                  <span>Webmail / 2FA ↗</span>
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(details.raw, "Account credentials copied!")}
+                                className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/30"
+                              >
+                                📋 Copy All
+                              </button>
+                            </div>
+                          </div>
+                          <div className="rounded-lg border border-purple-500/30 bg-[#120717] p-2.5 font-mono text-xs text-purple-200 select-all whitespace-pre-wrap break-all leading-relaxed">
+                            {details.raw}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Your License Key</span>
+                        <div className="flex items-center justify-between rounded-lg bg-black/40 px-2.5 py-2 font-mono text-xs text-[#baff00]">
+                          <span className="select-all truncate">{details.raw}</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(details.raw, "License key copied!")}
+                            className="ml-2 text-slate-400 hover:text-white"
+                            title="Copy to clipboard"
+                          >
+                            📋
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : purchaseSuccess.delivery_type === "COUPON" ? (
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-amber-400 block mb-1.5">🎟️ Redeemable Coupon Code</span>
-                      <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-[#171304] px-3 py-2 font-mono text-base font-black text-amber-300">
-                        <span className="select-all tracking-wider">{purchaseSuccess.license_or_access}</span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(purchaseSuccess.license_or_access, "Coupon code copied!")}
-                          className="rounded-lg bg-amber-400 px-3 py-1 text-xs font-black text-[#07100f] hover:bg-amber-300 transition"
-                        >
-                          Copy Code
-                        </button>
-                      </div>
-                    </div>
-                  ) : purchaseSuccess.delivery_type === "READY_ACCOUNT" ? (
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] uppercase font-bold text-purple-400">👤 Account Credentials</span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(purchaseSuccess.license_or_access, "Account credentials copied!")}
-                          className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/30"
-                        >
-                          📋 Copy All
-                        </button>
-                      </div>
-                      <div className="rounded-lg border border-purple-500/30 bg-[#120717] p-2.5 font-mono text-xs text-purple-200 select-all whitespace-pre-wrap break-all">
-                        {purchaseSuccess.license_or_access}
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Your License Key</span>
-                      <div className="flex items-center justify-between rounded-lg bg-black/40 px-2.5 py-2 font-mono text-xs text-[#baff00]">
-                        <span className="select-all truncate">{purchaseSuccess.license_or_access}</span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(purchaseSuccess.license_or_access, "License key copied!")}
-                          className="ml-2 text-slate-400 hover:text-white"
-                          title="Copy to clipboard"
-                        >
-                          📋
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {purchaseSuccess.instructions && (
                     <div>

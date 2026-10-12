@@ -759,19 +759,31 @@ export async function POST(req: Request) {
       }
 
       providerOrderCode = botOrder.orderCode || null;
-      deliveryType = botOrder.deliveryType || "LINK";
 
-      if (botOrder.deliveryType === "LINK") {
-        licenseKey = botOrder.delivery?.content || botOrder.delivery?.link || botOrder.orderCode || "Activation Link Sent";
-        instructions = botOrder.delivery?.instructions || `Open this activation link to complete setup:\n${licenseKey}`;
+      const rawContent = String(botOrder.delivery?.content || botOrder.orderCode || "").trim();
+      const isHttpUrl = rawContent.startsWith("http://") || rawContent.startsWith("https://");
+
+      if (
+        botOrder.deliveryType === "READY_ACCOUNT" ||
+        rawContent.startsWith("__CREDENTIAL__") ||
+        rawContent.includes("@") ||
+        rawContent.includes(":") ||
+        (!isHttpUrl && botOrder.deliveryType !== "COUPON")
+      ) {
+        deliveryType = "READY_ACCOUNT";
+        licenseKey = rawContent.replace(/^__CREDENTIAL__:\s*/i, "").trim();
+        instructions = "Use the account login details above. If a webmail or 2FA link is included, open it to view confirmation/login codes.";
       } else if (botOrder.deliveryType === "COUPON") {
-        licenseKey = botOrder.delivery?.content || botOrder.delivery?.code || botOrder.orderCode || "Voucher Code";
-        instructions = botOrder.delivery?.instructions || `Redeem this coupon code within the validity period:\n${licenseKey}`;
-      } else if (botOrder.deliveryType === "READY_ACCOUNT") {
-        licenseKey = botOrder.delivery?.content || botOrder.orderCode || "Account Allocated";
-        instructions = botOrder.delivery?.instructions || "Use the login credentials above to access your account.";
+        deliveryType = "COUPON";
+        licenseKey = rawContent;
+        instructions = botOrder.delivery?.instructions || `Redeem this coupon code on the official platform:\n${licenseKey}`;
+      } else if (isHttpUrl) {
+        deliveryType = "LINK";
+        licenseKey = rawContent;
+        instructions = botOrder.delivery?.instructions || `Open this activation link to complete setup:\n${licenseKey}`;
       } else {
-        licenseKey = botOrder.delivery?.content || botOrder.orderCode || `VEXARO-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+        deliveryType = "LICENSE_KEY";
+        licenseKey = rawContent || `VEXARO-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
         instructions = "Your subscription has been activated successfully via the partner network.";
       }
     } else {
