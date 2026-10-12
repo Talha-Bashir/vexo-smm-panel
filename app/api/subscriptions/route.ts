@@ -11,7 +11,7 @@ import {
   type GGSomaProduct,
 } from "@/lib/ggsoma-api";
 import { dispatchSubscriptionNotifications } from "@/lib/subscription-notifier";
-import { triggerOrderWhatsAppBrevo } from "@/lib/brevo";
+import { isApiEnabled } from "@/lib/api-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -618,8 +618,8 @@ export async function POST(req: Request) {
 
     if (!toolId) return NextResponse.json({ success: false, error: "Tool ID is required." }, { status: 400 });
     if (!planDuration) return NextResponse.json({ success: false, error: "Plan duration is required." }, { status: 400 });
-    if (!deliveryContact || deliveryContact.length < 3) {
-      return NextResponse.json({ success: false, error: "Email or WhatsApp number is required for delivery." }, { status: 400 });
+    if (!deliveryContact || !deliveryContact.includes("@") || !deliveryContact.includes(".")) {
+      return NextResponse.json({ success: false, error: "A valid email address (e.g. name@gmail.com) is required for automated credentials delivery." }, { status: 400 });
     }
 
     const config = await getGGSomaConfig();
@@ -728,9 +728,10 @@ export async function POST(req: Request) {
     let providerOrderCode: string | null = null;
 
     // Check if fulfillable via GGSoma / ElevateX Telegram Bot Partner API
+    const botApiActive = await isApiEnabled("elevatex_bot");
     const isBotProduct = catalogItem.isPartnerBot || Boolean(catalogItem.productSlug) || (config.apiKey && !catalogItem.id.includes("wa_") && !catalogItem.id.includes("tg_"));
 
-    if (config.apiKey && isBotProduct) {
+    if (botApiActive && config.apiKey && isBotProduct) {
       const externalOrderId = `VEXARO-${crypto.randomBytes(4).toString("hex").toUpperCase()}-${Date.now().toString().slice(-6)}`;
       const targetSlug = catalogItem.productSlug || catalogItem.id;
 
@@ -844,7 +845,7 @@ export async function POST(req: Request) {
 
       await client.query("COMMIT");
 
-      // Trigger automated delivery notifications (Email / WhatsApp + Admin Telegram Alert)
+      // Trigger automated delivery notifications (Email + Admin Telegram Alert)
       const dispatch = await dispatchSubscriptionNotifications({
         subscriptionId: subRes.rows[0].id,
         userEmail: user.email,
@@ -858,28 +859,10 @@ export async function POST(req: Request) {
       }).catch((err) => {
         console.error("[SubscriptionNotifier] Notification error:", err);
         return {
-          contactType: "unknown" as const,
           emailSent: false,
-          whatsAppSent: false,
-          directWhatsAppLink: null,
           adminAlertSent: false,
         };
       });
-
-      // Trigger Brevo WhatsApp contact sync and order_completed event
-      const subWhatsApp = (dispatch?.contactType === "whatsapp" ? deliveryContact : user.whatsapp) || "";
-      if (subWhatsApp) {
-        triggerOrderWhatsAppBrevo({
-          email: user.email,
-          name: user.name,
-          whatsappPhone: subWhatsApp,
-          orderId: subRes.rows[0].id,
-          serviceName: catalogItem.name,
-          quantity,
-          amountPkr: totalPricePkr,
-          platform: "Subscriptions",
-        }).catch((bErr) => console.warn("[Subscriptions] Brevo automation warning:", bErr));
-      }
 
       return NextResponse.json({
         success: true,

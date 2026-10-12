@@ -1,93 +1,6 @@
 import { db } from "@/lib/db";
 import { sendTelegramNotification } from "@/lib/balance-monitor/telegram";
-
-export interface ContactInfo {
-  type: "email" | "whatsapp" | "unknown";
-  raw: string;
-  normalized: string;
-}
-
-/**
- * Detects whether contact is an Email address or a WhatsApp / Phone number
- */
-export function detectContactType(contact: string): ContactInfo {
-  const trimmed = (contact || "").trim();
-
-  // 1. Email check
-  if (trimmed.includes("@") && trimmed.includes(".")) {
-    return {
-      type: "email",
-      raw: trimmed,
-      normalized: trimmed.toLowerCase(),
-    };
-  }
-
-  // 2. Phone / WhatsApp number check
-  const digitsOnly = trimmed.replace(/\D/g, "");
-  if (digitsOnly.length >= 7) {
-    let standardized = digitsOnly;
-    // Standardize local Pakistani numbers: e.g. 03176437013 -> 923176437013
-    if (standardized.startsWith("03") && standardized.length === 11) {
-      standardized = "92" + standardized.slice(1);
-    } else if (standardized.startsWith("00")) {
-      standardized = standardized.slice(2);
-    }
-    return {
-      type: "whatsapp",
-      raw: trimmed,
-      normalized: standardized,
-    };
-  }
-
-  return {
-    type: "unknown",
-    raw: trimmed,
-    normalized: trimmed,
-  };
-}
-
-/**
- * Formats a clean, high-conversion WhatsApp message with credentials
- */
-export function generateWhatsAppMessage(params: {
-  toolName: string;
-  planDuration: string;
-  pricePkr: number;
-  deliveryType?: string;
-  licenseOrAccess: string;
-  instructions?: string;
-}): string {
-  const typeLabel =
-    params.deliveryType === "LINK"
-      ? "Activation Link"
-      : params.deliveryType === "COUPON"
-      ? "Coupon / Voucher Code"
-      : params.deliveryType === "READY_ACCOUNT"
-      ? "Account Credentials"
-      : "License Key";
-
-  return `🎉 *YOUR VEXARO SUBSCRIPTION IS READY!*
-
-📦 *Tool:* ${params.toolName}
-⏳ *Plan Duration:* ${params.planDuration}
-💰 *Amount Paid:* ₨${Number(params.pricePkr).toLocaleString()}
-
-🔑 *${typeLabel}:*
-${params.licenseOrAccess}
-
-${params.instructions ? `📋 *Instructions:*\n${params.instructions}\n\n` : ""}🌐 *Dashboard Access:*
-You can always view, re-copy, or manage your active subscriptions anytime in your Vexaro Dashboard under "My Subscriptions".
-
-💬 Need help? Contact Vexaro Support: https://vexarosmm.com`;
-}
-
-/**
- * Generates direct click-to-chat WhatsApp link
- */
-export function getWhatsAppDirectLink(phone: string, message: string): string {
-  const cleanPhone = phone.replace(/\D/g, "");
-  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-}
+import { isApiEnabled } from "@/lib/api-manager";
 
 /**
  * Helper to fetch a platform setting from vexo_platform_settings or process.env
@@ -122,6 +35,14 @@ export async function sendSubscriptionEmail(params: {
   licenseOrAccess: string;
   instructions?: string;
 }): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+  // Check if Email API is enabled
+  if (!(await isApiEnabled("resend_email"))) {
+    return {
+      ok: false,
+      error: "Email delivery API is currently disabled in Admin API Services Manager.",
+    };
+  }
+
   const resendApiKey = await getNotificationSetting("resend_api_key", "RESEND_API_KEY");
   const senderEmail = (await getNotificationSetting("sender_email", "SENDER_EMAIL")) || "Vexaro Subscriptions <onboarding@resend.dev>";
 
@@ -180,12 +101,12 @@ export async function sendSubscriptionEmail(params: {
                   <td style="padding:6px 0;text-align:right;font-weight:800;color:#ffffff;">${params.toolName}</td>
                 </tr>
                 <tr>
-                  <td style="padding:6px 0;color:#94a3b8;">Plan Duration:</td>
-                  <td style="padding:6px 0;text-align:right;font-weight:700;color:#ffffff;">${params.planDuration}</td>
+                  <td style="padding:6px 0;color:#94a3b8;">Duration:</td>
+                  <td style="padding:6px 0;text-align:right;font-weight:800;color:#baff00;">${params.planDuration}</td>
                 </tr>
                 <tr>
-                  <td style="padding:6px 0;color:#94a3b8;">Amount Paid:</td>
-                  <td style="padding:6px 0;text-align:right;font-weight:900;color:#baff00;">₨${Number(params.pricePkr).toLocaleString()}</td>
+                  <td style="padding:6px 0;color:#94a3b8;">Price Paid:</td>
+                  <td style="padding:6px 0;text-align:right;font-weight:800;color:#ffffff;">₨${Number(params.pricePkr).toLocaleString()} PKR</td>
                 </tr>
               </table>
             </div>
@@ -193,10 +114,10 @@ export async function sendSubscriptionEmail(params: {
             ${credentialsHtml}
 
             ${params.instructions ? `
-            <div style="background:#070f12;border-left:3px solid #00d4ff;padding:12px 16px;border-radius:8px;margin-bottom:24px;">
-              <strong style="color:#00d4ff;font-size:12px;text-transform:uppercase;display:block;margin-bottom:4px;">Instructions:</strong>
-              <p style="color:#cbd5e1;font-size:12px;margin:0;line-height:1.5;">${params.instructions}</p>
-            </div>
+              <div style="background:#091417;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin:16px 0;">
+                <p style="color:#baff00;font-size:11px;font-weight:800;text-transform:uppercase;margin:0 0 6px 0;">📋 Setup &amp; Activation Instructions</p>
+                <p style="color:#e2e8f0;font-size:12px;line-height:1.6;margin:0;white-space:pre-wrap;">${params.instructions}</p>
+              </div>
             ` : ""}
 
             <div style="text-align:center;margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
@@ -244,65 +165,7 @@ export async function sendSubscriptionEmail(params: {
 }
 
 /**
- * Dispatches an automated WhatsApp message via a configured WhatsApp Gateway API
- * (Supports UltraMsg, GreenAPI, WhatsApp Cloud API, or custom webhook)
- */
-export async function sendSubscriptionWhatsAppViaGateway(params: {
-  phone: string;
-  message: string;
-}): Promise<{ ok: boolean; response?: unknown; error?: string }> {
-  const gatewayUrl = await getNotificationSetting("whatsapp_gateway_url", "WHATSAPP_GATEWAY_URL");
-  const gatewayToken = await getNotificationSetting("whatsapp_gateway_token", "WHATSAPP_GATEWAY_TOKEN");
-
-  if (!gatewayUrl) {
-    return {
-      ok: false,
-      error: "WhatsApp Gateway URL not configured yet.",
-    };
-  }
-
-  try {
-    const body: Record<string, string> = {
-      to: params.phone,
-      phone: params.phone,
-      message: params.message,
-      text: params.message,
-    };
-    if (gatewayToken) {
-      body.token = gatewayToken;
-      body.apiKey = gatewayToken;
-    }
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (gatewayToken) {
-      headers["Authorization"] = `Bearer ${gatewayToken}`;
-      headers["X-API-Key"] = gatewayToken;
-    }
-
-    const res = await fetch(gatewayUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      return { ok: false, error: `WhatsApp Gateway returned HTTP ${res.status}` };
-    }
-
-    return { ok: true, response: data };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "Network error reaching WhatsApp Gateway",
-    };
-  }
-}
-
-/**
- * Master dispatcher: dispatches to customer (Gmail / WhatsApp) + Admin Telegram alert
+ * Master dispatcher: dispatches to customer Email + Admin Telegram alert
  */
 export async function dispatchSubscriptionNotifications(params: {
   subscriptionId: string;
@@ -315,21 +178,15 @@ export async function dispatchSubscriptionNotifications(params: {
   licenseOrAccess: string;
   instructions?: string;
 }): Promise<{
-  contactType: "email" | "whatsapp" | "unknown";
   emailSent: boolean;
-  whatsAppSent: boolean;
-  directWhatsAppLink: string | null;
   adminAlertSent: boolean;
 }> {
-  const contact = detectContactType(params.deliveryContact);
   let emailSent = false;
-  let whatsAppSent = false;
-  let directWhatsAppLink: string | null = null;
 
-  // 1. If Contact is an Email address
-  if (contact.type === "email") {
+  // 1. Send setup email if deliveryContact is an email address
+  if (params.deliveryContact && params.deliveryContact.includes("@")) {
     const emailRes = await sendSubscriptionEmail({
-      toEmail: contact.normalized,
+      toEmail: params.deliveryContact.trim().toLowerCase(),
       toolName: params.toolName,
       planDuration: params.planDuration,
       pricePkr: params.pricePkr,
@@ -340,33 +197,13 @@ export async function dispatchSubscriptionNotifications(params: {
     emailSent = emailRes.ok;
   }
 
-  // 2. If Contact is a WhatsApp phone number
-  if (contact.type === "whatsapp") {
-    const waText = generateWhatsAppMessage({
-      toolName: params.toolName,
-      planDuration: params.planDuration,
-      pricePkr: params.pricePkr,
-      deliveryType: params.deliveryType,
-      licenseOrAccess: params.licenseOrAccess,
-      instructions: params.instructions,
-    });
-
-    directWhatsAppLink = getWhatsAppDirectLink(contact.normalized, waText);
-
-    const waRes = await sendSubscriptionWhatsAppViaGateway({
-      phone: contact.normalized,
-      message: waText,
-    });
-    whatsAppSent = waRes.ok;
-  }
-
-  // 3. Always alert the Admin on Telegram in real time!
+  // 2. Alert Admin on Telegram (respects api_toggle_telegram_alerts)
   const adminMsg =
     `🎉 <b>NEW SUBSCRIPTION ORDER DISPATCHED!</b>\n\n` +
     `📦 <b>Tool:</b> ${params.toolName} (${params.planDuration})\n` +
     `💰 <b>Amount:</b> ₨${Number(params.pricePkr).toLocaleString()} PKR\n` +
     `👤 <b>Customer:</b> ${params.userEmail}\n` +
-    `📱 <b>Delivery Contact:</b> <code>${params.deliveryContact}</code> (${contact.type.toUpperCase()})\n` +
+    `✉️ <b>Delivery Email:</b> <code>${params.deliveryContact}</code>\n` +
     `🏷️ <b>Format:</b> ${params.deliveryType || "STANDARD"}\n\n` +
     `🔑 <b>Delivered Credentials / Access:</b>\n` +
     `<code>${params.licenseOrAccess}</code>\n\n` +
@@ -375,15 +212,8 @@ export async function dispatchSubscriptionNotifications(params: {
 
   const adminAlertSent = await sendTelegramNotification(adminMsg).catch(() => false);
 
-  // 4. Update status in database
+  // 3. Update status in database
   try {
-    const statusText =
-      emailSent
-        ? "Email Dispatched"
-        : whatsAppSent
-        ? "WhatsApp Dispatched"
-        : "Delivered On-Screen";
-
     await db.query(
       `UPDATE vexo_tool_subscriptions 
        SET instructions = COALESCE(instructions, '') 
@@ -395,10 +225,7 @@ export async function dispatchSubscriptionNotifications(params: {
   }
 
   return {
-    contactType: contact.type,
     emailSent,
-    whatsAppSent,
-    directWhatsAppLink,
     adminAlertSent,
   };
 }

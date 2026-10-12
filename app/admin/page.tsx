@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { SeoManagementView } from "@/components/admin-seo-management";
 import { PlatformSettingsView } from "@/components/admin-platform-settings";
 import { BlogCmsAdmin } from "@/components/admin-blog-cms";
+import { AdminApiTogglesCard } from "@/components/admin-api-toggles";
 
 type Tab =
   | "Dashboard"
@@ -5672,11 +5673,6 @@ function SubscriptionsAdmin({
   const [showApiKey, setShowApiKey] = useState(false);
   const [resendKeyInput, setResendKeyInput] = useState("");
   const [senderEmailInput, setSenderEmailInput] = useState("");
-  const [waGatewayUrlInput, setWaGatewayUrlInput] = useState("");
-  const [waGatewayTokenInput, setWaGatewayTokenInput] = useState("");
-  const [brevoApiKeyInput, setBrevoApiKeyInput] = useState("");
-  const [brevoTemplateIdInput, setBrevoTemplateIdInput] = useState("");
-  const [brevoSenderNumberInput, setBrevoSenderNumberInput] = useState("");
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [testLoading, setTestLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -5693,11 +5689,6 @@ function SubscriptionsAdmin({
         if (typeof res.config.markupPercent === "number") setMarkupInput(res.config.markupPercent);
         if (res.config.resendApiKey) setResendKeyInput(res.config.resendApiKey);
         if (res.config.senderEmail) setSenderEmailInput(res.config.senderEmail);
-        if (res.config.whatsappGatewayUrl) setWaGatewayUrlInput(res.config.whatsappGatewayUrl);
-        if (res.config.whatsappGatewayToken) setWaGatewayTokenInput(res.config.whatsappGatewayToken);
-        if (res.config.brevoApiKey) setBrevoApiKeyInput(res.config.brevoApiKey);
-        if (res.config.brevoWhatsappTemplateId) setBrevoTemplateIdInput(String(res.config.brevoWhatsappTemplateId));
-        if (res.config.brevoSenderNumber) setBrevoSenderNumberInput(res.config.brevoSenderNumber);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load partner bot details");
@@ -5750,11 +5741,6 @@ function SubscriptionsAdmin({
           markupPercent: Number(markupInput) || 7,
           resendApiKey: resendKeyInput.trim(),
           senderEmail: senderEmailInput.trim(),
-          whatsappGatewayUrl: waGatewayUrlInput.trim(),
-          whatsappGatewayToken: waGatewayTokenInput.trim(),
-          brevoApiKey: brevoApiKeyInput.trim(),
-          brevoWhatsappTemplateId: brevoTemplateIdInput.trim(),
-          brevoSenderNumber: brevoSenderNumberInput.trim(),
         }),
       });
       setSaveSuccess(true);
@@ -6037,24 +6023,24 @@ function SubscriptionsAdmin({
           </div>
         </div>
 
-        {/* Automated Gmail & WhatsApp Notification Gateway Settings */}
+        {/* Automated Customer Email Delivery Settings (Resend API) */}
         <div className="rounded-2xl border border-white/10 bg-[#070e10] p-5 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-base">📢</span>
-            <h4 className="text-sm font-black text-white">Automated Delivery Dispatch (Gmail & WhatsApp)</h4>
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
-              Live Engine Active
+            <span className="text-base">✉️</span>
+            <h4 className="text-sm font-black text-white">Automated Customer Email Delivery (Resend API)</h4>
+            <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-bold text-blue-400 border border-blue-500/20">
+              Email-Only Dispatch Active
             </span>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed">
-            When a buyer enters their Gmail or WhatsApp number, credentials and activation links are delivered instantly on-screen, saved in their dashboard, and sent as a live alert to your Telegram bot. You can also configure automated direct inbox/WhatsApp text delivery below:
+            When a customer purchases a subscription or tool, license credentials and setup guides are dispatched directly to their email inbox via the Resend API, displayed on-screen, and recorded in their dashboard.
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Resend Email API Key */}
             <div className="space-y-1">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                Resend Email API Key (for Automated Gmail)
+                Resend Email API Key
               </label>
               <input
                 type="password"
@@ -6077,116 +6063,18 @@ function SubscriptionsAdmin({
                 type="text"
                 value={senderEmailInput}
                 onChange={(e) => setSenderEmailInput(e.target.value)}
-                placeholder="Vexaro Subscriptions <orders@vexarosmm.com>"
+                placeholder="Vexaro Subscriptions <onboarding@resend.dev>"
                 className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
               />
               <p className="text-[10px] text-slate-500">
-                Default: orders@vexarosmm.com
-              </p>
-            </div>
-
-            {/* WhatsApp Gateway URL */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                WhatsApp Gateway Webhook URL (Optional)
-              </label>
-              <input
-                type="text"
-                value={waGatewayUrlInput}
-                onChange={(e) => setWaGatewayUrlInput(e.target.value)}
-                placeholder="https://api.ultramsg.com/instance.../messages/chat"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
-              />
-              <p className="text-[10px] text-slate-500">
-                UltraMsg / GreenAPI / WhatsApp Cloud API webhook endpoint
-              </p>
-            </div>
-
-            {/* WhatsApp Gateway Token */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                WhatsApp Gateway Token
-              </label>
-              <input
-                type="password"
-                value={waGatewayTokenInput}
-                onChange={(e) => setWaGatewayTokenInput(e.target.value)}
-                placeholder="Bearer token or instance key"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
-              />
-              <p className="text-[10px] text-slate-500">
-                Direct 1-click WhatsApp buttons work automatically in admin table without gateway.
-              </p>
-            </div>
-
-            {/* Brevo WhatsApp Integration */}
-            <div className="sm:col-span-2 pt-3 border-t border-white/10 mt-2">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-base">💬</span>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                  Brevo WhatsApp Automation &amp; Events
-                </h4>
-                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300 border border-emerald-500/30">
-                  Meta Official API
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                When customers enter their WhatsApp number at checkout or save it in their profile, Vexaro automatically saves their contact to Brevo with the <strong>WHATSAPP</strong> attribute and fires the <strong>order_completed</strong> event to trigger your Brevo automated WhatsApp campaign.
-              </p>
-            </div>
-
-            {/* Brevo API Key */}
-            <div className="space-y-1 sm:col-span-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                Brevo API Key (v3)
-              </label>
-              <input
-                type="password"
-                value={brevoApiKeyInput}
-                onChange={(e) => setBrevoApiKeyInput(e.target.value)}
-                placeholder="xkeysib-..."
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-emerald-400"
-              />
-              <p className="text-[10px] text-slate-500">
-                Get your free API key from Brevo dashboard &gt; SMTP &amp; API &gt; API Keys (<a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">brevo.com ↗</a>)
-              </p>
-            </div>
-
-            {/* Brevo WhatsApp Template ID */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                Brevo WhatsApp Template ID (Optional)
-              </label>
-              <input
-                type="number"
-                value={brevoTemplateIdInput}
-                onChange={(e) => setBrevoTemplateIdInput(e.target.value)}
-                placeholder="e.g. 1"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-emerald-400"
-              />
-              <p className="text-[10px] text-slate-500">
-                Optional: ID of approved Meta template if using direct Brevo API instead of event automation
-              </p>
-            </div>
-
-            {/* Brevo Sender Number */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                Brevo Sender WhatsApp Number (Optional)
-              </label>
-              <input
-                type="text"
-                value={brevoSenderNumberInput}
-                onChange={(e) => setBrevoSenderNumberInput(e.target.value)}
-                placeholder="e.g. 923176437013"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-emerald-400"
-              />
-              <p className="text-[10px] text-slate-500">
-                Your verified Meta Business WhatsApp number with country code
+                Default: onboarding@resend.dev (or verified domain address)
               </p>
             </div>
           </div>
         </div>
+
+        {/* Global External API Services & Killswitches */}
+        <AdminApiTogglesCard />
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/10">

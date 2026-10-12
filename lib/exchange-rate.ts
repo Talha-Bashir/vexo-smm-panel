@@ -6,6 +6,8 @@
  * automatically recalculate in real-time with the configured 7% platform markup.
  */
 
+import { isApiEnabled } from "@/lib/api-manager";
+
 const DEFAULT_USD_TO_PKR = Number(process.env.USD_TO_PKR || "278.0");
 export const DEFAULT_VEXO_MARKUP = Number(process.env.VEXO_MARKUP || "0.07"); // 7% profit margin
 export const DEFAULT_RATE_MULTIPLIER = 1 + DEFAULT_VEXO_MARKUP; // 1.070000
@@ -25,6 +27,10 @@ const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache
  * Fallback: process.env.USD_TO_PKR or 278.0
  */
 export async function getLiveForexUsdRate(): Promise<number> {
+  if (!(await isApiEnabled("exchange_rates"))) {
+    return DEFAULT_USD_TO_PKR;
+  }
+
   const now = Date.now();
   if (cachedUsdToPkr && (now - lastFetchTimestamp) < CACHE_TTL_MS) {
     return cachedUsdToPkr;

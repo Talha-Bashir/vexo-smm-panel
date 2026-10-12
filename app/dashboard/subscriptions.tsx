@@ -220,7 +220,12 @@ export function SubscriptionsPage({
     setPurchaseError("");
 
     if (!deliveryContact.trim()) {
-      setPurchaseError("Please enter your delivery email address or WhatsApp phone number.");
+      setPurchaseError("Please enter your delivery email address (e.g. yourname@gmail.com).");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(deliveryContact.trim())) {
+      setPurchaseError("Please provide a valid email address. Delivery notifications are sent exclusively via email.");
       return;
     }
 
@@ -932,19 +937,7 @@ export function SubscriptionsPage({
                   )}
                 </div>
 
-                {/* WhatsApp & Email Dispatch Confirmation */}
-                {purchaseDispatch?.directWhatsAppLink && (
-                  <a
-                    href={purchaseDispatch.directWhatsAppLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 py-3 text-xs font-black text-slate-950 hover:bg-emerald-400 transition shadow-[0_4px_14px_rgba(16,185,129,0.3)]"
-                  >
-                    <span>📱</span>
-                    <span>Save Credentials to WhatsApp ↗</span>
-                  </a>
-                )}
-
+                {/* Email Dispatch Confirmation */}
                 {purchaseDispatch?.emailSent && (
                   <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-xs text-blue-300 flex items-center justify-center gap-2">
                     <span>✉️</span>
@@ -1159,21 +1152,18 @@ export function SubscriptionsPage({
                         {/* Delivery Input */}
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                            Delivery Gmail or WhatsApp Number <span className="text-[#baff00]">*</span>
+                            Delivery Email Address <span className="text-[#baff00]">*</span>
                           </label>
                           <input
-                            type="text"
+                            type="email"
                             value={deliveryContact}
                             onChange={(e) => setDeliveryContact(e.target.value)}
-                            placeholder="e.g. yourname@gmail.com or 03176437013 (WhatsApp)"
+                            placeholder="e.g. yourname@gmail.com"
                             className="w-full rounded-xl border border-white/15 bg-[#070e10] px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/30 placeholder-slate-500 transition"
                           />
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
-                              <span>✉️</span> <strong>Gmail:</strong> Automated setup email
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
-                              <span>📱</span> <strong>WhatsApp:</strong> Instant credentials chat
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-300">
+                              <span>✉️</span> <strong>Email Delivery:</strong> Automated access credentials and instructions are dispatched directly to your inbox.
                             </span>
                           </div>
                         </div>

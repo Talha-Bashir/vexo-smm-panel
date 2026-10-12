@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AdminApiTogglesCard } from "@/components/admin-api-toggles";
 
 export function PlatformSettingsView() {
   const [loading, setLoading] = useState(true);
@@ -212,6 +213,9 @@ export function PlatformSettingsView() {
         {msg && <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-xs font-bold text-emerald-400">{msg}</div>}
         {err && <div className="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs font-bold text-rose-400">{err}</div>}
       </div>
+
+      {/* External API Services Killswitch Manager */}
+      <AdminApiTogglesCard />
 
       {/* 2. Operations & Broadcast Announcement */}
       <div className="grid gap-6 lg:grid-cols-2">

@@ -3303,14 +3303,6 @@ function NewOrder({
   const [serviceAccordionOpen, setServiceAccordionOpen] = useState<boolean>(true);
   const [link, setLink] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("1000");
-  const [orderWhatsApp, setOrderWhatsApp] = useState<string>(currentUser?.whatsapp || "");
-  const [saveWhatsAppToProfile, setSaveWhatsAppToProfile] = useState<boolean>(true);
-
-  useEffect(() => {
-    if (currentUser?.whatsapp && !orderWhatsApp) {
-      setOrderWhatsApp(currentUser.whatsapp);
-    }
-  }, [currentUser?.whatsapp]);
 
   const [placingOrder, setPlacingOrder] = useState<boolean>(false);
   const [orderMessage, setOrderMessage] = useState<string>("");
@@ -3657,8 +3649,6 @@ function NewOrder({
           quantity: String(qty),
           idempotencyKey,
           platform: service.platform,
-          whatsapp: orderWhatsApp.trim(),
-          saveWhatsApp: saveWhatsAppToProfile,
         }),
       });
 
@@ -4221,37 +4211,6 @@ function NewOrder({
                 </button>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* WhatsApp Notification & Order Updates (Optional) */}
-        <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-              <span>📱</span> WhatsApp Order Updates <span className="text-[10px] text-slate-500 font-normal lowercase">(optional)</span>
-            </label>
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">
-              <span>⚡</span> Live WhatsApp Bot Alert
-            </span>
-          </div>
-          <input
-            type="text"
-            value={orderWhatsApp}
-            onChange={(e) => setOrderWhatsApp(e.target.value)}
-            placeholder="e.g. 03176437013 or +923176437013"
-            className="w-full rounded-xl border border-white/10 bg-[#070e10] px-4 py-2.5 text-xs text-white placeholder:text-slate-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/20 outline-none transition font-mono"
-          />
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="saveWhatsAppCheck"
-              checked={saveWhatsAppToProfile}
-              onChange={(e) => setSaveWhatsAppToProfile(e.target.checked)}
-              className="rounded border-white/20 bg-white/5 text-emerald-400 focus:ring-0 cursor-pointer"
-            />
-            <label htmlFor="saveWhatsAppCheck" className="text-[11px] text-slate-400 cursor-pointer select-none">
-              Save this WhatsApp number to my profile for future orders
-            </label>
           </div>
         </div>
 
@@ -6658,38 +6617,6 @@ function AccountPage({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [profileWhatsApp, setProfileWhatsApp] = useState(currentUser?.whatsapp || "");
-  const [savingWhatsApp, setSavingWhatsApp] = useState(false);
-  const [waMessage, setWaMessage] = useState("");
-  const [waError, setWaError] = useState("");
-
-  async function handleSaveWhatsApp(e: React.FormEvent) {
-    e.preventDefault();
-    setWaMessage("");
-    setWaError("");
-    try {
-      setSavingWhatsApp(true);
-      const res = await fetch("/api/user/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ whatsapp: profileWhatsApp.trim() }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Failed to update WhatsApp number.");
-      }
-      setWaMessage("WhatsApp number saved successfully! Brevo contact updated.");
-      if (currentUser) {
-        currentUser.whatsapp = profileWhatsApp.trim();
-      }
-    } catch (err) {
-      setWaError(err instanceof Error ? err.message : "Failed to save WhatsApp number.");
-    } finally {
-      setSavingWhatsApp(false);
-    }
-  }
-
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setMessage("");
@@ -6793,53 +6720,6 @@ function AccountPage({
             Session tokens are cryptographically hashed and verified in PostgreSQL to prevent any cross-account access.
           </p>
         </div>
-      </div>
-
-      {/* WhatsApp Notifications Settings */}
-      <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6 sm:p-8">
-        <div className="flex items-center gap-2.5">
-          <span className="text-2xl">📱</span>
-          <div>
-            <h3 className="text-lg font-black text-white">WhatsApp Notifications</h3>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Save your WhatsApp number to receive automated order confirmations, status alerts, and subscription credentials via Brevo.
-            </p>
-          </div>
-        </div>
-
-        {waError && (
-          <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
-            ⚠️ {waError}
-          </div>
-        )}
-
-        {waMessage && (
-          <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-xs text-emerald-300">
-            ✓ {waMessage}
-          </div>
-        )}
-
-        <form onSubmit={handleSaveWhatsApp} className="mt-5 max-w-md space-y-3.5">
-          <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
-              WhatsApp Phone Number
-            </label>
-            <input
-              type="text"
-              value={profileWhatsApp}
-              onChange={(e) => setProfileWhatsApp(e.target.value)}
-              placeholder="e.g. 03176437013 or +923176437013"
-              className="w-full rounded-xl border border-white/10 bg-[#0a1110] px-4 py-3 text-sm text-white font-mono outline-none focus:border-emerald-400"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={savingWhatsApp}
-            className="rounded-xl bg-emerald-400 px-5 py-2.5 text-xs font-bold text-[#07100f] hover:bg-emerald-300 transition cursor-pointer disabled:opacity-50"
-          >
-            {savingWhatsApp ? "Saving..." : "Save WhatsApp Number"}
-          </button>
-        </form>
       </div>
 
       {/* Change Password Form */}

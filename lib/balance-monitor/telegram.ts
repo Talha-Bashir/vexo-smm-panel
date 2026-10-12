@@ -3,9 +3,15 @@
  * Sends notifications to the configured Telegram bot and chat.
  */
 
+import { isApiEnabled } from "@/lib/api-manager";
+
 const DEFAULT_API_BASE = "https://api.telegram.org";
 
 export async function sendTelegramNotification(text: string): Promise<boolean> {
+  if (!(await isApiEnabled("telegram_alerts"))) {
+    return false;
+  }
+
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
   const apiBase = process.env.TELEGRAM_API_BASE_URL?.trim() || DEFAULT_API_BASE;

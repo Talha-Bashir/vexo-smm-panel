@@ -14,7 +14,6 @@ import {
   reserveWalletForOrder,
 } from "@/lib/wallet";
 import { getCachedProviderBalances, resolveEffectiveServicePricing } from "@/lib/balance-routing";
-import { triggerOrderWhatsAppBrevo } from "@/lib/brevo";
 
 import { checkMaintenanceApiBlock } from "@/lib/maintenance";
 
@@ -45,8 +44,6 @@ export async function POST(request: Request) {
     const link = String(body.link || "").trim();
     const quantity = String(body.quantity || "").trim();
     const idempotencyKey = String(body.idempotencyKey || "").trim();
-    const whatsapp = String(body.whatsapp || "").trim();
-    const saveWhatsApp = Boolean(body.saveWhatsApp);
 
     if (!idempotencyKey || idempotencyKey.length > 120) {
       return NextResponse.json({ success: false, error: "Invalid order request key." }, { status: 400 });
@@ -191,7 +188,6 @@ export async function POST(request: Request) {
       quantity: numericQuantity,
       ratePkr: rate,
       chargePkr: charge,
-      whatsapp: whatsapp || undefined,
     });
 
     if (reservation.existing) {
@@ -281,36 +277,6 @@ export async function POST(request: Request) {
           orderId: providerOrderId,
           vexoOrderId,
         }, { status: 500 });
-      }
-
-      // Save WhatsApp to user profile if requested or if user has no saved number
-      if (whatsapp) {
-        try {
-          if (saveWhatsApp || !user.whatsapp) {
-            await db.query(
-              `UPDATE vexo_users SET whatsapp = $1 WHERE id = $2`,
-              [whatsapp, user.id]
-            );
-          }
-        } catch (waErr) {
-          console.warn("[Order] Could not persist user WhatsApp:", waErr);
-        }
-      }
-
-      // Trigger Brevo WhatsApp Contact Sync & order_completed event
-      const effectiveWhatsApp = whatsapp || user.whatsapp || "";
-      if (effectiveWhatsApp) {
-        triggerOrderWhatsAppBrevo({
-          email: user.email,
-          name: user.name,
-          whatsappPhone: effectiveWhatsApp,
-          orderId: providerOrderId || vexoOrderId,
-          serviceName,
-          quantity: numericQuantity,
-          amountPkr: charge,
-          platform,
-          link: sanitizedLink,
-        }).catch((bErr) => console.warn("[Order] Brevo automation warning:", bErr));
       }
 
       return NextResponse.json({

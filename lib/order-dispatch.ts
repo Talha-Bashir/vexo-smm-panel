@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { getRegisteredProviders, submitProviderOrder, ProviderConfig } from "@/lib/providers";
 import { addRizviOrder } from "@/lib/rizvi";
 import { getCachedProviderBalances, selectFundedProviderCandidate } from "@/lib/balance-routing";
+import { isApiEnabled } from "@/lib/api-manager";
 
 export interface FailoverAttempt {
   providerId: string;
@@ -40,6 +41,14 @@ export async function dispatchOrderWithFailover(
   quantity: number,
   options?: DispatchOptions
 ): Promise<DispatchResult> {
+  if (!(await isApiEnabled("smm_dispatch"))) {
+    return {
+      success: false,
+      failoverAttempts: [],
+      error: "Automated upstream provider dispatch is currently paused by Administrator in API Services Manager.",
+    };
+  }
+
   const serviceIdStr = String(serviceIdentifier).trim();
 
   // 1. Look up routed service in vexo_routed_services
