@@ -390,9 +390,9 @@ export default function Admin() {
     }
   }
 
-  async function saveService(s: any) {
+  async function saveService(s: any, silent: boolean = false) {
     try {
-      setBusy(true);
+      if (!silent) setBusy(true);
       const res = await api("/api/admin/services", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -413,6 +413,7 @@ export default function Admin() {
           activeRemoteServiceId: s.active_remote_service_id,
           baseRateUsd: s.base_rate_usd,
           rateMultiplier: Number(s.rate_multiplier || 1.07),
+          rateUsd: s.rate_usd != null ? Number(s.rate_usd) : undefined,
           description: s.description,
         }),
       });
@@ -424,7 +425,7 @@ export default function Admin() {
       setError(e instanceof Error ? e.message : "Service update failed.");
       throw e;
     } finally {
-      setBusy(false);
+      if (!silent) setBusy(false);
     }
   }
 
@@ -2310,7 +2311,7 @@ function Services({
 }: {
   services: any[];
   setServices: React.Dispatch<React.SetStateAction<any[]>>;
-  save: (s: any) => Promise<any> | void;
+  save: (s: any, silent?: boolean) => Promise<any> | void;
   busy: boolean;
   providers: any[];
   syncProviders: () => void;
@@ -2333,9 +2334,25 @@ function Services({
   const [bulkMult, setBulkMult] = useState("1.07");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkStatusLoading, setBulkStatusLoading] = useState(false);
-  const [editingDescService, setEditingDescService] = useState<any | null>(null);
-  const [descContent, setDescContent] = useState<string>("");
-  const [savingDesc, setSavingDesc] = useState(false);
+  const [savingRowId, setSavingRowId] = useState<string | null>(null);
+  const [savedRowId, setSavedRowId] = useState<string | null>(null);
+
+  const handleInlineSave = async (updatedService: any) => {
+    const sId = String(updatedService.service || updatedService.id);
+    try {
+      setSavingRowId(sId);
+      await Promise.resolve(save(updatedService, true));
+      setSavedRowId(sId);
+      setTimeout(() => {
+        setSavedRowId((prev) => (prev === sId ? null : prev));
+      }, 2500);
+    } catch (err) {
+      console.error("Auto save failed:", err);
+    } finally {
+      setSavingRowId((prev) => (prev === sId ? null : prev));
+    }
+  };
+
   const [isAddingService, setIsAddingService] = useState(false);
   const [savingNew, setSavingNew] = useState(false);
   const [editingFullService, setEditingFullService] = useState<any | null>(null);
@@ -2936,7 +2953,7 @@ function Services({
                 <th className="px-4 py-3.5">Retail Price ($ USD)</th>
                 <th className="px-4 py-3.5">Retail Price (₨ PKR)</th>
                 <th className="px-4 py-3.5 text-center">Status</th>
-                <th className="px-4 py-3.5 text-center">Action</th>
+                <th className="px-4 py-3.5 text-center sticky right-0 bg-[#0b1418] z-20 shadow-[-6px_0_12px_rgba(0,0,0,0.6)]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs">
@@ -2996,20 +3013,20 @@ function Services({
                                 newBaseUsd = Number(cheapest.rateUsd);
                                 newActiveProv = cheapest.providerId;
                               }
+                              const updated = {
+                                ...s,
+                                auto_route: nextVal,
+                                active_provider_id: newActiveProv,
+                                base_rate_usd: newBaseUsd,
+                                rate_usd: Math.round(newBaseUsd * Number(s.rate_multiplier || 1.07) * 10000) / 10000,
+                                rate_pkr: Math.round(newBaseUsd * Number(s.rate_multiplier || 1.07) * (usdToPkr || 278) * 10000) / 10000,
+                              };
                               setServices((v) =>
                                 v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id)
-                                    ? {
-                                        ...x,
-                                        auto_route: nextVal,
-                                        active_provider_id: newActiveProv,
-                                        base_rate_usd: newBaseUsd,
-                                        rate_usd: Math.round(newBaseUsd * Number(x.rate_multiplier || 1.07) * 10000) / 10000,
-                                        rate_pkr: Math.round(newBaseUsd * Number(x.rate_multiplier || 1.07) * (usdToPkr || 278) * 10000) / 10000,
-                                      }
-                                    : x
+                                  String(x.service || x.id) === String(s.service || s.id) ? updated : x
                                 )
                               );
+                              handleInlineSave(updated);
                             }}
                             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                               s.auto_route !== false ? "bg-[#baff00]" : "bg-slate-700"
@@ -3034,20 +3051,20 @@ function Services({
                               const provQuote = s.provider_rates?.[newP];
                               const newBaseUsd = provQuote?.rateUsd != null ? Number(provQuote.rateUsd) : Number(s.base_rate_usd || 0);
                               const curMult = Number(s.rate_multiplier || 1.07);
+                              const updated = {
+                                ...s,
+                                active_provider_id: newP,
+                                auto_route: false,
+                                base_rate_usd: newBaseUsd,
+                                rate_usd: Math.round(newBaseUsd * curMult * 10000) / 10000,
+                                rate_pkr: Math.round(newBaseUsd * curMult * (usdToPkr || 278) * 10000) / 10000,
+                              };
                               setServices((v) =>
                                 v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id)
-                                    ? {
-                                        ...x,
-                                        active_provider_id: newP,
-                                        auto_route: false,
-                                        base_rate_usd: newBaseUsd,
-                                        rate_usd: Math.round(newBaseUsd * curMult * 10000) / 10000,
-                                        rate_pkr: Math.round(newBaseUsd * curMult * (usdToPkr || 278) * 10000) / 10000,
-                                      }
-                                    : x
+                                  String(x.service || x.id) === String(s.service || s.id) ? updated : x
                                 )
                               );
+                              handleInlineSave(updated);
                             }}
                             className="rounded border border-white/10 bg-[#0b1418] px-2 py-1 text-[11px] text-white outline-none"
                           >
@@ -3189,50 +3206,123 @@ function Services({
                     {/* Markup Multiplier */}
                     <td className="px-4 py-3.5">
                       <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1">
                           <input
                             type="number"
                             min="0.1"
                             max="20"
-                            step="0.05"
+                            step="0.01"
                             value={s.rate_multiplier ?? 1.07}
                             onChange={(e) => {
-                              const newMult = e.target.value;
-                              const multNum = Number(newMult) || 1.07;
+                              const newMult = parseFloat(e.target.value);
+                              const multVal = !isNaN(newMult) ? newMult : 1.07;
                               const curBase = Number(s.base_rate_usd || 0);
+                              const newRateUsd = Math.round(curBase * multVal * 10000) / 10000;
+                              const newRatePkr = Math.round(curBase * multVal * (usdToPkr || 278) * 100) / 100;
                               setServices((v) =>
                                 v.map((x) =>
                                   String(x.service || x.id) === String(s.service || s.id)
                                     ? {
                                         ...x,
-                                        rate_multiplier: newMult,
-                                        rate_usd: Math.round(curBase * multNum * 10000) / 10000,
-                                        rate_pkr: Math.round(curBase * multNum * (usdToPkr || 278) * 10000) / 10000,
+                                        rate_multiplier: e.target.value,
+                                        rate_usd: newRateUsd,
+                                        rate_pkr: newRatePkr,
                                       }
                                     : x
                                 )
                               );
                             }}
-                            className="w-16 rounded-lg border border-white/10 bg-[#0b1418] px-2 py-1 font-mono text-xs text-white outline-none focus:border-[#baff00]/50"
+                            onBlur={() => {
+                              const multVal = Number(s.rate_multiplier) || 1.07;
+                              const curBase = Number(s.base_rate_usd || 0);
+                              const updated = {
+                                ...s,
+                                rate_multiplier: multVal,
+                                rate_usd: Math.round(curBase * multVal * 10000) / 10000,
+                                rate_pkr: Math.round(curBase * multVal * (usdToPkr || 278) * 100) / 100,
+                              };
+                              handleInlineSave(updated);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="w-20 rounded-lg border border-white/10 bg-[#0b1418] px-2.5 py-1 font-mono text-xs text-white outline-none focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/30 transition"
                           />
                           <span className="text-[10px] text-slate-500">×</span>
                         </div>
-                        <span className={`text-[9px] font-bold ${marginPercent >= 0 ? "text-emerald-400" : "text-amber-400"}`}>
-                          {marginPercent >= 0 ? `+${marginPercent}% profit` : `${marginPercent}%`}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className={`text-[9px] font-bold ${marginPercent >= 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                            {marginPercent >= 0 ? `+${marginPercent}% profit` : `${marginPercent}%`}
+                          </span>
+                          {savingRowId === String(s.service || s.id) && (
+                            <span className="text-[9px] text-cyan-400 font-bold animate-pulse">⏳</span>
+                          )}
+                          {savedRowId === String(s.service || s.id) && (
+                            <span className="text-[9px] text-emerald-400 font-black">✓</span>
+                          )}
+                        </div>
                       </div>
                     </td>
 
-                    {/* Retail USD Price */}
-                    <td className="px-4 py-3.5 font-mono font-bold text-cyan-400">
-                      ${retailUsd.toFixed(4)}
-                      <p className="text-[9px] font-normal text-slate-500">per 1k</p>
+                    {/* Retail USD Price - DIRECTLY EDITABLE WITH AUTO-SAVE */}
+                    <td className="px-4 py-3.5 font-mono font-bold">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-bold text-cyan-400">$</span>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            min="0"
+                            value={s.rate_usd != null ? s.rate_usd : retailUsd}
+                            onChange={(e) => {
+                              const newPrice = parseFloat(e.target.value);
+                              const val = !isNaN(newPrice) ? newPrice : 0;
+                              const curBase = Number(s.base_rate_usd || 0);
+                              const newMult = curBase > 0 ? Math.round((val / curBase) * 10000) / 10000 : 1.07;
+                              const newRatePkr = Math.round(val * (usdToPkr || 278) * 100) / 100;
+                              setServices((v) =>
+                                v.map((x) =>
+                                  String(x.service || x.id) === String(s.service || s.id)
+                                    ? {
+                                        ...x,
+                                        rate_usd: e.target.value,
+                                        rate_multiplier: newMult,
+                                        rate_pkr: newRatePkr,
+                                      }
+                                    : x
+                                )
+                              );
+                            }}
+                            onBlur={() => {
+                              const val = Number(s.rate_usd != null ? s.rate_usd : retailUsd);
+                              const curBase = Number(s.base_rate_usd || 0);
+                              const newMult = curBase > 0 ? Math.round((val / curBase) * 10000) / 10000 : 1.07;
+                              const updated = {
+                                ...s,
+                                rate_usd: val,
+                                rate_multiplier: newMult,
+                                rate_pkr: Math.round(val * (usdToPkr || 278) * 100) / 100,
+                              };
+                              handleInlineSave(updated);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="w-24 rounded-lg border border-cyan-500/30 bg-[#071317] px-2.5 py-1 font-mono text-xs font-bold text-cyan-300 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition"
+                          />
+                        </div>
+                        <span className="text-[9px] font-normal text-slate-500">per 1k</span>
+                      </div>
                     </td>
 
                     {/* Retail PKR Price */}
                     <td className="px-4 py-3.5 font-mono font-bold text-[#baff00]">
-                      ₨{retailPkr.toFixed(2)}
-                      <p className="text-[9px] font-normal text-slate-500">per 1k</p>
+                      <div>₨{retailPkr.toFixed(2)}</div>
+                      <p className="text-[9px] font-normal text-slate-500">per 1k (auto)</p>
                     </td>
 
                     {/* Status checkboxes */}
@@ -3253,7 +3343,7 @@ function Services({
                                   String(x.service || x.id) === String(s.service || s.id) ? updated : x
                                 )
                               );
-                              Promise.resolve(save(updated)).catch(() => {});
+                              handleInlineSave(updated);
                             }}
                             className="h-4 w-4 rounded accent-[#baff00] cursor-pointer"
                           />
@@ -3274,7 +3364,7 @@ function Services({
                                   String(x.service || x.id) === String(s.service || s.id) ? updated : x
                                 )
                               );
-                              Promise.resolve(save(updated)).catch(() => {});
+                              handleInlineSave(updated);
                             }}
                             className="h-4 w-4 rounded accent-amber-400 cursor-pointer"
                           />
@@ -3282,8 +3372,8 @@ function Services({
                       </div>
                     </td>
 
-                    {/* Actions Column */}
-                    <td className="px-4 py-3.5 text-center">
+                    {/* Actions Column - STICKY RIGHT & NO DESC BUTTON */}
+                    <td className="px-4 py-3.5 text-center sticky right-0 bg-[#07100f] z-10 shadow-[-6px_0_12px_rgba(0,0,0,0.6)]">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
@@ -3295,17 +3385,6 @@ function Services({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setEditingDescService(s);
-                            setDescContent(s.description || "");
-                          }}
-                          className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-2 py-1.5 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/20 cursor-pointer"
-                          title="Quick edit description"
-                        >
-                          Desc
-                        </button>
-                        <button
-                          type="button"
                           onClick={() => handleDeleteService(s)}
                           className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/20 cursor-pointer"
                           title="Delete service permanently"
@@ -3313,12 +3392,22 @@ function Services({
                           🗑️
                         </button>
                         <button
-                          disabled={busy}
-                          onClick={() => save(s)}
-                          className="rounded-lg bg-[#baff00] px-2.5 py-1.5 text-xs font-black text-[#07100f] transition hover:bg-[#d2ff5a] disabled:opacity-50 cursor-pointer"
-                          title="Save inline changes"
+                          disabled={savingRowId === String(s.service || s.id)}
+                          onClick={() => handleInlineSave(s)}
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+                            savedRowId === String(s.service || s.id)
+                              ? "bg-emerald-400 text-[#07100f]"
+                              : "bg-[#baff00] text-[#07100f] hover:bg-[#d2ff5a]"
+                          }`}
+                          title="Save price & changes"
                         >
-                          Save
+                          {savingRowId === String(s.service || s.id) ? (
+                            <span>⏳ Saving</span>
+                          ) : savedRowId === String(s.service || s.id) ? (
+                            <span>✓ Saved</span>
+                          ) : (
+                            <span>💾 Save</span>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -3332,104 +3421,6 @@ function Services({
           )}
         </div>
       </section>
-
-      {/* Service Description Editor Modal */}
-      {editingDescService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-black uppercase text-white">
-                    {editingDescService.platform || "Service"}
-                  </span>
-                  <span className="text-xs font-mono text-slate-400">ID #{editingDescService.service || editingDescService.id}</span>
-                </div>
-                <h3 className="mt-1 font-black text-base text-white line-clamp-1">
-                  {editingDescService.name}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingDescService(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg text-lg cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 text-xs text-blue-200">
-                💡 <strong>Custom Service Description:</strong> Enter bullet points, delivery speed, link guidelines, guarantee rules, or refill info. This is displayed live to customers when viewing this service.
-                <p className="mt-1 text-blue-300/80">
-                  Note: Existing service descriptions are never modified automatically. They remain completely unchanged until you write custom details and click Save.
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                    Description Content
-                  </label>
-                  <span className="text-[11px] text-slate-500">
-                    {descContent.length} characters
-                  </span>
-                </div>
-                <textarea
-                  rows={10}
-                  value={descContent}
-                  onChange={(e) => setDescContent(e.target.value)}
-                  placeholder="Enter detailed description, speed, link format, refill instructions..."
-                  className="w-full rounded-xl border border-white/10 bg-[#0b1418] p-4 text-xs font-mono text-slate-200 outline-none focus:border-[#baff00]/50"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 border-t border-white/10 p-4 bg-[#0b1418]">
-              <button
-                type="button"
-                onClick={() => setEditingDescService(null)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={savingDesc}
-                onClick={async () => {
-                  setSavingDesc(true);
-                  try {
-                    await api("/api/admin/services", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        serviceId: String(editingDescService.service || editingDescService.id),
-                        description: descContent,
-                      }),
-                    });
-                    setServices((prev: any[]) =>
-                      prev.map((item) =>
-                        String(item.service || item.id) === String(editingDescService.service || editingDescService.id)
-                          ? { ...item, description: descContent }
-                          : item
-                      )
-                    );
-                    alert("✓ Service description updated successfully!");
-                    setEditingDescService(null);
-                  } catch (err: any) {
-                    alert("Failed to save description: " + (err.message || "Unknown error"));
-                  } finally {
-                    setSavingDesc(false);
-                  }
-                }}
-                className="rounded-xl bg-[#baff00] px-5 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition cursor-pointer"
-              >
-                {savingDesc ? "Saving..." : "Save Description"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 4. Comprehensive Add New Service Modal */}
       {isAddingService && (

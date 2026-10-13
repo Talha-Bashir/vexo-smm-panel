@@ -337,7 +337,17 @@ export async function PATCH(req: Request) {
       activeRemoteServiceId = body.activeRemoteServiceId ? String(body.activeRemoteServiceId).trim() : null;
     }
 
-    if (body.rateMultiplier !== undefined && body.rateMultiplier !== null) {
+    if (body.rateUsd !== undefined || body.rate_usd !== undefined) {
+      const targetUsd = Number(body.rateUsd ?? body.rate_usd);
+      if (Number.isFinite(targetUsd) && targetUsd >= 0) {
+        if (baseRateUsd > 0) {
+          rateMultiplier = Math.round((targetUsd / baseRateUsd) * 10000) / 10000;
+        } else {
+          baseRateUsd = targetUsd;
+          rateMultiplier = 1;
+        }
+      }
+    } else if (body.rateMultiplier !== undefined && body.rateMultiplier !== null) {
       const mult = Number(body.rateMultiplier);
       if (!Number.isFinite(mult) || mult < 0.1 || mult > 50) {
         return NextResponse.json({ success: false, error: "Multiplier must be between 0.1 and 50." }, { status: 400 });
