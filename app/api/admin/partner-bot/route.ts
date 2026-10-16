@@ -3,15 +3,18 @@ import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/admin-guard";
 import { logAdminActivity } from "@/lib/admin";
 import {
-  checkGGSomaHealth,
-  getGGSomaBalance,
-  getGGSomaConfig,
-  getGGSomaProducts,
-  getGGSomaProviders,
-  getGGSomaUsage,
-  setGGSomaConfig,
-  type GGSomaUsage,
-} from "@/lib/ggsoma-api";
+  checkElevateXHealth,
+  getElevateXBalance,
+  getElevateXConfig,
+  getElevateXProducts,
+  getElevateXProviders,
+  getElevateXUsage,
+  setElevateXConfig,
+  getElevateBotMaintenanceStatus,
+  setElevateBotMaintenance,
+  type ElevateXUsage,
+  type ElevateXBalanceResponse,
+} from "@/lib/elevatex-api";
 
 export const dynamic = "force-dynamic";
 
@@ -28,44 +31,45 @@ export async function GET() {
     const g = await guard();
     if (g.error) return g.error;
 
-    const config = await getGGSomaConfig();
-    const health = await checkGGSomaHealth();
+    const config = await getElevateXConfig();
 
-    let balance: Record<string, unknown> | null = null;
-    let usage: GGSomaUsage | null = null;
-    let providersCount = 0;
+    // Run external API requests in parallel to eliminate sequential latency (slashes 9s down to ~1.2s!)
+    const [health, balRes, prodRes] = await Promise.all([
+      checkElevateXHealth(false),
+      config.apiKey ? getElevateXBalance() : Promise.resolve({ ok: false } as ElevateXBalanceResponse),
+      config.apiKey ? getElevateXProducts() : Promise.resolve({ ok: false, products: [] } as any),
+    ]);
+
+    const botMaint = await getElevateBotMaintenanceStatus(health);
+
+    let balance: ElevateXBalanceResponse | null = null;
+    let usage: ElevateXUsage | null = null;
+    let providersCount = 1;
     let productsCount = 0;
     let productsList: Array<Record<string, unknown>> = [];
 
-    if (config.apiKey) {
-      const balRes = await getGGSomaBalance();
-      if (balRes.ok) balance = balRes;
+    if (balRes.ok) {
+      balance = balRes;
+      usage = {
+        balance: balRes.balance_usdt || "0.00",
+        currency: "USDT",
+        apiOrdersTotal: balRes.total_orders || 0,
+        apiSpendTotal: balRes.total_volume_usdt || "0.00",
+        rateLimitPerMin: balRes.rate_limit_per_min || 120,
+      };
+    }
 
-      const usageRes = await getGGSomaUsage();
-      if (usageRes.ok) usage = usageRes.usage || null;
-
-      const provRes = await getGGSomaProviders();
-      if (provRes.ok && Array.isArray(provRes.providers)) {
-        providersCount = provRes.providers.length;
-      }
-
-      const prodRes = await getGGSomaProducts();
-      let inStockCount = 0;
-      let outOfStockCount = 0;
-      if (prodRes.ok && Array.isArray(prodRes.products)) {
-        productsCount = prodRes.products.length;
-        productsList = prodRes.products.map((p) => {
-          const inStock = Boolean(p.stock ? (p.stock.inStock && (p.stock.count == null || p.stock.count > 0)) : true);
-          const stockCount = p.stock?.count != null ? Number(p.stock.count) : (inStock ? 1 : 0);
-          if (inStock) inStockCount++;
-          else outOfStockCount++;
-          return {
-            ...p,
-            inStock,
-            stockCount,
-          };
-        });
-      }
+    if (prodRes.ok && Array.isArray(prodRes.products)) {
+      productsCount = prodRes.products.length;
+      productsList = prodRes.products.map((p: any) => {
+        const inStock = Boolean(p.stock ? (p.stock.inStock && (p.stock.count == null || p.stock.count > 0)) : true);
+        const stockCount = p.stock?.count != null ? Number(p.stock.count) : (inStock ? 1 : 0);
+        return {
+          ...p,
+          inStock,
+          stockCount,
+        };
+      });
     }
 
     let recentOrders: Array<Record<string, unknown>> = [];
@@ -127,6 +131,13 @@ export async function GET() {
       health,
       balance,
       usage,
+      maintenance: {
+        isMaintenance: botMaint.isMaintenance,
+        message: botMaint.message || "We are maintaining our services, please come back later.",
+        mode: botMaint.mode || "auto",
+        reason: botMaint.reason || "none",
+        upstreamStatus: botMaint.upstreamStatus || (health.isMaintenance ? "maintenance" : health.status || "online"),
+      },
       providersCount,
       productsCount,
       inStockCount: productsList.filter((p: any) => p.inStock).length,
@@ -157,8 +168,8 @@ export async function POST(req: Request) {
 
     if (action === "test_connection") {
       const testKey = body.apiKey !== undefined ? String(body.apiKey).trim() : undefined;
-      const health = await checkGGSomaHealth();
-      const bal = await getGGSomaBalance(testKey);
+      const health = await checkElevateXHealth();
+      const bal = await getElevateXBalance(testKey);
 
       return NextResponse.json({
         success: health.ok && bal.ok,
@@ -175,7 +186,7 @@ export async function POST(req: Request) {
       const apiUrl = body.apiUrl !== undefined ? String(body.apiUrl).trim() : undefined;
       const markupPercent = body.markupPercent !== undefined ? Number(body.markupPercent) : undefined;
 
-      await setGGSomaConfig({ apiKey, apiUrl, markupPercent }, g.user?.id);
+      await setElevateXConfig({ apiKey, apiUrl, markupPercent }, g.user?.id);
 
       // Save automated notification settings
       const client = await db.connect();
@@ -261,7 +272,7 @@ export async function POST(req: Request) {
     }
 
     if (action === "sync_stock") {
-      const prodRes = await getGGSomaProducts();
+      const prodRes = await getElevateXProducts();
       let inStockCount = 0;
       let outOfStockCount = 0;
       let productsList: any[] = [];
@@ -286,6 +297,39 @@ export async function POST(req: Request) {
         inStockCount,
         outOfStockCount,
         sampleProducts: productsList,
+      });
+    }
+
+    if (action === "set_maintenance") {
+      let mode: "auto" | "force_on" | "force_off" = "auto";
+      if (body.mode) {
+        mode = body.mode === "auto" ? "auto" : body.mode === "force_on" ? "force_on" : "force_off";
+      } else if (body.enabled !== undefined) {
+        mode = body.enabled ? "force_on" : "force_off";
+      }
+
+      const message = body.message !== undefined ? String(body.message).trim() : undefined;
+
+      await setElevateBotMaintenance(mode, message, g.user?.id);
+
+      await logAdminActivity(
+        g.user?.id || 1,
+        "UPDATE_PARTNER_BOT_MAINTENANCE",
+        "Settings",
+        "elevatex_bot",
+        { mode, message }
+      );
+
+      const status = await getElevateBotMaintenanceStatus();
+
+      return NextResponse.json({
+        success: true,
+        message: mode === "auto"
+          ? "Switched to AUTOMATIC mode. The store will dynamically monitor upstream Telegram Bot status."
+          : mode === "force_on"
+            ? "Maintenance mode is now FORCED ON. Store displays maintenance notices."
+            : "Maintenance mode is now FORCED OFF. Store returned to normal operations.",
+        maintenance: status,
       });
     }
 

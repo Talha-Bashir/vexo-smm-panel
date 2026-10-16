@@ -852,7 +852,7 @@ function ProviderBalancesWidget({
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {defaultList.map((dp) => {
-          const live = balanceMap.get(dp.id) || (dp.id === "elevatex_bot" ? balanceMap.get("ggsoma_bot") : undefined);
+          const live = balanceMap.get(dp.id);
           const numBal = parseNumericBalance(live?.balanceRaw ?? live?.balance);
 
           let badgeClass = "bg-white/5 text-slate-400";
@@ -5702,6 +5702,11 @@ function SubscriptionsAdmin({
   const [testLoading, setTestLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [maintenanceActive, setMaintenanceActive] = useState<boolean>(false);
+  const [maintenanceMode, setMaintenanceMode] = useState<"auto" | "force_on" | "force_off">("auto");
+  const [upstreamBotStatus, setUpstreamBotStatus] = useState<string>("online");
+  const [maintenanceMessageInput, setMaintenanceMessageInput] = useState<string>("We are maintaining our services, please come back later.");
+  const [togglingMaintenance, setTogglingMaintenance] = useState<boolean>(false);
 
   async function loadData() {
     try {
@@ -5715,10 +5720,51 @@ function SubscriptionsAdmin({
         if (res.config.resendApiKey) setResendKeyInput(res.config.resendApiKey);
         if (res.config.senderEmail) setSenderEmailInput(res.config.senderEmail);
       }
+      if (res.maintenance) {
+        setMaintenanceActive(Boolean(res.maintenance.isMaintenance));
+        if (res.maintenance.mode) {
+          setMaintenanceMode(res.maintenance.mode);
+        }
+        if (res.maintenance.upstreamStatus) {
+          setUpstreamBotStatus(res.maintenance.upstreamStatus);
+        }
+        if (res.maintenance.message) {
+          setMaintenanceMessageInput(res.maintenance.message);
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load partner bot details");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSetMaintenanceMode(mode: "auto" | "force_on" | "force_off") {
+    try {
+      setTogglingMaintenance(true);
+      const res = await api("/api/admin/partner-bot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set_maintenance",
+          mode,
+          message: maintenanceMessageInput.trim() || "We are maintaining our services, please come back later.",
+        }),
+      });
+      if (res.success) {
+        setMaintenanceMode(mode);
+        if (res.maintenance) {
+          setMaintenanceActive(Boolean(res.maintenance.isMaintenance));
+        }
+        await loadData();
+        alert(res.message || "Maintenance configuration updated successfully!");
+      } else {
+        alert(res.error || "Failed to update maintenance mode");
+      }
+    } catch (e: any) {
+      alert(e.message || "Failed to update maintenance mode");
+    } finally {
+      setTogglingMaintenance(false);
     }
   }
 
@@ -5853,6 +5899,122 @@ function SubscriptionsAdmin({
             <span>Customer Store View</span>
             <span>↗</span>
           </a>
+        </div>
+      </div>
+
+      {/* Elevate Bot Maintenance Mode Control Card */}
+      <div className={`rounded-3xl border p-6 transition-all ${
+        maintenanceActive
+          ? "border-amber-500/50 bg-gradient-to-r from-amber-500/15 via-[#1a140b] to-amber-500/10 shadow-[0_0_30px_rgba(245,158,11,0.15)]"
+          : "border-white/10 bg-[#0d171a]"
+      }`}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl border ${
+              maintenanceActive
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                : "bg-white/5 text-slate-400 border-white/10"
+            }`}>
+              {maintenanceActive ? "⚠️" : "⚡"}
+            </span>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-black text-white">
+                  Elevate Bot Maintenance Mode
+                </h3>
+                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
+                  maintenanceActive
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse"
+                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                }`}>
+                  {maintenanceActive ? "● MAINTENANCE ACTIVE" : "● OPERATIONAL (ONLINE)"}
+                </span>
+                <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] font-mono text-slate-300 border border-white/10">
+                  Mode: <strong className={maintenanceMode === "auto" ? "text-[#00D4FF]" : "text-amber-400"}>
+                    {maintenanceMode === "auto" ? "AUTO-DETECT" : maintenanceMode === "force_on" ? "FORCED ON" : "FORCED OFF"}
+                  </strong>
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                When active, customer purchasing is safely locked while keeping <strong>all 40+ services and tools visible</strong> with an &quot;Under Maintenance&quot; notice. In <strong>Auto-Detect</strong> mode, your store automatically enters maintenance whenever the upstream Telegram bot undergoes maintenance, and automatically goes live when the bot finishes.
+              </p>
+              <div className="flex items-center gap-2 pt-1 text-xs">
+                <span className="text-slate-400">Upstream Bot Status:</span>
+                <span className={`font-bold flex items-center gap-1.5 ${
+                  upstreamBotStatus === "online" || upstreamBotStatus === "ok" ? "text-emerald-400" : "text-amber-400"
+                }`}>
+                  <span className={`h-2 w-2 rounded-full ${upstreamBotStatus === "online" || upstreamBotStatus === "ok" ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+                  <span>@exzshop_bot ({upstreamBotStatus.toUpperCase()})</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={togglingMaintenance}
+              onClick={() => handleSetMaintenanceMode("auto")}
+              className={`rounded-xl px-4 py-2.5 text-xs font-black transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 border ${
+                maintenanceMode === "auto"
+                  ? "bg-[#00D4FF] text-[#07100f] border-[#00D4FF] shadow-[0_0_15px_rgba(0,212,255,0.3)]"
+                  : "bg-white/5 text-slate-300 border-white/10 hover:text-white hover:border-white/20"
+              }`}
+            >
+              <span>⚡</span>
+              <span>Auto-Detect (Recommended)</span>
+            </button>
+            <button
+              type="button"
+              disabled={togglingMaintenance}
+              onClick={() => handleSetMaintenanceMode("force_on")}
+              className={`rounded-xl px-4 py-2.5 text-xs font-black transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 border ${
+                maintenanceMode === "force_on"
+                  ? "bg-amber-500 text-[#07100f] border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                  : "bg-white/5 text-slate-300 border-white/10 hover:text-white hover:border-white/20"
+              }`}
+            >
+              <span>⚠️</span>
+              <span>Force ON</span>
+            </button>
+            <button
+              type="button"
+              disabled={togglingMaintenance}
+              onClick={() => handleSetMaintenanceMode("force_off")}
+              className={`rounded-xl px-4 py-2.5 text-xs font-black transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 border ${
+                maintenanceMode === "force_off"
+                  ? "bg-emerald-400 text-[#07100f] border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.3)]"
+                  : "bg-white/5 text-slate-300 border-white/10 hover:text-white hover:border-white/20"
+              }`}
+            >
+              <span>🟢</span>
+              <span>Force Live</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Notice Message Field */}
+        <div className="mt-4 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-3">
+          <label className="text-xs font-bold text-slate-300 whitespace-nowrap">
+            Public Notice Message:
+          </label>
+          <div className="flex-1 flex gap-2">
+            <input
+              type="text"
+              value={maintenanceMessageInput}
+              onChange={(e) => setMaintenanceMessageInput(e.target.value)}
+              placeholder="We are maintaining our services, please come back later."
+              className="flex-1 rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2 text-xs text-white outline-none focus:border-amber-400 placeholder-slate-600"
+            />
+            <button
+              type="button"
+              disabled={togglingMaintenance}
+              onClick={() => handleSetMaintenanceMode(maintenanceMode)}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 hover:text-white transition disabled:opacity-50 cursor-pointer"
+            >
+              Save Message
+            </button>
+          </div>
         </div>
       </div>
 

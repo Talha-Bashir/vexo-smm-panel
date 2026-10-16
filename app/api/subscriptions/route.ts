@@ -4,12 +4,13 @@ import { db } from "@/lib/db";
 import { getRequestUser } from "@/lib/request-user";
 import { getUserWallet } from "@/lib/wallet";
 import {
-  getGGSomaConfig,
-  getGGSomaProducts,
-  getGGSomaBalance,
-  createGGSomaOrder,
-  type GGSomaProduct,
-} from "@/lib/ggsoma-api";
+  getElevateXConfig,
+  getElevateXProducts,
+  getElevateXBalance,
+  createElevateXOrder,
+  getElevateBotMaintenanceStatus,
+  type ElevateXProduct,
+} from "@/lib/elevatex-api";
 import { dispatchSubscriptionNotifications } from "@/lib/subscription-notifier";
 import { isApiEnabled } from "@/lib/api-manager";
 
@@ -38,6 +39,7 @@ export interface ToolProduct {
   deliveryType?: "LINK" | "COUPON" | "READY_ACCOUNT" | "LICENSE_KEY";
   productSlug?: string;
   isPartnerBot?: boolean;
+  isUnderMaintenance?: boolean;
 }
 
 const TOOLS_CATALOG: ToolProduct[] = [
@@ -428,7 +430,7 @@ const TOOLS_CATALOG: ToolProduct[] = [
   },
 ];
 
-function inferCategory(prod: GGSomaProduct): { category: "ai" | "seo" | "smm_bots" | "streaming"; categoryLabel: string; icon: string } {
+function inferCategory(prod: ElevateXProduct): { category: "ai" | "seo" | "smm_bots" | "streaming"; categoryLabel: string; icon: string } {
   const text = `${prod.name} ${prod.slug} ${prod.provider?.name || ""} ${prod.provider?.key || ""}`.toLowerCase();
 
   if (text.includes("chatgpt") || text.includes("gpt") || text.includes("gemini") || text.includes("canva") || text.includes("capcut") || text.includes("ai") || text.includes("midjourney") || text.includes("quillbot") || text.includes("grammarly")) {
@@ -481,76 +483,107 @@ export async function GET() {
   try {
     await ensureSubscriptionsSchema();
     const user = await getRequestUser();
-    const config = await getGGSomaConfig();
+    const config = await getElevateXConfig();
+
+    // Parallelize external calls to eliminate sequential network latency
+    const [botMaintenance, prodRes, balRes] = await Promise.all([
+      getElevateBotMaintenanceStatus(),
+      config.apiKey ? getElevateXProducts() : Promise.resolve({ ok: false, products: [] } as any),
+      config.apiKey ? getElevateXBalance() : Promise.resolve({ ok: false } as any),
+    ]);
+
+    const isBotUnderMaintenance = botMaintenance.isMaintenance;
+    const botMaintenanceMessage = botMaintenance.message || "We are maintaining our services, please come back later.";
 
     let catalog: ToolProduct[] = [...TOOLS_CATALOG];
     let isLiveBot = false;
     let botBalance: string | null = null;
 
-    if (config.apiKey) {
-      try {
-        const prodRes = await getGGSomaProducts();
-        if (prodRes.ok && Array.isArray(prodRes.products) && prodRes.products.length > 0) {
-          isLiveBot = true;
-          const botCatalog: ToolProduct[] = prodRes.products.map((p) => {
-            const cat = inferCategory(p);
-            const markup = 1 + (config.markupPercent || 8) / 100;
-            const priceUsd = Number((Number(p.yourPrice || 10) * markup).toFixed(2));
-            const pricePkr = Math.max(10, Math.round(priceUsd * 278));
+    if (balRes.ok && balRes.balance && !isBotUnderMaintenance) {
+      botBalance = balRes.balance;
+    }
 
-            const inStock = Boolean(p.stock ? (p.stock.inStock && (p.stock.count == null || p.stock.count > 0)) : true);
-            const stockCount = p.stock?.count != null ? Number(p.stock.count) : (inStock ? 1 : 0);
-            const deliveryLabel = p.deliveryType === "LINK" ? "Activation Link" : p.deliveryType === "COUPON" ? "Coupon Code" : "Ready Account";
+    if (config.apiKey && prodRes.ok && Array.isArray(prodRes.products) && prodRes.products.length > 0) {
+      isLiveBot = true;
+      const botCatalog: ToolProduct[] = prodRes.products.map((p: any) => {
+        const cat = inferCategory(p);
+        const markup = 1 + (config.markupPercent || 8) / 100;
+        const priceUsd = Number((Number(p.yourPrice || 10) * markup).toFixed(2));
+        const pricePkr = Math.max(10, Math.round(priceUsd * 278));
 
-            const stockBadge = !inStock
+        const rawInStock = Boolean(p.stock ? (p.stock.inStock && (p.stock.count == null || p.stock.count > 0)) : true);
+        const rawStockCount = p.stock?.count != null ? Number(p.stock.count) : (rawInStock ? 1 : 0);
+        const deliveryLabel = p.deliveryType === "LINK" ? "Activation Link" : p.deliveryType === "COUPON" ? "Coupon Code" : "Ready Account";
+
+        const inStock = isBotUnderMaintenance ? false : rawInStock;
+        const stockCount = isBotUnderMaintenance ? 0 : rawStockCount;
+
+        const stockBadge = isBotUnderMaintenance
+          ? "Under Maintenance"
+          : (!rawInStock
               ? "Out of Stock"
               : (p.warranty?.enabled
                   ? `${p.warranty.days}d Warranty`
-                  : stockCount > 0
-                    ? `${stockCount} in Stock`
-                    : "Instant");
+                  : rawStockCount > 0
+                    ? `${rawStockCount} in Stock`
+                    : "Instant"));
 
-            return {
-              id: p.slug,
-              productSlug: p.slug,
-              name: p.name,
-              category: cat.category,
-              categoryLabel: cat.categoryLabel,
-              icon: cat.icon,
-              badge: stockBadge,
-              shortDesc: p.description || `Instant ${deliveryLabel} delivery from bot inventory. Active duration: ${p.durationDays || 30} days.`,
-              features: [
-                `Delivery format: ${deliveryLabel}`,
-                `Duration: ${p.durationDays || 30} Days`,
-                p.warranty?.enabled ? `Warranty: ${p.warranty.days} Days Replacement` : "Instant Automated Delivery",
-                p.stock ? (inStock ? `Stock Available: ${stockCount} in inventory` : "Currently Out of Stock (Auto-restocks when bot is replenished)") : "In Stock"
-              ],
-              deliveryType: p.deliveryType,
-              isPartnerBot: true,
-              plans: [
-                {
-                  duration: `${p.durationDays || 30} Days`,
-                  durationDays: p.durationDays || 30,
-                  pricePkr,
-                  priceUsd,
-                  popular: true,
-                  stockCount,
-                  inStock,
-                },
-              ],
-            };
-          });
+        return {
+          id: p.slug,
+          productSlug: p.slug,
+          name: p.name,
+          category: cat.category,
+          categoryLabel: cat.categoryLabel,
+          icon: cat.icon,
+          badge: stockBadge,
+          shortDesc: p.description || `Instant ${deliveryLabel} delivery from bot inventory. Active duration: ${p.durationDays || 30} days.`,
+          features: [
+            `Delivery format: ${deliveryLabel}`,
+            `Duration: ${p.durationDays || 30} Days`,
+            p.warranty?.enabled ? `Warranty: ${p.warranty.days} Days Replacement` : "Instant Automated Delivery",
+            isBotUnderMaintenance
+              ? "Status: We are maintaining our services, please come back later."
+              : (p.stock ? (rawInStock ? `Stock Available: ${rawStockCount} in inventory` : "Currently Out of Stock (Auto-restocks when bot is replenished)") : "In Stock")
+          ],
+          deliveryType: p.deliveryType,
+          isPartnerBot: true,
+          isUnderMaintenance: isBotUnderMaintenance,
+          plans: [
+            {
+              duration: `${p.durationDays || 30} Days`,
+              durationDays: p.durationDays || 30,
+              pricePkr,
+              priceUsd,
+              popular: true,
+              stockCount,
+              inStock,
+            },
+          ],
+        };
+      });
 
-          // Prepend live bot products, keeping standalone software tools
-          const standaloneTools = TOOLS_CATALOG.filter(t => t.category === "smm_bots");
-          catalog = [...botCatalog, ...standaloneTools];
+      // Prepend live bot products, keeping standalone software tools
+      const standaloneTools = TOOLS_CATALOG.filter(t => t.category === "smm_bots");
+      catalog = [...botCatalog, ...standaloneTools];
+    }
+
+    if (isBotUnderMaintenance) {
+      catalog = catalog.map((t) => {
+        const isBot = t.isPartnerBot || Boolean(t.productSlug) || (config.apiKey && !t.id.includes("wa_") && !t.id.includes("tg_"));
+        if (isBot) {
+          return {
+            ...t,
+            isPartnerBot: true,
+            isUnderMaintenance: true,
+            badge: "Under Maintenance",
+            plans: t.plans.map((p) => ({
+              ...p,
+              inStock: false,
+            })),
+          };
         }
-
-        const balRes = await getGGSomaBalance();
-        if (balRes.ok && balRes.balance) botBalance = balRes.balance;
-      } catch (err) {
-        console.warn("ElevateX Gateway catalog fetch warning, using fallback:", err);
-      }
+        return t;
+      });
     }
 
     let userSubscriptions: Array<Record<string, unknown>> = [];
@@ -573,12 +606,18 @@ export async function GET() {
         isLiveBot,
         botBalance,
         partnerBotActive: Boolean(config.apiKey),
-        inStockCount: catalog.filter((t) =>
-          t.plans.some((p) => p.inStock !== false && (p.stockCount === undefined || p.stockCount > 0))
-        ).length,
-        outOfStockCount: catalog.filter((t) =>
-          t.plans.every((p) => p.inStock === false || (p.stockCount !== undefined && p.stockCount <= 0))
-        ).length,
+        isBotUnderMaintenance,
+        botMaintenanceMessage,
+        inStockCount: isBotUnderMaintenance
+          ? catalog.length
+          : catalog.filter((t) =>
+              t.plans.some((p) => p.inStock !== false && (p.stockCount === undefined || p.stockCount > 0))
+            ).length,
+        outOfStockCount: isBotUnderMaintenance
+          ? 0
+          : catalog.filter((t) =>
+              t.plans.every((p) => p.inStock === false || (p.stockCount !== undefined && p.stockCount <= 0))
+            ).length,
         timestamp: new Date().toISOString(),
       },
       {
@@ -629,13 +668,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "A valid email address (e.g. name@gmail.com) is required for automated credentials delivery." }, { status: 400 });
     }
 
-    const config = await getGGSomaConfig();
+    const config = await getElevateXConfig();
 
     // Check in live catalog or fallback catalog
     let catalogItem: ToolProduct | undefined;
     if (config.apiKey) {
       try {
-        const prodRes = await getGGSomaProducts();
+        const prodRes = await getElevateXProducts();
         if (prodRes.ok && Array.isArray(prodRes.products)) {
           const match = prodRes.products.find(p => p.slug === toolId || String(p.id) === toolId);
           if (match) {
@@ -734,27 +773,58 @@ export async function POST(req: Request) {
     let instructions = "";
     let providerOrderCode: string | null = null;
 
-    // Check if fulfillable via GGSoma / ElevateX Telegram Bot Partner API
+    // Check if fulfillable via ElevateX Reseller Gateway
     const botApiActive = await isApiEnabled("elevatex_bot");
     const isBotProduct = catalogItem.isPartnerBot || Boolean(catalogItem.productSlug) || (config.apiKey && !catalogItem.id.includes("wa_") && !catalogItem.id.includes("tg_"));
+
+    if (isBotProduct) {
+      const botMaintenance = await getElevateBotMaintenanceStatus();
+      if (botMaintenance.isMaintenance) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: botMaintenance.message || "We are maintaining our services, please come back later.",
+            isMaintenance: true,
+          },
+          { status: 503 }
+        );
+      }
+    }
 
     if (botApiActive && config.apiKey && isBotProduct) {
       const externalOrderId = `VEXARO-${crypto.randomBytes(4).toString("hex").toUpperCase()}-${Date.now().toString().slice(-6)}`;
       const targetSlug = catalogItem.productSlug || catalogItem.id;
 
-      const botOrder = await createGGSomaOrder({
+      const botOrder = await createElevateXOrder({
         productSlug: targetSlug,
         quantity,
         externalOrderId,
       });
 
       if (!botOrder.ok) {
-        const rawMsg = botOrder.error?.message || "Product is currently out of stock with upstream provider.";
+        const rawMsg =
+          typeof botOrder.error === "string"
+            ? botOrder.error
+            : botOrder.error?.message || "Product is currently out of stock with upstream provider.";
+        const isMaint =
+          rawMsg.toLowerCase().includes("maintain") ||
+          rawMsg.toLowerCase().includes("maintenance") ||
+          (typeof botOrder.error === "object" && botOrder.error?.code === "MAINTENANCE");
+        if (isMaint) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "We are maintaining our services, please come back later.",
+              isMaintenance: true,
+            },
+            { status: 503 }
+          );
+        }
         const cleanMsg = rawMsg.replace(/\.+$/, "");
         return NextResponse.json({
           success: false,
           error: `Provider Fulfillment Notice: ${cleanMsg}. Your wallet balance was not charged.`,
-          code: botOrder.error?.code || "FAILED",
+          code: typeof botOrder.error === "object" ? botOrder.error?.code : "FAILED",
         }, { status: 400 });
       }
 

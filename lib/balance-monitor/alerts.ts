@@ -62,9 +62,8 @@ export function getProviderThresholds(providerId: string): ProviderBalanceThresh
       critEnvKey = process.env.BALANCE_CRITICAL_PROVIDER5 || process.env.BALANCE_CRITICAL_RIZVI_SMM || "";
       break;
     case "elevatex_bot":
-    case "ggsoma_bot":
-      lowEnvKey = process.env.BALANCE_ALERT_PROVIDER6 || process.env.BALANCE_ALERT_ELEVATEX_BOT || process.env.BALANCE_ALERT_GGSOMA_BOT || "";
-      critEnvKey = process.env.BALANCE_CRITICAL_PROVIDER6 || process.env.BALANCE_CRITICAL_ELEVATEX_BOT || process.env.BALANCE_CRITICAL_GGSOMA_BOT || "";
+      lowEnvKey = process.env.BALANCE_ALERT_PROVIDER6 || process.env.BALANCE_ALERT_ELEVATEX_BOT || "";
+      critEnvKey = process.env.BALANCE_CRITICAL_PROVIDER6 || process.env.BALANCE_CRITICAL_ELEVATEX_BOT || "";
       break;
   }
 
@@ -112,7 +111,7 @@ export async function processProviderAlert(
       notificationSent = await sendTelegramNotification(msg);
     }
 
-    await saveAlertState(check.id, alertLevel, check.balance, check.currency, check.error, notificationSent);
+    await saveAlertState(check.id, alertLevel, check.balance, check.currency, check.error, Boolean(notificationType));
 
     return {
       id: check.id,
@@ -157,7 +156,7 @@ export async function processProviderAlert(
     }
   }
 
-  await saveAlertState(check.id, alertLevel, balance, currency, undefined, notificationSent);
+  await saveAlertState(check.id, alertLevel, balance, currency, undefined, Boolean(notificationType));
 
   return {
     id: check.id,

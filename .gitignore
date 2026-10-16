@@ -63,4 +63,7 @@ public/*.ass
 public/*.srt
 public/mouth_frame.jpg
 scripts/tutorial/
+database/database_exports/
+INSTALL.txt
+CLAUDE.md
 

@@ -44,8 +44,6 @@ export async function sendTelegramNotification(
   }
 
   const endpoint = `${apiBase}/bot${botToken}/sendMessage`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
 
   try {
     const res = await fetch(endpoint, {
@@ -58,22 +56,17 @@ export async function sendTelegramNotification(
         disable_web_page_preview: true,
       }),
       cache: "no-store",
-      signal: controller.signal,
+      signal: AbortSignal.timeout(2000),
     });
 
     if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error(`[BalanceMonitor] Telegram API responded with HTTP ${res.status}: ${errText.slice(0, 100)}`);
       return false;
     }
 
     return true;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[BalanceMonitor] Failed to deliver Telegram alert: ${msg}`);
+  } catch {
+    // Network unreachable (e.g. Telegram blocked by ISP or firewall). Silently fail without blocking routes.
     return false;
-  } finally {
-    clearTimeout(timeout);
   }
 }
 

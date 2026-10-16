@@ -28,6 +28,7 @@ export interface ToolProduct {
   deliveryType?: "LINK" | "COUPON" | "READY_ACCOUNT" | "LICENSE_KEY";
   productSlug?: string;
   isPartnerBot?: boolean;
+  isUnderMaintenance?: boolean;
 }
 
 export interface UserSubscription {
@@ -92,6 +93,8 @@ export function SubscriptionsPage({
   const [isRefreshingStock, setIsRefreshingStock] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [stockCounts, setStockCounts] = useState<{ inStock: number; outOfStock: number }>({ inStock: 0, outOfStock: 0 });
+  const [isBotUnderMaintenance, setIsBotUnderMaintenance] = useState<boolean>(false);
+  const [botMaintenanceMessage, setBotMaintenanceMessage] = useState<string>("We are maintaining our services, please come back later.");
 
   useEffect(() => {
     setMounted(true);
@@ -145,6 +148,10 @@ export function SubscriptionsPage({
         setMySubs(data.userSubscriptions || []);
         setPartnerBotActive(Boolean(data.partnerBotActive));
         setIsLiveBot(Boolean(data.isLiveBot));
+        setIsBotUnderMaintenance(Boolean(data.isBotUnderMaintenance));
+        if (data.botMaintenanceMessage) {
+          setBotMaintenanceMessage(data.botMaintenanceMessage);
+        }
         setStockCounts({
           inStock: typeof data.inStockCount === "number" ? data.inStockCount : nextCatalog.filter(t => t.plans.some(p => p.inStock !== false && (p.stockCount === undefined || p.stockCount > 0))).length,
           outOfStock: typeof data.outOfStockCount === "number" ? data.outOfStockCount : nextCatalog.filter(t => t.plans.every(p => p.inStock === false || (p.stockCount !== undefined && p.stockCount <= 0))).length,
@@ -191,7 +198,7 @@ export function SubscriptionsPage({
     if (categoryFilter !== "all") {
       list = list.filter((t) => t.category === categoryFilter);
     }
-    if (inStockOnly) {
+    if (inStockOnly && !isBotUnderMaintenance) {
       list = list.filter((t) => {
         const currentDuration = selectedPlans[t.id] || t.plans[0]?.duration;
         const plan = t.plans.find((p) => p.duration === currentDuration) || t.plans[0];
@@ -207,13 +214,17 @@ export function SubscriptionsPage({
       );
     }
     return list;
-  }, [catalog, categoryFilter, searchQuery, inStockOnly, selectedPlans]);
+  }, [catalog, categoryFilter, searchQuery, inStockOnly, selectedPlans, isBotUnderMaintenance]);
 
   function handleSelectPlan(toolId: string, duration: string) {
     setSelectedPlans((prev) => ({ ...prev, [toolId]: duration }));
   }
 
   function openPurchaseModal(tool: ToolProduct) {
+    if (tool.isUnderMaintenance || (isBotUnderMaintenance && tool.isPartnerBot)) {
+      alert(botMaintenanceMessage || "We are maintaining our services, please come back later.");
+      return;
+    }
     setPurchasingTool(tool);
     setPurchaseQuantity(1);
     setPurchaseError("");
@@ -307,10 +318,16 @@ export function SubscriptionsPage({
             <div className="inline-flex items-center gap-2 rounded-full border border-[#baff00]/30 bg-[#baff00]/10 px-3 py-1 text-xs font-bold text-[#baff00]">
               <span>✨ Premium Digital Subscriptions &amp; Software</span>
             </div>
-            {(partnerBotActive || isLiveBot) && (
+            {(partnerBotActive || isLiveBot) && !isBotUnderMaintenance && (
               <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>⚡ Live Telegram Bot API Active (Instant Delivery)</span>
+                <span>⚡ Live ElevateX Reseller Gateway Active (Instant Delivery)</span>
+              </div>
+            )}
+            {isBotUnderMaintenance && (
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
+                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                <span>⚠️ Elevate Bot Under Maintenance</span>
               </div>
             )}
           </div>
@@ -320,6 +337,21 @@ export function SubscriptionsPage({
           <p className="mt-1 text-xs sm:text-sm text-slate-400 max-w-2xl">
             Get private access to ChatGPT Plus, Canva Pro, Semrush, WhatsApp marketing software, and streaming passes with instant wallet checkout.
           </p>
+          {isBotUnderMaintenance && (
+            <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200 flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-300">
+                <svg className="w-5 h-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <div className="font-bold text-amber-300 text-sm">Elevate Bot Under Maintenance</div>
+                <div className="text-xs sm:text-sm text-amber-200/90 font-medium mt-0.5">
+                  {botMaintenanceMessage || "We are maintaining our services, please come back later."}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* View Toggle */}
@@ -510,7 +542,12 @@ export function SubscriptionsPage({
                             </span>
                           )}
                         </div>
-                        {isOutOfStock ? (
+                        {tool.isUnderMaintenance || (isBotUnderMaintenance && tool.isPartnerBot) ? (
+                          <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            <span>Under Maintenance</span>
+                          </span>
+                        ) : isOutOfStock ? (
                           <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-[10px] font-bold text-red-400 border border-red-500/30 flex items-center gap-1">
                             <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
                             <span>Out of Stock</span>
@@ -615,7 +652,21 @@ export function SubscriptionsPage({
                       </div>
 
                       {/* CTA Button */}
-                      {isOutOfStock ? (
+                      {(tool.isUnderMaintenance || (isBotUnderMaintenance && tool.isPartnerBot)) ? (
+                        <div className="space-y-1.5">
+                          <button
+                            type="button"
+                            disabled
+                            className="w-full rounded-xl bg-amber-500/10 py-2.5 text-xs font-bold text-amber-300 cursor-not-allowed border border-amber-500/30 flex items-center justify-center gap-1.5"
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            <span>Under Maintenance</span>
+                          </button>
+                          <p className="text-center text-[10.5px] text-amber-300/80 font-medium">
+                            We are maintaining our services, please come back later.
+                          </p>
+                        </div>
+                      ) : isOutOfStock ? (
                         <div className="space-y-1.5">
                           <button
                             type="button"
