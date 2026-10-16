@@ -205,7 +205,11 @@ function Icon({ name, size = 20, strokeWidth = 1.9, className = "" }: { name: st
     case "whatsapp": return <Social3DIcon platform="whatsapp" size={size} className={className} glow />;
     case "telegram": return <Social3DIcon platform="telegram" size={size} className={className} glow />;
     case "globe": return <Social3DIcon platform="globe" size={size} className={className} glow />;
-    case "traffic": return <Social3DIcon platform="traffic" size={size} className={className} glow />;
+    case "traffic":
+    case "website":
+    case "web": return <Social3DIcon platform="website" size={size} className={className} glow />;
+    case "subscriptions":
+    case "subscription": return <Social3DIcon platform="subscriptions" size={size} className={className} glow />;
     case "x-social":
     case "x":
     case "twitter": return <Social3DIcon platform="x" size={size} className={className} glow />;
@@ -251,8 +255,12 @@ function getPlatformIconClass(platform: string) {
       return "text-[#e60023]";
     case "LinkedIn":
       return "text-[#0a66c2]";
+    case "Website":
     case "Website Traffic":
       return "text-[#00d4ff]";
+    case "Subscriptions":
+    case "App Subscriptions":
+      return "text-[#c084fc]";
     default:
       return "text-[#baff00]";
   }
@@ -260,6 +268,21 @@ function getPlatformIconClass(platform: string) {
 
 function getPlatform(category: string, name: string) {
   const text = `${category} ${name}`.toLowerCase();
+
+  // App Subscriptions (Canva, Gemini, ChatGPT, Netflix, Prime Video, IPTV, Envato)
+  if (
+    text.includes("canva") ||
+    text.includes("gemini") ||
+    text.includes("chatgpt") ||
+    text.includes("netflix") ||
+    text.includes("prime video") ||
+    text.includes("iptv") ||
+    text.includes("envento") ||
+    text.includes("envato") ||
+    (text.includes("subscription") && !text.includes("channel") && !text.includes("youtube") && !text.includes("telegram"))
+  ) {
+    return { platform: "Subscriptions", icon: "subscriptions" };
+  }
 
   if (text.includes("instagram") || /\big\b/.test(text)) {
     return { platform: "Instagram", icon: "instagram" };
@@ -317,8 +340,8 @@ function getPlatform(category: string, name: string) {
     return { platform: "Reddit", icon: "reddit" };
   }
 
-  if (text.includes("traffic") || text.includes("website") || text.includes("seo")) {
-    return { platform: "Website Traffic", icon: "traffic" };
+  if (text.includes("traffic") || text.includes("website") || text.includes("seo") || text.includes("web traffic")) {
+    return { platform: "Website", icon: "website" };
   }
 
   return { platform: "Other", icon: "spark" };
@@ -358,9 +381,30 @@ function formatRate(value: string | number): string {
 }
 
 function convertRizviService(item: RizviService): Service {
-  const { platform, icon } = getPlatform(item.category, item.name);
-  const rawPlatform = (item as any).platform || platform;
-  const normalizedPlatform = rawPlatform === "X (Twitter)" ? "X / Twitter" : rawPlatform;
+  const detected = getPlatform(item.category, item.name);
+  let rawPlatform = (item as any).platform || detected.platform;
+  if (rawPlatform === "X (Twitter)") rawPlatform = "X / Twitter";
+  if (rawPlatform === "Website Traffic") rawPlatform = "Website";
+  
+  // Also check if category or name is clearly an app subscription
+  const text = `${item.category} ${item.name}`.toLowerCase();
+  if (
+    text.includes("canva") ||
+    text.includes("gemini") ||
+    text.includes("chatgpt") ||
+    text.includes("netflix") ||
+    text.includes("prime video") ||
+    text.includes("iptv") ||
+    text.includes("envento") ||
+    text.includes("envato")
+  ) {
+    rawPlatform = "Subscriptions";
+  }
+
+  const normalizedPlatform = rawPlatform;
+  let icon = detected.icon;
+  if (normalizedPlatform === "Website") icon = "website";
+  if (normalizedPlatform === "Subscriptions") icon = "subscriptions";
   const mult = Number((item as any).rate_multiplier || (1 + VEXO_MARKUP));
   const baseUsd = Number((item as any).base_rate_usd || item.rate || 0);
   const retailUsd = (item as any).rate_usd != null ? Number((item as any).rate_usd) : Math.round(baseUsd * mult * 10000) / 10000;
@@ -2576,7 +2620,18 @@ function ServicesPage({
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 30;
 
-  const platforms = ["All", "Instagram", "TikTok", "YouTube", "Facebook", "Telegram", "WhatsApp", "Other"];
+  const platforms = [
+    "All",
+    "Instagram",
+    "TikTok",
+    "YouTube",
+    "Facebook",
+    "Telegram",
+    "WhatsApp",
+    "Website",
+    "Subscriptions",
+    "Other",
+  ];
 
   const filtered = useMemo(() => {
     return services.filter((s) => {
@@ -2976,6 +3031,10 @@ function getServiceLinkPlaceholder(platform: string, actionType?: string) {
       return "https://t.me/channel_or_group or post link";
     case "X / Twitter":
       return "https://x.com/username or post link";
+    case "Website":
+      return "https://yourwebsite.com or target landing page URL";
+    case "Subscriptions":
+      return "Your email or account handle for subscription activation";
     default:
       return "https://...";
   }
@@ -3120,6 +3179,27 @@ function detectServiceAction(service: Service): string {
     return "other";
   }
 
+  // Website & Website Traffic
+  if (plat.includes("website")) {
+    if (/organic|google/.test(text)) return "web_organic";
+    if (/social|facebook|instagram|twitter|tumblr|vk/.test(text)) return "web_social";
+    if (/direct/.test(text)) return "web_direct";
+    if (/geo|pakistan|bangladesh|uk|usa|russia|crypto|niche/.test(text)) return "web_targeted";
+    return "web_traffic";
+  }
+
+  // App Subscriptions (Tools & Accounts)
+  if (plat.includes("subscrip")) {
+    if (/canva/.test(text)) return "sub_canva";
+    if (/chatgpt|gpt/.test(text)) return "sub_chatgpt";
+    if (/gemini/.test(text)) return "sub_gemini";
+    if (/netflix/.test(text)) return "sub_netflix";
+    if (/prime/.test(text)) return "sub_prime";
+    if (/iptv/.test(text)) return "sub_iptv";
+    if (/envato|envento/.test(text)) return "sub_envato";
+    return "sub_other";
+  }
+
   // Generic fallback
   if (/voice\s*call/.test(text)) return "wa_voice_calls";
   if (/poll|vote/.test(text)) return "votes";
@@ -3224,6 +3304,27 @@ function getActionOptionsForPlatform(
       { id: "retweets", label: "Retweets & Reposts", icon: "star" },
       { id: "views", label: "Impressions & Views", icon: "rocket" },
       { id: "other", label: "Other", icon: "spark" },
+    ];
+  } else if (plat.includes("website")) {
+    baseList = [
+      { id: "all", label: "All Website Traffic Options", icon: "website" },
+      { id: "web_targeted", label: "Country & GEO Targeted Traffic", icon: "website" },
+      { id: "web_social", label: "Social Media Referrer Traffic", icon: "layers" },
+      { id: "web_organic", label: "Organic Search & Google Traffic", icon: "rocket" },
+      { id: "web_direct", label: "Direct High-Retention Traffic", icon: "spark" },
+      { id: "web_traffic", label: "Worldwide Traffic", icon: "website" },
+    ];
+  } else if (plat.includes("subscrip")) {
+    baseList = [
+      { id: "all", label: "All App Subscriptions", icon: "subscriptions" },
+      { id: "sub_canva", label: "Canva Pro & Premium", icon: "spark" },
+      { id: "sub_chatgpt", label: "ChatGPT Plus Access", icon: "spark" },
+      { id: "sub_gemini", label: "Gemini Advanced / 18M", icon: "spark" },
+      { id: "sub_netflix", label: "Netflix Private Accounts", icon: "spark" },
+      { id: "sub_prime", label: "Amazon Prime Video", icon: "spark" },
+      { id: "sub_iptv", label: "IPTV HD Screen", icon: "spark" },
+      { id: "sub_envato", label: "Envato Elements Premium", icon: "spark" },
+      { id: "sub_other", label: "Other Tools & Apps", icon: "spark" },
     ];
   } else {
     baseList = [
@@ -3377,6 +3478,8 @@ function NewOrder({
   const platformList = useMemo(() => [
     { name: "All", label: "All Platforms", icon: "all" },
     { name: "Favorites", label: "⭐ Bookmarks", icon: "star-3d" },
+    { name: "Subscriptions", label: "App Subscriptions", icon: "subscriptions" },
+    { name: "Website", label: "Website", icon: "website" },
     { name: "WhatsApp", label: "WhatsApp", icon: "whatsapp" },
     { name: "Instagram", label: "Instagram", icon: "instagram" },
     { name: "TikTok", label: "TikTok", icon: "tiktok" },
@@ -3386,7 +3489,6 @@ function NewOrder({
     { name: "X / Twitter", label: "X / Twitter", icon: "x-social" },
     { name: "Spotify", label: "Spotify", icon: "spotify" },
     { name: "Discord", label: "Discord", icon: "discord" },
-    { name: "Website Traffic", label: "Website Traffic", icon: "traffic" },
     { name: "Other", label: "Other Services", icon: "spark" },
   ], []);
 
@@ -3738,6 +3840,45 @@ function NewOrder({
 
       {/* Single Cohesive Order Form Card */}
       <div className="w-full max-w-3xl mx-auto antigravity-card rounded-2xl p-5 sm:p-8 space-y-6 shadow-xl">
+        {/* Quick Search */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-300">
+              Quick Search (ID or Name)
+            </label>
+            {comboboxSearch && (
+              <button
+                type="button"
+                onClick={() => setComboboxSearch("")}
+                className="text-[11px] text-[#baff00] hover:underline cursor-pointer"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <Icon name="search" size={15} />
+            </span>
+            <input
+              type="text"
+              value={comboboxSearch}
+              onChange={(e) => setComboboxSearch(e.target.value)}
+              placeholder="Search by Service ID, name, or keywords (e.g. 1072, Followers, Canva)..."
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 pr-9 py-2.5 text-xs sm:text-sm text-white outline-none focus:border-[#baff00] placeholder:text-slate-500 transition"
+            />
+            {comboboxSearch && (
+              <button
+                type="button"
+                onClick={() => setComboboxSearch("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* 1. Category / Platform Dropdown */}
         <div className="space-y-2" ref={platformDropdownRef}>
           <div className="flex items-center justify-between">
@@ -3886,55 +4027,7 @@ function NewOrder({
           </div>
         </div>
 
-        {/* 3. Service Details & Instructions (Accordion / Quick Specs) */}
-        {service && (
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setServiceAccordionOpen(!serviceAccordionOpen)}
-              className="w-full flex items-center justify-between p-3.5 text-left text-xs font-bold text-slate-300 hover:bg-white/[0.03] transition cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#baff00]/15 text-[#baff00] text-xs font-bold">
-                  ℹ
-                </span>
-                <span>Service Details &amp; Instructions</span>
-              </div>
-              <span className="text-slate-400">{serviceAccordionOpen ? "▲ Hide" : "▼ View"}</span>
-            </button>
-
-            {serviceAccordionOpen && (
-              <div className="border-t border-white/[0.06] p-4 space-y-3 text-xs text-slate-300">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
-                    <span className="text-[10px] text-slate-400 block font-semibold">Rate</span>
-                    <span className="font-bold text-[#baff00]">₨{Number(service.price).toFixed(2)}</span>
-                  </div>
-                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
-                    <span className="text-[10px] text-slate-400 block font-semibold">Limits</span>
-                    <span className="font-bold text-white">{isPackage ? "1 unit" : `${Number(service.min).toLocaleString()} - ${Number(service.max).toLocaleString()}`}</span>
-                  </div>
-                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
-                    <span className="text-[10px] text-slate-400 block font-semibold">Refill</span>
-                    <span className="font-bold text-white">{isServiceGuaranteed(service) ? "30-Day Refill" : isServiceDropOrNoRefill(service) ? "No Refill" : "Standard"}</span>
-                  </div>
-                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
-                    <span className="text-[10px] text-slate-400 block font-semibold">Start Speed</span>
-                    <span className="font-bold text-white">0 - 15 Mins</span>
-                  </div>
-                </div>
-
-                {service.description && (
-                  <div className="rounded-lg bg-white/[0.02] p-3 border border-white/5 text-[11px] leading-relaxed whitespace-pre-line text-slate-300">
-                    {formatServiceDescription(service.description)}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 4. Service Package Dropdown & Combobox */}
+        {/* 3. Service Package Dropdown & Combobox (PLACED ABOVE DESCRIPTION) */}
         <div className="space-y-2" ref={comboboxRef}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -4002,9 +4095,9 @@ function NewOrder({
               )}
             </button>
 
-            {/* Clean Combobox Search Popover */}
+            {/* Clean Combobox Search Popover (without redundant sub-filter tabs) */}
             {comboboxOpen && (
-              <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-white/15 bg-[#0f1824] backdrop-blur-2xl p-3 shadow-2xl space-y-3">
+              <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-white/15 bg-[#0f1824] backdrop-blur-2xl p-3 shadow-2xl space-y-2">
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                     <Icon name="search" size={15} />
@@ -4013,7 +4106,7 @@ function NewOrder({
                     type="text"
                     value={comboboxSearch}
                     onChange={(e) => setComboboxSearch(e.target.value)}
-                    placeholder="Search by ID, name, or keywords..."
+                    placeholder="Filter package by ID or name..."
                     className="w-full rounded-lg border border-white/10 bg-white/[0.04] pl-10 pr-9 py-2.5 text-xs sm:text-sm text-white outline-none focus:border-[#baff00] placeholder:text-slate-400 transition"
                   />
                   {comboboxSearch && (
@@ -4027,51 +4120,8 @@ function NewOrder({
                   )}
                 </div>
 
-                {/* Sub-Filter Pills */}
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/[0.06]">
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar max-w-full">
-                    {actionOptions.slice(0, 6).map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => handleSelectAction(opt.id)}
-                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold shrink-0 transition cursor-pointer ${
-                          actionType === opt.id
-                            ? "bg-white/20 text-white"
-                            : "bg-white/[0.04] text-slate-300 hover:bg-white/10"
-                        }`}
-                      >
-                        {opt.label} ({opt.count})
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-lg border border-white/5 text-[10px] font-bold shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setGuaranteeFilter("all")}
-                      className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
-                        guaranteeFilter === "all" ? "bg-white/20 text-white" : "text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      All ({guaranteeCounts.all})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setGuaranteeFilter("guaranteed")}
-                      className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
-                        guaranteeFilter === "guaranteed"
-                          ? "bg-[#baff00] text-[#07100f] font-black"
-                          : "text-slate-300 hover:text-white"
-                      }`}
-                    >
-                      Refill ({guaranteeCounts.guaranteed})
-                    </button>
-                  </div>
-                </div>
-
                 {/* Clean Service Rows */}
-                <div className="max-h-[280px] overflow-y-auto space-y-1 pr-1">
+                <div className="max-h-[300px] overflow-y-auto space-y-1 pr-1">
                   {comboboxFilteredServices.length > 0 ? (
                     comboboxFilteredServices.map((s) => {
                       const isSelected = service?.id === s.id;
@@ -4141,6 +4191,54 @@ function NewOrder({
             )}
           </div>
         </div>
+
+        {/* 4. Service Details & Instructions (Accordion / Quick Specs - PLACED BELOW SERVICE PACKAGE) */}
+        {service && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setServiceAccordionOpen(!serviceAccordionOpen)}
+              className="w-full flex items-center justify-between p-3.5 text-left text-xs font-bold text-slate-300 hover:bg-white/[0.03] transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#baff00]/15 text-[#baff00] text-xs font-bold">
+                  ℹ
+                </span>
+                <span>Service Details &amp; Instructions</span>
+              </div>
+              <span className="text-slate-400">{serviceAccordionOpen ? "▲ Hide" : "▼ View"}</span>
+            </button>
+
+            {serviceAccordionOpen && (
+              <div className="border-t border-white/[0.06] p-4 space-y-3 text-xs text-slate-300">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Rate</span>
+                    <span className="font-bold text-[#baff00]">₨{Number(service.price).toFixed(2)}</span>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Limits</span>
+                    <span className="font-bold text-white">{isPackage ? "1 unit" : `${Number(service.min).toLocaleString()} - ${Number(service.max).toLocaleString()}`}</span>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Refill</span>
+                    <span className="font-bold text-white">{isServiceGuaranteed(service) ? "30-Day Refill" : isServiceDropOrNoRefill(service) ? "No Refill" : "Standard"}</span>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] p-2 border border-white/5">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Start Speed</span>
+                    <span className="font-bold text-white">0 - 15 Mins</span>
+                  </div>
+                </div>
+
+                {service.description && (
+                  <div className="rounded-lg bg-white/[0.02] p-3 border border-white/5 text-[11px] leading-relaxed whitespace-pre-line text-slate-300">
+                    {formatServiceDescription(service.description)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 5. Target Link Input */}
         <div className="space-y-2">

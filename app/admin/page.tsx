@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import React, { memo } from "react";
 import { SeoManagementView } from "@/components/admin-seo-management";
 import { PlatformSettingsView } from "@/components/admin-platform-settings";
 import { BlogCmsAdmin } from "@/components/admin-blog-cms";
@@ -2291,6 +2292,445 @@ function Orders({
   );
 }
 
+interface ServiceMatrixRowProps {
+  s: any;
+  usdToPkr: number;
+  savingRowId: string | null;
+  savedRowId: string | null;
+  onInlineSave: (updated: any) => void;
+  onEditFullService: (s: any) => void;
+  onDeleteService: (s: any) => void;
+}
+
+const ServiceMatrixRow = memo(function ServiceMatrixRow({
+  s,
+  usdToPkr,
+  savingRowId,
+  savedRowId,
+  onInlineSave,
+  onEditFullService,
+  onDeleteService,
+}: ServiceMatrixRowProps) {
+  const rates = s.provider_rates || {};
+
+  // Local multiplier and retail price state to allow instant keystrokes without re-rendering the whole page
+  const [localMult, setLocalMult] = useState(s.rate_multiplier ?? 1.07);
+  const [localRetailUsd, setLocalRetailUsd] = useState(s.rate_usd != null ? s.rate_usd : "");
+
+  // Synchronize when s changes
+  useEffect(() => {
+    setLocalMult(s.rate_multiplier ?? 1.07);
+  }, [s.rate_multiplier]);
+
+  useEffect(() => {
+    if (s.rate_usd != null) {
+      setLocalRetailUsd(s.rate_usd);
+    }
+  }, [s.rate_usd]);
+
+  // Determine lowest rate across all 5 quotes
+  let lowestProvId: string | null = null;
+  let lowestRate = Infinity;
+  for (const pId of ["pak_smm", "smooth_smm", "am_smm", "pakistan_smm", "rizvi_smm"]) {
+    if (rates[pId] && typeof rates[pId].rateUsd === "number") {
+      if (rates[pId].rateUsd < lowestRate) {
+        lowestRate = rates[pId].rateUsd;
+        lowestProvId = pId;
+      }
+    }
+  }
+
+  const baseUsd = Number(s.base_rate_usd || 0);
+  const mult = Number(s.rate_multiplier || 1.07);
+  const marginPercent = Math.round((mult - 1) * 100);
+  const retailUsd = s.rate_usd != null ? Number(s.rate_usd) : Math.round(baseUsd * mult * 10000) / 10000;
+  const retailPkr = s.rate_pkr != null ? Number(s.rate_pkr) : Math.round(baseUsd * mult * (usdToPkr || 278) * 10000) / 10000;
+
+  const sId = String(s.service || s.id);
+  const isSaving = savingRowId === sId;
+  const isSaved = savedRowId === sId;
+
+  return (
+    <tr className="hover:bg-white/[.02] transition-colors">
+      {/* Service & Platform */}
+      <td className="max-w-xs px-4 py-3.5">
+        <div className="flex items-center gap-1.5">
+          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-black text-white">
+            {s.platform || "SMM"}
+          </span>
+          {s.is_guaranteed && (
+            <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-emerald-400">
+              ♻ Refill
+            </span>
+          )}
+        </div>
+        <p className="mt-1 font-bold text-slate-100 line-clamp-2">{s.name}</p>
+        <p className="text-[10px] text-slate-500">
+          ID #{s.service || s.id} · Min: {Number(s.min).toLocaleString()} · Max: {Number(s.max).toLocaleString()}
+        </p>
+      </td>
+
+      {/* Routing Mode */}
+      <td className="px-4 py-3.5">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !s.auto_route;
+                let newBaseUsd = Number(s.base_rate_usd);
+                let newActiveProv = s.active_provider_id;
+                if (nextVal && s.fallback_queue && s.fallback_queue.length > 0) {
+                  const cheapest = s.fallback_queue[0];
+                  newBaseUsd = Number(cheapest.rateUsd);
+                  newActiveProv = cheapest.providerId;
+                }
+                const updated = {
+                  ...s,
+                  auto_route: nextVal,
+                  active_provider_id: newActiveProv,
+                  base_rate_usd: newBaseUsd,
+                  rate_usd: Math.round(newBaseUsd * Number(s.rate_multiplier || 1.07) * 10000) / 10000,
+                  rate_pkr: Math.round(newBaseUsd * Number(s.rate_multiplier || 1.07) * (usdToPkr || 278) * 10000) / 10000,
+                };
+                onInlineSave(updated);
+              }}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                s.auto_route !== false ? "bg-[#baff00]" : "bg-slate-700"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-[#07100f] transition-transform ${
+                  s.auto_route !== false ? "translate-x-4" : "translate-x-1"
+                }`}
+              />
+            </button>
+            <span className={`text-[10px] font-black uppercase ${s.auto_route !== false ? "text-[#baff00]" : "text-amber-400"}`}>
+              {s.auto_route !== false ? "AUTO" : "MANUAL"}
+            </span>
+          </div>
+
+          {s.auto_route === false && (
+            <select
+              value={s.active_provider_id || ""}
+              onChange={(e) => {
+                const newP = e.target.value;
+                const provQuote = s.provider_rates?.[newP];
+                const newBaseUsd = provQuote?.rateUsd != null ? Number(provQuote.rateUsd) : Number(s.base_rate_usd || 0);
+                const curMult = Number(s.rate_multiplier || 1.07);
+                const updated = {
+                  ...s,
+                  active_provider_id: newP,
+                  auto_route: false,
+                  base_rate_usd: newBaseUsd,
+                  rate_usd: Math.round(newBaseUsd * curMult * 10000) / 10000,
+                  rate_pkr: Math.round(newBaseUsd * curMult * (usdToPkr || 278) * 10000) / 10000,
+                };
+                onInlineSave(updated);
+              }}
+              className="rounded border border-white/10 bg-[#0b1418] px-2 py-1 text-[11px] text-white outline-none"
+            >
+              <option value="pak_smm">PAK SMM</option>
+              <option value="smooth_smm">Smooth SMM</option>
+              <option value="am_smm">AM SMM</option>
+              <option value="pakistan_smm">Pakistan SMM</option>
+              <option value="rizvi_smm">Rizvi SMM</option>
+            </select>
+          )}
+        </div>
+      </td>
+
+      {/* Active Base Rate USD */}
+      <td className="px-4 py-3.5 font-mono">
+        <div className="flex flex-col">
+          <span className="font-bold text-white">${baseUsd.toFixed(4)}</span>
+          <span className="text-[10px] text-slate-400 font-sans uppercase">
+            {s.active_provider_id ? s.active_provider_id.replace("_smm", " smm") : "auto"}
+          </span>
+        </div>
+      </td>
+
+      {/* PAK SMM Rate */}
+      <td className="px-4 py-3.5 font-mono">
+        {rates.pak_smm ? (
+          <div className="flex flex-col">
+            <span className={`text-slate-200 ${s.active_provider_id === "pak_smm" ? "font-bold text-white" : ""}`}>
+              ${Number(rates.pak_smm.rateUsd).toFixed(4)}
+            </span>
+            {lowestProvId === "pak_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
+                ★ CHEAPEST
+              </span>
+            )}
+            {s.active_provider_id === "pak_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
+                ACTIVE
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-600">—</span>
+        )}
+      </td>
+
+      {/* Smooth SMM Rate */}
+      <td className="px-4 py-3.5 font-mono">
+        {rates.smooth_smm ? (
+          <div className="flex flex-col">
+            <span className={`text-slate-200 ${s.active_provider_id === "smooth_smm" ? "font-bold text-white" : ""}`}>
+              ${Number(rates.smooth_smm.rateUsd).toFixed(4)}
+            </span>
+            {lowestProvId === "smooth_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
+                ★ CHEAPEST
+              </span>
+            )}
+            {s.active_provider_id === "smooth_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
+                ACTIVE
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-600">—</span>
+        )}
+      </td>
+
+      {/* AM SMM Rate */}
+      <td className="px-4 py-3.5 font-mono">
+        {rates.am_smm ? (
+          <div className="flex flex-col">
+            <span className={`text-slate-200 ${s.active_provider_id === "am_smm" ? "font-bold text-white" : ""}`}>
+              ${Number(rates.am_smm.rateUsd).toFixed(4)}
+            </span>
+            {lowestProvId === "am_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
+                ★ CHEAPEST
+              </span>
+            )}
+            {s.active_provider_id === "am_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
+                ACTIVE
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-600">—</span>
+        )}
+      </td>
+
+      {/* Pakistan SMM Rate */}
+      <td className="px-4 py-3.5 font-mono">
+        {rates.pakistan_smm ? (
+          <div className="flex flex-col">
+            <span className={`text-slate-200 ${s.active_provider_id === "pakistan_smm" ? "font-bold text-white" : ""}`}>
+              ${Number(rates.pakistan_smm.rateUsd).toFixed(4)}
+            </span>
+            {lowestProvId === "pakistan_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
+                ★ CHEAPEST
+              </span>
+            )}
+            {s.active_provider_id === "pakistan_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
+                ACTIVE
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-600">—</span>
+        )}
+      </td>
+
+      {/* Rizvi SMM Rate */}
+      <td className="px-4 py-3.5 font-mono">
+        {rates.rizvi_smm ? (
+          <div className="flex flex-col">
+            <span className={`text-slate-200 ${s.active_provider_id === "rizvi_smm" ? "font-bold text-white" : ""}`}>
+              ${Number(rates.rizvi_smm.rateUsd).toFixed(4)}
+            </span>
+            {lowestProvId === "rizvi_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
+                ★ CHEAPEST
+              </span>
+            )}
+            {s.active_provider_id === "rizvi_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
+                ACTIVE
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-600">—</span>
+        )}
+      </td>
+
+      {/* Markup Multiplier */}
+      <td className="px-4 py-3.5">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min="0.1"
+              max="20"
+              step="0.01"
+              value={localMult}
+              onChange={(e) => setLocalMult(e.target.value)}
+              onBlur={() => {
+                const multVal = Number(localMult) || 1.07;
+                const curBase = Number(s.base_rate_usd || 0);
+                const updated = {
+                  ...s,
+                  rate_multiplier: multVal,
+                  rate_usd: Math.round(curBase * multVal * 10000) / 10000,
+                  rate_pkr: Math.round(curBase * multVal * (usdToPkr || 278) * 100) / 100,
+                };
+                onInlineSave(updated);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              className="w-20 rounded-lg border border-white/10 bg-[#0b1418] px-2.5 py-1 font-mono text-xs text-white outline-none focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/30 transition"
+            />
+            <span className="text-[10px] text-slate-500">×</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className={`text-[9px] font-bold ${marginPercent >= 0 ? "text-emerald-400" : "text-amber-400"}`}>
+              {marginPercent >= 0 ? `+${marginPercent}% profit` : `${marginPercent}%`}
+            </span>
+            {isSaving && (
+              <span className="text-[9px] text-cyan-400 font-bold animate-pulse">⏳</span>
+            )}
+            {isSaved && (
+              <span className="text-[9px] text-emerald-400 font-black">✓</span>
+            )}
+          </div>
+        </div>
+      </td>
+
+      {/* Retail USD Price - DIRECTLY EDITABLE WITH AUTO-SAVE */}
+      <td className="px-4 py-3.5 font-mono font-bold">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-bold text-cyan-400">$</span>
+            <input
+              type="number"
+              step="0.0001"
+              min="0"
+              value={localRetailUsd !== "" ? localRetailUsd : retailUsd}
+              onChange={(e) => setLocalRetailUsd(e.target.value)}
+              onBlur={() => {
+                const val = Number(localRetailUsd !== "" ? localRetailUsd : retailUsd);
+                const curBase = Number(s.base_rate_usd || 0);
+                const newMult = curBase > 0 ? Math.round((val / curBase) * 10000) / 10000 : 1.07;
+                const updated = {
+                  ...s,
+                  rate_usd: val,
+                  rate_multiplier: newMult,
+                  rate_pkr: Math.round(val * (usdToPkr || 278) * 100) / 100,
+                };
+                onInlineSave(updated);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              className="w-24 rounded-lg border border-cyan-500/30 bg-[#071317] px-2.5 py-1 font-mono text-xs font-bold text-cyan-300 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition"
+            />
+          </div>
+          <span className="text-[9px] font-normal text-slate-500">per 1k</span>
+        </div>
+      </td>
+
+      {/* Retail PKR Price */}
+      <td className="px-4 py-3.5 font-mono font-bold text-[#baff00]">
+        <div>₨{retailPkr.toFixed(2)}</div>
+        <p className="text-[9px] font-normal text-slate-500">per 1k (auto)</p>
+      </td>
+
+      {/* Status checkboxes */}
+      <td className="px-4 py-3.5 text-center">
+        <div className="flex items-center justify-center gap-2.5">
+          <label
+            title={s.enabled !== false ? "Service is ACTIVE (Click to disable)" : "Service is DISABLED (Click to enable)"}
+            className="flex items-center gap-1.5 cursor-pointer select-none"
+          >
+            <input
+              type="checkbox"
+              checked={s.enabled !== false}
+              onChange={(e) => {
+                const nextVal = e.target.checked;
+                const updated = { ...s, enabled: nextVal };
+                onInlineSave(updated);
+              }}
+              className="h-4 w-4 rounded accent-[#baff00] cursor-pointer"
+            />
+            <span className={`text-[10px] font-bold ${s.enabled !== false ? "text-[#cfff62]" : "text-rose-400"}`}>
+              {s.enabled !== false ? "Active" : "Off"}
+            </span>
+          </label>
+
+          <label title="Toggle Hot/Popular Service Badge" className="cursor-pointer">
+            <input
+              type="checkbox"
+              checked={Boolean(s.popular)}
+              onChange={(e) => {
+                const nextVal = e.target.checked;
+                const updated = { ...s, popular: nextVal };
+                onInlineSave(updated);
+              }}
+              className="h-4 w-4 rounded accent-amber-400 cursor-pointer"
+            />
+          </label>
+        </div>
+      </td>
+
+      {/* Actions Column - STICKY RIGHT */}
+      <td className="px-4 py-3.5 text-center sticky right-0 bg-[#07100f] z-10 shadow-[-6px_0_12px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onEditFullService(s)}
+            className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-black text-emerald-300 transition hover:bg-emerald-500/25 cursor-pointer"
+            title="Edit everything: Name, Category, Platform, Limits, Rates, Provider & Description"
+          >
+            ✏️ Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => onDeleteService(s)}
+            className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/20 cursor-pointer"
+            title="Delete service permanently"
+          >
+            🗑️
+          </button>
+          <button
+            disabled={isSaving}
+            onClick={() => onInlineSave(s)}
+            className={`rounded-lg px-2.5 py-1.5 text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+              isSaved
+                ? "bg-emerald-400 text-[#07100f]"
+                : "bg-[#baff00] text-[#07100f] hover:bg-[#d2ff5a]"
+            }`}
+            title="Save price & changes"
+          >
+            {isSaving ? (
+              <span>⏳ Saving</span>
+            ) : isSaved ? (
+              <span>✓ Saved</span>
+            ) : (
+              <span>💾 Save</span>
+            )}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 function Services({
   services,
   setServices,
@@ -2327,6 +2767,8 @@ function Services({
   onRefreshBalances: () => void;
 }) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [displayCount, setDisplayCount] = useState(50);
   const [selectedPlatform, setSelectedPlatform] = useState("All");
   const [autoRouteFilter, setAutoRouteFilter] = useState("All");
   const [providerFilter, setProviderFilter] = useState("All");
@@ -2337,10 +2779,29 @@ function Services({
   const [savingRowId, setSavingRowId] = useState<string | null>(null);
   const [savedRowId, setSavedRowId] = useState<string | null>(null);
 
-  const handleInlineSave = async (updatedService: any) => {
+  // Debounce search so keystrokes remain instantaneous with 0ms input freeze
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setDisplayCount(50);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setDisplayCount(50);
+  }, [selectedPlatform, autoRouteFilter, providerFilter, statusFilter]);
+
+  const handleInlineSave = useCallback(async (updatedService: any) => {
     const sId = String(updatedService.service || updatedService.id);
     try {
       setSavingRowId(sId);
+      setServices((v) =>
+        v.map((x) =>
+          String(x.service || x.id) === sId ? { ...x, ...updatedService } : x
+        )
+      );
       await Promise.resolve(save(updatedService, true));
       setSavedRowId(sId);
       setTimeout(() => {
@@ -2351,7 +2812,7 @@ function Services({
     } finally {
       setSavingRowId((prev) => (prev === sId ? null : prev));
     }
-  };
+  }, [save, setServices]);
 
   const [isAddingService, setIsAddingService] = useState(false);
   const [savingNew, setSavingNew] = useState(false);
@@ -2443,7 +2904,7 @@ function Services({
   }, [services]);
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
     return services.filter((s) => {
       if (selectedPlatform !== "All" && s.platform !== selectedPlatform) return false;
       if (autoRouteFilter === "Auto" && s.auto_route === false) return false;
@@ -2462,7 +2923,27 @@ function Services({
         String(s.service || s.id || "").includes(q)
       );
     });
-  }, [services, search, selectedPlatform, autoRouteFilter, providerFilter, statusFilter]);
+  }, [services, debouncedSearch, selectedPlatform, autoRouteFilter, providerFilter, statusFilter]);
+
+  const handleDeleteService = useCallback(async (s: any) => {
+    const sId = String(s.service || s.id);
+    if (!confirm(`Are you sure you want to permanently delete service #${sId} ("${s.name}")?\n\nThis will remove it completely from the catalog.`)) {
+      return;
+    }
+    try {
+      await api(`/api/admin/services?id=${encodeURIComponent(sId)}`, {
+        method: "DELETE",
+      });
+      setServices((prev) => prev.filter((x) => String(x.service || x.id) !== sId));
+      alert(`✓ Service #${sId} deleted successfully.`);
+    } catch (e: any) {
+      alert("Failed to delete service: " + (e.message || "Unknown error"));
+    }
+  }, [api, setServices]);
+
+  const handleEditFullService = useCallback((s: any) => {
+    setEditingFullService(s);
+  }, []);
 
   async function handleBulkMultiplier() {
     const val = Number(bulkMult);
@@ -2523,22 +3004,6 @@ function Services({
       alert(e.message || "Bulk status update failed.");
     } finally {
       setBulkStatusLoading(false);
-    }
-  }
-
-  async function handleDeleteService(s: any) {
-    const sId = String(s.service || s.id);
-    if (!confirm(`Are you sure you want to permanently delete service #${sId} ("${s.name}")?\n\nThis will remove it completely from the catalog.`)) {
-      return;
-    }
-    try {
-      await api(`/api/admin/services?id=${encodeURIComponent(sId)}`, {
-        method: "DELETE",
-      });
-      setServices((prev) => prev.filter((x) => String(x.service || x.id) !== sId));
-      alert(`✓ Service #${sId} deleted successfully.`);
-    } catch (e: any) {
-      alert("Failed to delete service: " + (e.message || "Unknown error"));
     }
   }
 
@@ -2957,467 +3422,36 @@ function Services({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs">
-              {filtered.slice(0, 200).map((s: any) => {
-                const rates = s.provider_rates || {};
-
-                // Determine lowest rate across all 5 quotes
-                let lowestProvId: string | null = null;
-                let lowestRate = Infinity;
-                for (const pId of ["pak_smm", "smooth_smm", "am_smm", "pakistan_smm", "rizvi_smm"]) {
-                  if (rates[pId] && typeof rates[pId].rateUsd === "number") {
-                    if (rates[pId].rateUsd < lowestRate) {
-                      lowestRate = rates[pId].rateUsd;
-                      lowestProvId = pId;
-                    }
-                  }
-                }
-
-                const baseUsd = Number(s.base_rate_usd || 0);
-                const mult = Number(s.rate_multiplier || 1.07);
-                const marginPercent = Math.round((mult - 1) * 100);
-                const retailUsd = s.rate_usd != null ? Number(s.rate_usd) : Math.round(baseUsd * mult * 10000) / 10000;
-                const retailPkr = s.rate_pkr != null ? Number(s.rate_pkr) : Math.round(baseUsd * mult * (usdToPkr || 278) * 10000) / 10000;
-
-                return (
-                  <tr key={s.service || s.id} className="hover:bg-white/[.02] transition-colors">
-                    {/* Service & Platform */}
-                    <td className="max-w-xs px-4 py-3.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-black text-white">
-                          {s.platform || "SMM"}
-                        </span>
-                        {s.is_guaranteed && (
-                          <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-emerald-400">
-                            ♻ Refill
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 font-bold text-slate-100 line-clamp-2">{s.name}</p>
-                      <p className="text-[10px] text-slate-500">
-                        ID #{s.service || s.id} · Min: {Number(s.min).toLocaleString()} · Max: {Number(s.max).toLocaleString()}
-                      </p>
-                    </td>
-
-                    {/* Routing Mode */}
-                    <td className="px-4 py-3.5">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const nextVal = !s.auto_route;
-                              let newBaseUsd = Number(s.base_rate_usd);
-                              let newActiveProv = s.active_provider_id;
-                              if (nextVal && s.fallback_queue && s.fallback_queue.length > 0) {
-                                const cheapest = s.fallback_queue[0];
-                                newBaseUsd = Number(cheapest.rateUsd);
-                                newActiveProv = cheapest.providerId;
-                              }
-                              const updated = {
-                                ...s,
-                                auto_route: nextVal,
-                                active_provider_id: newActiveProv,
-                                base_rate_usd: newBaseUsd,
-                                rate_usd: Math.round(newBaseUsd * Number(s.rate_multiplier || 1.07) * 10000) / 10000,
-                                rate_pkr: Math.round(newBaseUsd * Number(s.rate_multiplier || 1.07) * (usdToPkr || 278) * 10000) / 10000,
-                              };
-                              setServices((v) =>
-                                v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id) ? updated : x
-                                )
-                              );
-                              handleInlineSave(updated);
-                            }}
-                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                              s.auto_route !== false ? "bg-[#baff00]" : "bg-slate-700"
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-[#07100f] transition-transform ${
-                                s.auto_route !== false ? "translate-x-4" : "translate-x-1"
-                              }`}
-                            />
-                          </button>
-                          <span className={`text-[10px] font-black uppercase ${s.auto_route !== false ? "text-[#baff00]" : "text-amber-400"}`}>
-                            {s.auto_route !== false ? "AUTO" : "MANUAL"}
-                          </span>
-                        </div>
-
-                        {s.auto_route === false && (
-                          <select
-                            value={s.active_provider_id || ""}
-                            onChange={(e) => {
-                              const newP = e.target.value;
-                              const provQuote = s.provider_rates?.[newP];
-                              const newBaseUsd = provQuote?.rateUsd != null ? Number(provQuote.rateUsd) : Number(s.base_rate_usd || 0);
-                              const curMult = Number(s.rate_multiplier || 1.07);
-                              const updated = {
-                                ...s,
-                                active_provider_id: newP,
-                                auto_route: false,
-                                base_rate_usd: newBaseUsd,
-                                rate_usd: Math.round(newBaseUsd * curMult * 10000) / 10000,
-                                rate_pkr: Math.round(newBaseUsd * curMult * (usdToPkr || 278) * 10000) / 10000,
-                              };
-                              setServices((v) =>
-                                v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id) ? updated : x
-                                )
-                              );
-                              handleInlineSave(updated);
-                            }}
-                            className="rounded border border-white/10 bg-[#0b1418] px-2 py-1 text-[11px] text-white outline-none"
-                          >
-                            <option value="pak_smm">PAK SMM</option>
-                            <option value="smooth_smm">Smooth SMM</option>
-                            <option value="am_smm">AM SMM</option>
-                            <option value="pakistan_smm">Pakistan SMM</option>
-                            <option value="rizvi_smm">Rizvi SMM</option>
-                          </select>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Active Base Rate USD */}
-                    <td className="px-4 py-3.5 font-mono">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-white">${baseUsd.toFixed(4)}</span>
-                        <span className="text-[10px] text-slate-400 font-sans uppercase">
-                          {s.active_provider_id ? s.active_provider_id.replace("_smm", " smm") : "auto"}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* PAK SMM Rate */}
-                    <td className="px-4 py-3.5 font-mono">
-                      {rates.pak_smm ? (
-                        <div className="flex flex-col">
-                          <span className={`text-slate-200 ${s.active_provider_id === "pak_smm" ? "font-bold text-white" : ""}`}>
-                            ${Number(rates.pak_smm.rateUsd).toFixed(4)}
-                          </span>
-                          {lowestProvId === "pak_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
-                              ★ CHEAPEST
-                            </span>
-                          )}
-                          {s.active_provider_id === "pak_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
-                              ACTIVE
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">—</span>
-                      )}
-                    </td>
-
-                    {/* Smooth SMM Rate */}
-                    <td className="px-4 py-3.5 font-mono">
-                      {rates.smooth_smm ? (
-                        <div className="flex flex-col">
-                          <span className={`text-slate-200 ${s.active_provider_id === "smooth_smm" ? "font-bold text-white" : ""}`}>
-                            ${Number(rates.smooth_smm.rateUsd).toFixed(4)}
-                          </span>
-                          {lowestProvId === "smooth_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
-                              ★ CHEAPEST
-                            </span>
-                          )}
-                          {s.active_provider_id === "smooth_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
-                              ACTIVE
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">—</span>
-                      )}
-                    </td>
-
-                    {/* AM SMM Rate */}
-                    <td className="px-4 py-3.5 font-mono">
-                      {rates.am_smm ? (
-                        <div className="flex flex-col">
-                          <span className={`text-slate-200 ${s.active_provider_id === "am_smm" ? "font-bold text-white" : ""}`}>
-                            ${Number(rates.am_smm.rateUsd).toFixed(4)}
-                          </span>
-                          {lowestProvId === "am_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
-                              ★ CHEAPEST
-                            </span>
-                          )}
-                          {s.active_provider_id === "am_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
-                              ACTIVE
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">—</span>
-                      )}
-                    </td>
-
-                    {/* Pakistan SMM Rate */}
-                    <td className="px-4 py-3.5 font-mono">
-                      {rates.pakistan_smm ? (
-                        <div className="flex flex-col">
-                          <span className={`text-slate-200 ${s.active_provider_id === "pakistan_smm" ? "font-bold text-white" : ""}`}>
-                            ${Number(rates.pakistan_smm.rateUsd).toFixed(4)}
-                          </span>
-                          {lowestProvId === "pakistan_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
-                              ★ CHEAPEST
-                            </span>
-                          )}
-                          {s.active_provider_id === "pakistan_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
-                              ACTIVE
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">—</span>
-                      )}
-                    </td>
-
-                    {/* Rizvi SMM Rate */}
-                    <td className="px-4 py-3.5 font-mono">
-                      {rates.rizvi_smm ? (
-                        <div className="flex flex-col">
-                          <span className={`text-slate-200 ${s.active_provider_id === "rizvi_smm" ? "font-bold text-white" : ""}`}>
-                            ${Number(rates.rizvi_smm.rateUsd).toFixed(4)}
-                          </span>
-                          {lowestProvId === "rizvi_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
-                              ★ CHEAPEST
-                            </span>
-                          )}
-                          {s.active_provider_id === "rizvi_smm" && (
-                            <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
-                              ACTIVE
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-600">—</span>
-                      )}
-                    </td>
-
-                    {/* Markup Multiplier */}
-                    <td className="px-4 py-3.5">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min="0.1"
-                            max="20"
-                            step="0.01"
-                            value={s.rate_multiplier ?? 1.07}
-                            onChange={(e) => {
-                              const newMult = parseFloat(e.target.value);
-                              const multVal = !isNaN(newMult) ? newMult : 1.07;
-                              const curBase = Number(s.base_rate_usd || 0);
-                              const newRateUsd = Math.round(curBase * multVal * 10000) / 10000;
-                              const newRatePkr = Math.round(curBase * multVal * (usdToPkr || 278) * 100) / 100;
-                              setServices((v) =>
-                                v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id)
-                                    ? {
-                                        ...x,
-                                        rate_multiplier: e.target.value,
-                                        rate_usd: newRateUsd,
-                                        rate_pkr: newRatePkr,
-                                      }
-                                    : x
-                                )
-                              );
-                            }}
-                            onBlur={() => {
-                              const multVal = Number(s.rate_multiplier) || 1.07;
-                              const curBase = Number(s.base_rate_usd || 0);
-                              const updated = {
-                                ...s,
-                                rate_multiplier: multVal,
-                                rate_usd: Math.round(curBase * multVal * 10000) / 10000,
-                                rate_pkr: Math.round(curBase * multVal * (usdToPkr || 278) * 100) / 100,
-                              };
-                              handleInlineSave(updated);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                (e.target as HTMLInputElement).blur();
-                              }
-                            }}
-                            className="w-20 rounded-lg border border-white/10 bg-[#0b1418] px-2.5 py-1 font-mono text-xs text-white outline-none focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/30 transition"
-                          />
-                          <span className="text-[10px] text-slate-500">×</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className={`text-[9px] font-bold ${marginPercent >= 0 ? "text-emerald-400" : "text-amber-400"}`}>
-                            {marginPercent >= 0 ? `+${marginPercent}% profit` : `${marginPercent}%`}
-                          </span>
-                          {savingRowId === String(s.service || s.id) && (
-                            <span className="text-[9px] text-cyan-400 font-bold animate-pulse">⏳</span>
-                          )}
-                          {savedRowId === String(s.service || s.id) && (
-                            <span className="text-[9px] text-emerald-400 font-black">✓</span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Retail USD Price - DIRECTLY EDITABLE WITH AUTO-SAVE */}
-                    <td className="px-4 py-3.5 font-mono font-bold">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-bold text-cyan-400">$</span>
-                          <input
-                            type="number"
-                            step="0.0001"
-                            min="0"
-                            value={s.rate_usd != null ? s.rate_usd : retailUsd}
-                            onChange={(e) => {
-                              const newPrice = parseFloat(e.target.value);
-                              const val = !isNaN(newPrice) ? newPrice : 0;
-                              const curBase = Number(s.base_rate_usd || 0);
-                              const newMult = curBase > 0 ? Math.round((val / curBase) * 10000) / 10000 : 1.07;
-                              const newRatePkr = Math.round(val * (usdToPkr || 278) * 100) / 100;
-                              setServices((v) =>
-                                v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id)
-                                    ? {
-                                        ...x,
-                                        rate_usd: e.target.value,
-                                        rate_multiplier: newMult,
-                                        rate_pkr: newRatePkr,
-                                      }
-                                    : x
-                                )
-                              );
-                            }}
-                            onBlur={() => {
-                              const val = Number(s.rate_usd != null ? s.rate_usd : retailUsd);
-                              const curBase = Number(s.base_rate_usd || 0);
-                              const newMult = curBase > 0 ? Math.round((val / curBase) * 10000) / 10000 : 1.07;
-                              const updated = {
-                                ...s,
-                                rate_usd: val,
-                                rate_multiplier: newMult,
-                                rate_pkr: Math.round(val * (usdToPkr || 278) * 100) / 100,
-                              };
-                              handleInlineSave(updated);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                (e.target as HTMLInputElement).blur();
-                              }
-                            }}
-                            className="w-24 rounded-lg border border-cyan-500/30 bg-[#071317] px-2.5 py-1 font-mono text-xs font-bold text-cyan-300 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition"
-                          />
-                        </div>
-                        <span className="text-[9px] font-normal text-slate-500">per 1k</span>
-                      </div>
-                    </td>
-
-                    {/* Retail PKR Price */}
-                    <td className="px-4 py-3.5 font-mono font-bold text-[#baff00]">
-                      <div>₨{retailPkr.toFixed(2)}</div>
-                      <p className="text-[9px] font-normal text-slate-500">per 1k (auto)</p>
-                    </td>
-
-                    {/* Status checkboxes */}
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-2.5">
-                        <label
-                          title={s.enabled !== false ? "Service is ACTIVE (Click to disable)" : "Service is DISABLED (Click to enable)"}
-                          className="flex items-center gap-1.5 cursor-pointer select-none"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={s.enabled !== false}
-                            onChange={(e) => {
-                              const nextVal = e.target.checked;
-                              const updated = { ...s, enabled: nextVal };
-                              setServices((v) =>
-                                v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id) ? updated : x
-                                )
-                              );
-                              handleInlineSave(updated);
-                            }}
-                            className="h-4 w-4 rounded accent-[#baff00] cursor-pointer"
-                          />
-                          <span className={`text-[10px] font-bold ${s.enabled !== false ? "text-[#cfff62]" : "text-rose-400"}`}>
-                            {s.enabled !== false ? "Active" : "Off"}
-                          </span>
-                        </label>
-
-                        <label title="Toggle Hot/Popular Service Badge" className="cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(s.popular)}
-                            onChange={(e) => {
-                              const nextVal = e.target.checked;
-                              const updated = { ...s, popular: nextVal };
-                              setServices((v) =>
-                                v.map((x) =>
-                                  String(x.service || x.id) === String(s.service || s.id) ? updated : x
-                                )
-                              );
-                              handleInlineSave(updated);
-                            }}
-                            className="h-4 w-4 rounded accent-amber-400 cursor-pointer"
-                          />
-                        </label>
-                      </div>
-                    </td>
-
-                    {/* Actions Column - STICKY RIGHT & NO DESC BUTTON */}
-                    <td className="px-4 py-3.5 text-center sticky right-0 bg-[#07100f] z-10 shadow-[-6px_0_12px_rgba(0,0,0,0.6)]">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setEditingFullService(s)}
-                          className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-black text-emerald-300 transition hover:bg-emerald-500/25 cursor-pointer"
-                          title="Edit everything: Name, Category, Platform, Limits, Rates, Provider & Description"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteService(s)}
-                          className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/20 cursor-pointer"
-                          title="Delete service permanently"
-                        >
-                          🗑️
-                        </button>
-                        <button
-                          disabled={savingRowId === String(s.service || s.id)}
-                          onClick={() => handleInlineSave(s)}
-                          className={`rounded-lg px-2.5 py-1.5 text-xs font-black transition cursor-pointer flex items-center gap-1 ${
-                            savedRowId === String(s.service || s.id)
-                              ? "bg-emerald-400 text-[#07100f]"
-                              : "bg-[#baff00] text-[#07100f] hover:bg-[#d2ff5a]"
-                          }`}
-                          title="Save price & changes"
-                        >
-                          {savingRowId === String(s.service || s.id) ? (
-                            <span>⏳ Saving</span>
-                          ) : savedRowId === String(s.service || s.id) ? (
-                            <span>✓ Saved</span>
-                          ) : (
-                            <span>💾 Save</span>
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filtered.slice(0, displayCount).map((s: any) => (
+                <ServiceMatrixRow
+                  key={s.service || s.id}
+                  s={s}
+                  usdToPkr={usdToPkr}
+                  savingRowId={savingRowId}
+                  savedRowId={savedRowId}
+                  onInlineSave={handleInlineSave}
+                  onEditFullService={handleEditFullService}
+                  onDeleteService={handleDeleteService}
+                />
+              ))}
             </tbody>
           </table>
           {!filtered.length && (
             <p className="p-10 text-center text-sm text-slate-500">No matching services found in routing matrix.</p>
+          )}
+          {filtered.length > displayCount && (
+            <div className="flex items-center justify-between border-t border-white/5 bg-[#0b1418]/60 p-4">
+              <span className="text-xs text-slate-400">
+                Showing <strong className="text-white">{displayCount}</strong> of <strong className="text-white">{filtered.length}</strong> matching services
+              </span>
+              <button
+                type="button"
+                onClick={() => setDisplayCount((prev) => prev + 50)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/10 hover:border-[#baff00]/40 cursor-pointer"
+              >
+                Load More Services (+50)
+              </button>
+            </div>
           )}
         </div>
       </section>

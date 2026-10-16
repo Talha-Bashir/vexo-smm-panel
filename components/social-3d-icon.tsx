@@ -101,6 +101,11 @@ const PLATFORM_MAP: Record<string, { src: string; glowColor: string; alt: string
     glowColor: "rgba(0, 212, 255, 0.4)",
     alt: "Website 3D Icon",
   },
+  subscriptions: {
+    src: "/icons/3d/star.png",
+    glowColor: "rgba(168, 85, 247, 0.5)",
+    alt: "Subscriptions 3D Icon",
+  },
   globe: {
     src: "/icons/3d/web.png",
     glowColor: "rgba(0, 212, 255, 0.4)",
@@ -142,7 +147,8 @@ export function getSocial3DIconData(platformName: string) {
   if (raw.includes("reddit")) return PLATFORM_MAP.reddit;
   if (raw.includes("linkedin")) return PLATFORM_MAP.linkedin;
   if (raw.includes("vk")) return PLATFORM_MAP.vk;
-  if (raw.includes("traffic") || raw.includes("website") || raw.includes("globe") || raw.includes("web")) return PLATFORM_MAP.traffic;
+  if (raw.includes("subscrip") || raw.includes("app")) return PLATFORM_MAP.subscriptions;
+  if (raw.includes("website") || raw.includes("traffic") || raw.includes("globe") || raw.includes("web")) return PLATFORM_MAP.website;
   if (raw.includes("favorite") || raw.includes("bookmark")) return PLATFORM_MAP.favorites;
   if (raw === "all") return PLATFORM_MAP.all;
 

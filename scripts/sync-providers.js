@@ -158,6 +158,19 @@ function sanitizeServiceDescription(text) {
 
 function detectPlatform(name, category) {
   const text = `${category} ${name}`.toLowerCase();
+  if (
+    text.includes("canva") ||
+    text.includes("gemini") ||
+    text.includes("chatgpt") ||
+    text.includes("netflix") ||
+    text.includes("prime video") ||
+    text.includes("iptv") ||
+    text.includes("envento") ||
+    text.includes("envato") ||
+    (text.includes("subscription") && !text.includes("channel") && !text.includes("youtube") && !text.includes("telegram"))
+  ) {
+    return "Subscriptions";
+  }
   if (text.includes("instagram") || text.includes("ig ")) return "Instagram";
   if (text.includes("tiktok") || text.includes("tik tok")) return "TikTok";
   if (text.includes("youtube") || text.includes("yt ")) return "YouTube";
@@ -169,7 +182,7 @@ function detectPlatform(name, category) {
   if (text.includes("threads")) return "Threads";
   if (text.includes("snapchat")) return "Snapchat";
   if (text.includes("linkedin")) return "LinkedIn";
-  if (text.includes("traffic") || text.includes("website")) return "Website Traffic";
+  if (text.includes("traffic") || text.includes("website") || text.includes("seo")) return "Website";
   return "Other";
 }
 
@@ -425,6 +438,7 @@ async function main() {
       }
     } catch (e) {
       console.warn(`  ✗ Failed to sync ${p.name}: ${e.message}`);
+      await pool.query(`UPDATE vexo_providers SET balance_usd = 0 WHERE id = $1`, [p.id]).catch(() => {});
     }
   }
 
@@ -434,11 +448,8 @@ async function main() {
   try {
     await client.query("BEGIN");
     
-    // Clear previous provider services
-    const providerIds = Array.from(providerServicesMap.keys());
-    if (providerIds.length > 0) {
-      await client.query(`DELETE FROM vexo_provider_services WHERE provider_id = ANY($1)`, [providerIds]);
-    }
+    // Clear all previous provider services so unreachable/disabled providers do not leave stale rates
+    await client.query(`DELETE FROM vexo_provider_services`);
 
     const allRawRows = [];
     for (const [pId, rawServices] of providerServicesMap.entries()) {
@@ -537,14 +548,15 @@ async function main() {
   );
 
   const groups = new Map();
+  const rawQuoteByProviderRemoteId = new Map();
   for (const row of allServicesRes.rows) {
     const key = String(row.service_group_key);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push({
+    const quote = {
       providerId: row.provider_id,
       providerName: row.provider_name,
       remoteServiceId: String(row.remote_service_id),
       name: row.name,
+      category: row.category || "",
       type: row.type,
       rateUsd: Number(row.rate_usd),
       min: Number(row.min),
@@ -553,7 +565,10 @@ async function main() {
       cancel: Boolean(row.cancel),
       isGuaranteed: Boolean(row.is_guaranteed),
       description: String(row.description || "").trim(),
-    });
+    };
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(quote);
+    rawQuoteByProviderRemoteId.set(`${quote.providerId}:${quote.remoteServiceId}`, quote);
   }
 
   const routedItems = [];
@@ -574,32 +589,77 @@ async function main() {
     const cheapest = eligibleQuotes[0];
 
     const providerRatesObj = {};
-    for (const q of quotes) {
-      providerRatesObj[q.providerId] = {
-        remoteServiceId: q.remoteServiceId,
-        rateUsd: q.rateUsd,
-        name: q.name,
-        refill: q.refill,
-      };
+    const sortedQuotesForMatrix = [...quotes].sort((a, b) => a.rateUsd - b.rateUsd);
+    for (const q of sortedQuotesForMatrix) {
+      const prev = providerRatesObj[q.providerId];
+      if (!prev) {
+        providerRatesObj[q.providerId] = {
+          rateUsd: q.rateUsd,
+          remoteId: q.remoteServiceId,
+          name: q.name,
+          guaranteed: q.isGuaranteed,
+        };
+      } else if (isGuaranteed && !prev.guaranteed && q.isGuaranteed) {
+        providerRatesObj[q.providerId] = {
+          rateUsd: q.rateUsd,
+          remoteId: q.remoteServiceId,
+          name: q.name,
+          guaranteed: q.isGuaranteed,
+        };
+      } else if (q.rateUsd < prev.rateUsd && (!isGuaranteed || q.isGuaranteed === prev.guaranteed)) {
+        providerRatesObj[q.providerId] = {
+          rateUsd: q.rateUsd,
+          remoteId: q.remoteServiceId,
+          name: q.name,
+          guaranteed: q.isGuaranteed,
+        };
+      }
     }
 
-    const fallbackQueue = eligibleQuotes.slice(1).map((q) => ({
+    const seenProviders = new Set();
+    const distinctProviderFallback = [];
+    for (const eq of eligibleQuotes) {
+      if (!seenProviders.has(eq.providerId)) {
+        seenProviders.add(eq.providerId);
+        distinctProviderFallback.push(eq);
+      }
+    }
+
+    const fallbackQueue = distinctProviderFallback.map((q, idx) => ({
+      rank: idx + 1,
       providerId: q.providerId,
+      providerName: q.providerName,
       remoteServiceId: q.remoteServiceId,
       rateUsd: q.rateUsd,
-      refill: q.refill,
+      isGuaranteed: q.isGuaranteed,
     }));
 
     const existing = existingMap.get(groupKey);
-    const autoRoute = existing ? Boolean(existing.auto_route) : true;
-    const rateMultiplier = existing ? Number(existing.rate_multiplier || 1.25) : 1.25;
-    const enabled = existing ? Boolean(existing.enabled) : true;
+    const autoRoute = existing ? existing.auto_route !== false : true;
+    const rawExistingMult = existing ? Number(existing.rate_multiplier) : NaN;
+    const rateMultiplier = Number.isFinite(rawExistingMult) && rawExistingMult > 0 ? rawExistingMult : (1 + DEFAULT_MARKUP);
+
+    const providerSet = new Set(quotes.map((q) => q.providerId));
+    const isMultiProvider = providerSet.size >= 2;
+    const isPackageService = cheapest.type?.toLowerCase()?.includes("package") || (Number(cheapest.min) === 1 && Number(cheapest.max) === 1);
+    const isAffordable = cheapest.rateUsd <= 5.0 || (isPackageService && cheapest.rateUsd <= 15.0);
+    const isCheaperService = (isMultiProvider || cheapest.rateUsd <= 5.0) && isAffordable;
+
+    const enabled = existing ? Boolean(existing.enabled) : isCheaperService;
     const popular = existing ? Boolean(existing.popular) : false;
 
-    const activeProviderId = autoRoute ? cheapest.providerId : String(existing?.active_provider_id || cheapest.providerId);
-    const activeRemoteServiceId = autoRoute ? cheapest.remoteServiceId : String(existing?.active_remote_service_id || cheapest.remoteServiceId);
+    const desiredProviderId = autoRoute ? cheapest.providerId : String(existing?.active_provider_id || cheapest.providerId);
+    const desiredRemoteId = autoRoute ? cheapest.remoteServiceId : String(existing?.active_remote_service_id || cheapest.remoteServiceId);
 
-    const selectedQuote = quotes.find((q) => q.providerId === activeProviderId && q.remoteServiceId === activeRemoteServiceId) || cheapest;
+    const selectedQuote = autoRoute
+      ? cheapest
+      : quotes.find((q) => q.providerId === desiredProviderId && q.remoteServiceId === desiredRemoteId) ||
+        rawQuoteByProviderRemoteId.get(`${desiredProviderId}:${desiredRemoteId}`) ||
+        quotes.find((q) => q.providerId === desiredProviderId) ||
+        cheapest;
+
+    const activeProviderId = selectedQuote.providerId;
+    const activeRemoteServiceId = selectedQuote.remoteServiceId;
     const baseRateUsd = selectedQuote.rateUsd;
     const ratePkr = Math.round(baseRateUsd * USD_TO_PKR * rateMultiplier * 10000) / 10000;
 
@@ -676,9 +736,10 @@ async function main() {
          platform = EXCLUDED.platform,
          category = EXCLUDED.category,
          is_guaranteed = EXCLUDED.is_guaranteed,
-         active_provider_id = CASE WHEN vexo_routed_services.auto_route THEN EXCLUDED.active_provider_id ELSE vexo_routed_services.active_provider_id END,
-         active_remote_service_id = CASE WHEN vexo_routed_services.auto_route THEN EXCLUDED.active_remote_service_id ELSE vexo_routed_services.active_remote_service_id END,
+         active_provider_id = EXCLUDED.active_provider_id,
+         active_remote_service_id = EXCLUDED.active_remote_service_id,
          base_rate_usd = EXCLUDED.base_rate_usd,
+         rate_multiplier = EXCLUDED.rate_multiplier,
          rate_pkr = EXCLUDED.rate_pkr,
          min = EXCLUDED.min,
          max = EXCLUDED.max,

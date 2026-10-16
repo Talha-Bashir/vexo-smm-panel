@@ -54,6 +54,19 @@ export function detectGuarantee(name: string, category: string, refillFlag?: boo
 
 export function detectPlatform(name: string, category: string): string {
   const text = `${category} ${name}`.toLowerCase();
+  if (
+    text.includes("canva") ||
+    text.includes("gemini") ||
+    text.includes("chatgpt") ||
+    text.includes("netflix") ||
+    text.includes("prime video") ||
+    text.includes("iptv") ||
+    text.includes("envento") ||
+    text.includes("envato") ||
+    (text.includes("subscription") && !text.includes("channel") && !text.includes("youtube") && !text.includes("telegram"))
+  ) {
+    return "Subscriptions";
+  }
   if (text.includes("instagram") || text.includes("ig ")) return "Instagram";
   if (text.includes("tiktok") || text.includes("tik tok")) return "TikTok";
   if (text.includes("youtube") || text.includes("yt ")) return "YouTube";
@@ -65,7 +78,7 @@ export function detectPlatform(name: string, category: string): string {
   if (text.includes("threads")) return "Threads";
   if (text.includes("snapchat")) return "Snapchat";
   if (text.includes("linkedin")) return "LinkedIn";
-  if (text.includes("traffic") || text.includes("website")) return "Website Traffic";
+  if (text.includes("traffic") || text.includes("website") || text.includes("seo")) return "Website";
   return "Other";
 }
 
@@ -191,6 +204,7 @@ export async function syncAllProvidersAndRoute(): Promise<SyncStats> {
           stats.providerBalances[p.name] = bal.balance;
         } catch (balErr) {
           console.warn(`Balance check failed for ${p.name}:`, balErr);
+          await db.query(`UPDATE vexo_providers SET balance_usd = 0 WHERE id = $1`, [p.id]).catch(() => undefined);
         }
 
         // Services
@@ -203,6 +217,8 @@ export async function syncAllProvidersAndRoute(): Promise<SyncStats> {
         const msg = `Failed to sync services from ${p.name}: ${err instanceof Error ? err.message : String(err)}`;
         console.error(msg);
         stats.errors.push(msg);
+        // Ensure unreachable providers do not retain stale cached balance or stale service quotes
+        await db.query(`UPDATE vexo_providers SET balance_usd = 0 WHERE id = $1`, [p.id]).catch(() => undefined);
       }
     })
   );
@@ -212,10 +228,8 @@ export async function syncAllProvidersAndRoute(): Promise<SyncStats> {
   try {
     await client.query("BEGIN");
 
-    const providerIds = Array.from(providerServicesMap.keys());
-    if (providerIds.length > 0) {
-      await client.query(`DELETE FROM vexo_provider_services WHERE provider_id = ANY($1)`, [providerIds]);
-    }
+    // Clear all previous raw provider services so unreachable/disabled providers do not leave stale rates
+    await client.query(`DELETE FROM vexo_provider_services`);
 
     const allRawRows: Array<{
       providerId: string;
@@ -347,12 +361,12 @@ export async function runLeastCostRouting(): Promise<number> {
      ORDER BY ps.service_group_key, ps.rate_usd ASC`
   );
 
-  // Group by service_group_key
+  // Group by service_group_key and build direct lookup by providerId:remoteServiceId
   const groups = new Map<string, ServiceQuote[]>();
+  const rawQuoteByProviderRemoteId = new Map<string, ServiceQuote>();
   for (const row of allServicesRes.rows) {
     const key = String(row.service_group_key);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push({
+    const quote: ServiceQuote = {
       providerId: row.provider_id,
       providerName: row.provider_name,
       remoteServiceId: String(row.remote_service_id),
@@ -366,7 +380,10 @@ export async function runLeastCostRouting(): Promise<number> {
       cancel: Boolean(row.cancel),
       isGuaranteed: Boolean(row.is_guaranteed),
       description: String(row.description || "").trim(),
-    });
+    };
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(quote);
+    rawQuoteByProviderRemoteId.set(`${quote.providerId}:${quote.remoteServiceId}`, quote);
   }
 
   const liveUsdToPkr = await getLiveUsdToPkrRate();
@@ -443,7 +460,8 @@ export async function runLeastCostRouting(): Promise<number> {
     // Check existing record
     const existing = existingMap.get(groupKey);
     const autoRoute = existing ? existing.auto_route !== false : true;
-    const rateMultiplier = existing ? Number(existing.rate_multiplier || (1 + DEFAULT_MARKUP)) : (1 + DEFAULT_MARKUP);
+    const rawExistingMult = existing ? Number(existing.rate_multiplier) : NaN;
+    const rateMultiplier = Number.isFinite(rawExistingMult) && rawExistingMult > 0 ? rawExistingMult : (1 + DEFAULT_MARKUP);
     // Filter: "Compare panels services and list ONLY those which are cheaper"
     // 1. Multiple providers competed across panels OR ultra-cheap baseline (<= $0.50)
     // 2. Base rate is affordable (<= $5.00)
@@ -453,15 +471,22 @@ export async function runLeastCostRouting(): Promise<number> {
     const isAffordable = cheapest.rateUsd <= 5.0 || (isPackageService && cheapest.rateUsd <= 15.0);
     const isCheaperService = (isMultiProvider || cheapest.rateUsd <= 5.0) && isAffordable;
 
-    const enabled = isCheaperService;
+    const enabled = existing ? Boolean(existing.enabled) : isCheaperService;
     const popular = existing ? Boolean(existing.popular) : false;
 
-    // If auto_route is true, pick the cheapest. If false, retain admin's manual provider choice.
-    const activeProviderId = autoRoute ? cheapest.providerId : String(existing?.active_provider_id || cheapest.providerId);
-    const activeRemoteServiceId = autoRoute ? cheapest.remoteServiceId : String(existing?.active_remote_service_id || cheapest.remoteServiceId);
+    // Resolve selected quote: if auto_route is true, pick cheapest; if false, look up admin's exact provider/service (or provider's current quote in this group)
+    const desiredProviderId = autoRoute ? cheapest.providerId : String(existing?.active_provider_id || cheapest.providerId);
+    const desiredRemoteId = autoRoute ? cheapest.remoteServiceId : String(existing?.active_remote_service_id || cheapest.remoteServiceId);
 
-    // Selected base rate USD
-    const selectedQuote = quotes.find((q) => q.providerId === activeProviderId && q.remoteServiceId === activeRemoteServiceId) || cheapest;
+    const selectedQuote = autoRoute
+      ? cheapest
+      : quotes.find((q) => q.providerId === desiredProviderId && q.remoteServiceId === desiredRemoteId) ||
+        rawQuoteByProviderRemoteId.get(`${desiredProviderId}:${desiredRemoteId}`) ||
+        quotes.find((q) => q.providerId === desiredProviderId) ||
+        cheapest;
+
+    const activeProviderId = selectedQuote.providerId;
+    const activeRemoteServiceId = selectedQuote.remoteServiceId;
     const baseRateUsd = selectedQuote.rateUsd;
 
     // Calculate retail PKR price with multiplier and markup
@@ -552,9 +577,10 @@ export async function runLeastCostRouting(): Promise<number> {
          platform = EXCLUDED.platform,
          category = EXCLUDED.category,
          is_guaranteed = EXCLUDED.is_guaranteed,
-         active_provider_id = CASE WHEN vexo_routed_services.auto_route THEN EXCLUDED.active_provider_id ELSE vexo_routed_services.active_provider_id END,
-         active_remote_service_id = CASE WHEN vexo_routed_services.auto_route THEN EXCLUDED.active_remote_service_id ELSE vexo_routed_services.active_remote_service_id END,
+         active_provider_id = EXCLUDED.active_provider_id,
+         active_remote_service_id = EXCLUDED.active_remote_service_id,
          base_rate_usd = EXCLUDED.base_rate_usd,
+         rate_multiplier = EXCLUDED.rate_multiplier,
          rate_pkr = EXCLUDED.rate_pkr,
          min = EXCLUDED.min,
          max = EXCLUDED.max,

@@ -30,10 +30,16 @@ export async function getCachedProviderBalances(): Promise<Map<string, number>> 
   const balanceMap = new Map<string, number>();
   try {
     const res = await db.query(
-      `SELECT id, balance_usd, enabled FROM vexo_providers WHERE enabled = true`
+      `SELECT id, balance_usd, enabled, last_sync_at
+       FROM vexo_providers
+       WHERE enabled = true`
     );
+    const now = Date.now();
+    const maxStaleMs = 24 * 60 * 60 * 1000; // 24 hours
     for (const row of res.rows) {
-      balanceMap.set(String(row.id), Number(row.balance_usd || 0));
+      const lastSync = row.last_sync_at ? new Date(row.last_sync_at).getTime() : 0;
+      const isFresh = lastSync > 0 && now - lastSync <= maxStaleMs;
+      balanceMap.set(String(row.id), isFresh ? Number(row.balance_usd || 0) : 0);
     }
   } catch (err) {
     console.warn("Could not query provider balances:", err);
@@ -56,17 +62,20 @@ export function selectFundedProviderCandidate(
   const queue = Array.isArray(fallbackQueue) ? fallbackQueue : [];
 
   // 1. Search for the lowest-cost provider that actually has balance >= threshold
+  //    within a reasonable rate tolerance of the primary service rate
   for (const item of queue) {
     const pId = String(item.providerId || "");
     const bal = balances.get(pId) ?? 0;
-    if (bal >= minThresholdUsd) {
+    const itemRate = Number(item.rateUsd || 0);
+    const withinTolerance = defaultBaseRateUsd <= 0 || itemRate <= defaultBaseRateUsd * 1.05;
+    if (bal >= minThresholdUsd && withinTolerance) {
       return {
         candidate: {
           rank: item.rank,
           providerId: pId,
           providerName: item.providerName,
           remoteServiceId: String(item.remoteServiceId),
-          rateUsd: Number(item.rateUsd),
+          rateUsd: itemRate,
           isGuaranteed: item.isGuaranteed,
         },
         isFunded: true,
@@ -74,23 +83,30 @@ export function selectFundedProviderCandidate(
     }
   }
 
-  // 2. Fallback: If no provider has >= threshold, use the primary (cheapest) candidate
-  const primaryQueue = queue[0];
+  // 2. Fallback: Use the service's active provider & rate so catalog price always matches the upstream API
+  const primaryQueue = queue.find(
+    (q) => String(q.providerId) === String(defaultProviderId) && String(q.remoteServiceId) === String(defaultRemoteServiceId)
+  ) || queue[0];
+
+  const activeProviderId = defaultProviderId || (primaryQueue ? String(primaryQueue.providerId) : "");
+  const activeRemoteServiceId = defaultRemoteServiceId || (primaryQueue ? String(primaryQueue.remoteServiceId) : "");
+  const activeBaseRateUsd = defaultBaseRateUsd > 0 ? defaultBaseRateUsd : (primaryQueue ? Number(primaryQueue.rateUsd) : 0);
+
   return {
     candidate: {
       rank: 1,
-      providerId: primaryQueue ? String(primaryQueue.providerId) : defaultProviderId,
+      providerId: activeProviderId,
       providerName: primaryQueue?.providerName,
-      remoteServiceId: primaryQueue ? String(primaryQueue.remoteServiceId) : defaultRemoteServiceId,
-      rateUsd: primaryQueue ? Number(primaryQueue.rateUsd) : defaultBaseRateUsd,
+      remoteServiceId: activeRemoteServiceId,
+      rateUsd: activeBaseRateUsd,
       isGuaranteed: primaryQueue?.isGuaranteed,
     },
-    isFunded: false,
+    isFunded: (balances.get(activeProviderId) ?? 0) >= minThresholdUsd,
   };
 }
 
 /**
- * Calculates live effective pricing based on the active funded provider.
+ * Calculates live effective pricing based on the service's active upstream provider rate.
  */
 export function resolveEffectiveServicePricing(
   service: {
@@ -104,7 +120,8 @@ export function resolveEffectiveServicePricing(
   liveUsdToPkr: number,
   minThresholdUsd: number = MIN_PROVIDER_BALANCE_THRESHOLD_USD
 ): EffectiveServicePricing {
-  const mult = Number(service.rate_multiplier || 1.07);
+  const rawMult = Number(service.rate_multiplier);
+  const mult = Number.isFinite(rawMult) && rawMult > 0 ? rawMult : 1.07;
   const defaultBaseUsd = Number(service.base_rate_usd || 0);
 
   const { candidate, isFunded } = selectFundedProviderCandidate(
@@ -116,13 +133,14 @@ export function resolveEffectiveServicePricing(
     minThresholdUsd
   );
 
-  const baseRateUsd = candidate.rateUsd > 0 ? candidate.rateUsd : defaultBaseUsd;
+  // Always use the service's own base_rate_usd for display/order pricing so prices match the upstream API
+  const baseRateUsd = defaultBaseUsd > 0 ? defaultBaseUsd : candidate.rateUsd;
   const rateUsd = Math.round(baseRateUsd * mult * 10000) / 10000;
   const ratePkr = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
 
   return {
-    activeProviderId: candidate.providerId,
-    activeRemoteServiceId: candidate.remoteServiceId,
+    activeProviderId: service.active_provider_id || candidate.providerId,
+    activeRemoteServiceId: service.active_remote_service_id || candidate.remoteServiceId,
     baseRateUsd,
     rateMultiplier: mult,
     rateUsd,

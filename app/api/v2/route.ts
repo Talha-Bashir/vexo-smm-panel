@@ -8,6 +8,7 @@ import { getRizviServices, addRizviOrder, getRizviOrderStatus, requestRizviRefil
 import { getVexoRate, calculateVexoCharge } from "@/lib/pricing";
 import { getLiveUsdToPkrRate, calculateLivePricePkr, calculateLiveChargePkr, isPackageService } from "@/lib/exchange-rate";
 import { reserveWalletForOrder, markOrderProviderSuccess, refundFailedOrder, getUserWallet } from "@/lib/wallet";
+import { sendSubscriptionTelegramAlert } from "@/lib/balance-monitor/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -191,6 +192,8 @@ export async function POST(request: Request) {
       const liveUsdToPkr = await getLiveUsdToPkrRate();
 
       let serviceName = "SMM Service";
+      let platform = "API";
+      let category = "";
       let rate = 0;
       let charge = 0;
       let min = 1;
@@ -211,6 +214,8 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Service is currently disabled" }, { status: 400 });
         }
         serviceName = routed.name;
+        platform = routed.platform || "API";
+        category = routed.category || "";
         const mult = Number(routed.rate_multiplier || 1.07);
         rate = calculateLivePricePkr(routed.base_rate_usd, mult, liveUsdToPkr);
         min = Number(routed.min || 1);
@@ -240,11 +245,19 @@ export async function POST(request: Request) {
 
         const mult = override && Number(override.rate_multiplier) > 0 ? Number(override.rate_multiplier) : 1;
         serviceName = String(s.name || "");
+        category = String(s.category || "");
+        platform = String(s.category || "API");
         min = Number(s.min);
         max = Number(s.max);
         rate = getVexoRate(s.rate, mult, liveUsdToPkr);
         charge = calculateLiveChargePkr(rate, quantity, isPackageService(String(s.type || ""), min, max));
       }
+
+      const isSubscription =
+        platform === "Subscriptions" ||
+        platform.toLowerCase().includes("subscrip") ||
+        category.toLowerCase().includes("subscrip") ||
+        /canva|gemini|chatgpt|netflix|prime\s*video|iptv|envato|envento/i.test(`${category} ${serviceName}`);
 
       if (quantity < min || quantity > max) {
         return NextResponse.json({ error: `Quantity must be between ${min} and ${max}` }, { status: 400 });
@@ -272,6 +285,42 @@ export async function POST(request: Request) {
       }
 
       const vexoOrderId = String(reservation.order.id);
+
+      // If order is in Subscriptions category: DO NOT send to provider API, inform admin on Telegram
+      if (isSubscription) {
+        const providerOrderId = `SUB-${vexoOrderId}`;
+
+        await markOrderProviderSuccess(vexoOrderId, String(providerOrderId));
+
+        await db.query(
+          `UPDATE vexo_orders
+           SET provider_id = 'manual_telegram',
+               status = 'Pending',
+               cost_pkr = 0,
+               cost_usd = 0
+           WHERE id = $1`,
+          [vexoOrderId]
+        );
+
+        sendSubscriptionTelegramAlert({
+          orderId: vexoOrderId,
+          userName: user.name || "API Buyer",
+          userEmail: user.email,
+          serviceName,
+          category: "Subscriptions",
+          link,
+          quantity,
+          chargePkr: charge,
+          balancePkr: reservation.balancePkr,
+          createdAt: reservation.order.created_at,
+        }).catch((alertErr) => {
+          console.error("Failed to send Telegram subscription alert:", alertErr);
+        });
+
+        return NextResponse.json({
+          order: Number(vexoOrderId) || providerOrderId,
+        });
+      }
 
       try {
         // Dispatch to cheapest provider with automatic multi-provider failover

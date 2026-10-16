@@ -21,6 +21,8 @@ interface ServiceItem {
 
 const PLATFORMS = [
   { id: "all", label: "All Platforms", icon: "🌐" },
+  { id: "subscriptions", label: "App Subscriptions", icon: "⭐" },
+  { id: "website", label: "Website", icon: "🌐" },
   { id: "instagram", label: "Instagram", icon: "📸" },
   { id: "tiktok", label: "TikTok", icon: "🎵" },
   { id: "youtube", label: "YouTube", icon: "▶️" },
@@ -34,11 +36,27 @@ export function ServicesCatalogClient() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [displayCount, setDisplayCount] = useState(60);
   const [platform, setPlatform] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [currency, setCurrency] = useState<"PKR" | "USD">("PKR");
   const [usdRate, setUsdRate] = useState(278);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Debounce search keystrokes to prevent UI thread lockup on typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setDisplayCount(60);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset pagination when category or platform change
+  useEffect(() => {
+    setDisplayCount(60);
+  }, [platform, selectedCategory]);
 
   useEffect(() => {
     fetch("/api/services")
@@ -68,7 +86,7 @@ export function ServicesCatalogClient() {
 
   // Filtered services
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     return services.filter((s) => {
       // Platform filter
       if (platform !== "all" && s.platform?.toLowerCase() !== platform.toLowerCase()) {
@@ -87,12 +105,12 @@ export function ServicesCatalogClient() {
       }
       return true;
     });
-  }, [services, platform, selectedCategory, search]);
+  }, [services, platform, selectedCategory, debouncedSearch]);
 
-  function formatPrice(ratePkr: number) {
+  function formatPrice(ratePkr: number, rateUsd?: number) {
     if (currency === "USD") {
-      const usdVal = ratePkr / usdRate;
-      return `$${usdVal < 0.01 ? usdVal.toFixed(4) : usdVal.toFixed(3)}`;
+      const usdVal = rateUsd != null && rateUsd > 0 ? Number(rateUsd) : ratePkr / usdRate;
+      return `$${usdVal.toFixed(4)}`;
     }
     return `₨${Number(ratePkr || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
@@ -302,7 +320,7 @@ export function ServicesCatalogClient() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {filtered.map((s) => {
+                  {filtered.slice(0, displayCount).map((s) => {
                     const isExpanded = expandedId === s.id;
                     return (
                       <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
@@ -358,10 +376,12 @@ export function ServicesCatalogClient() {
                         {/* Rate */}
                         <td className="px-4 py-4 sm:px-6 whitespace-nowrap">
                           <span className="text-sm font-black text-[#baff00] font-mono">
-                            {formatPrice(s.rate_pkr)}
+                            {formatPrice(s.rate_pkr, s.rate_usd)}
                           </span>
                           <span className="block text-[10px] text-slate-500">
-                            {currency === "PKR" ? `~$${(s.rate_pkr / usdRate).toFixed(3)} USD` : `~₨${s.rate_pkr.toFixed(2)} PKR`}
+                            {currency === "PKR"
+                              ? `$${(s.rate_usd != null && s.rate_usd > 0 ? Number(s.rate_usd) : s.rate_pkr / usdRate).toFixed(4)} USD`
+                              : `₨${Number(s.rate_pkr || 0).toFixed(2)} PKR`}
                           </span>
                         </td>
 
@@ -387,6 +407,21 @@ export function ServicesCatalogClient() {
                 </tbody>
               </table>
             </div>
+
+            {filtered.length > displayCount && (
+              <div className="flex items-center justify-between border-t border-white/10 bg-[#070d0d]/80 p-4">
+                <span className="text-xs text-slate-400">
+                  Showing <strong className="text-white">{displayCount}</strong> of <strong className="text-white">{filtered.length}</strong> services
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDisplayCount((prev) => prev + 50)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/10 hover:border-[#baff00]/40 cursor-pointer"
+                >
+                  Load More Services (+50)
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>

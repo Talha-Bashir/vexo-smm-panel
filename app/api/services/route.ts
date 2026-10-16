@@ -69,12 +69,30 @@ export async function GET(req: Request) {
           })
         );
 
+        let servicePlatform = row.platform;
+        if (servicePlatform === "Website Traffic") servicePlatform = "Website";
+        const serviceText = `${row.category || ""} ${row.name || ""}`.toLowerCase();
+        if (
+          serviceText.includes("canva") ||
+          serviceText.includes("gemini") ||
+          serviceText.includes("chatgpt") ||
+          serviceText.includes("netflix") ||
+          serviceText.includes("prime video") ||
+          serviceText.includes("iptv") ||
+          serviceText.includes("envento") ||
+          serviceText.includes("envato") ||
+          (serviceText.includes("subscription") && !serviceText.includes("channel") && !serviceText.includes("youtube") && !serviceText.includes("telegram"))
+        ) {
+          servicePlatform = "Subscriptions";
+        }
+
         return {
+          id: row.id,
           service: row.id,
           name: row.name,
           type: "Default",
-          category: row.category || row.platform,
-          platform: row.platform,
+          category: row.category || servicePlatform,
+          platform: servicePlatform,
           rate: livePkr.toFixed(2),
           rate_pkr: livePkr,
           rate_usd: rateUsd,

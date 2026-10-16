@@ -14,6 +14,7 @@ import {
   reserveWalletForOrder,
 } from "@/lib/wallet";
 import { getCachedProviderBalances, resolveEffectiveServicePricing } from "@/lib/balance-routing";
+import { sendSubscriptionTelegramAlert } from "@/lib/balance-monitor/telegram";
 
 import { checkMaintenanceApiBlock } from "@/lib/maintenance";
 
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
 
     let serviceName = "SMM Service";
     let platform = String((body.platform || "").trim());
+    let category = "";
     let rate = 0;
     let charge = 0;
     let min = 1;
@@ -92,6 +94,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Selected service is currently disabled" }, { status: 400 });
       }
       serviceName = routed.name;
+      category = routed.category || "";
       platform = platform || routed.platform || "SMM";
 
       effectiveBaseUsd = Number(routed.base_rate_usd || 0);
@@ -141,11 +144,22 @@ export async function POST(request: Request) {
 
       const rateMultiplier = override && Number(override.rate_multiplier) > 0 ? Number(override.rate_multiplier) : 1;
       serviceName = legacyService.name;
+      category = String(legacyService.category || "");
       platform = platform || String(legacyService.category || "General");
       min = Number(legacyService.min);
       max = Number(legacyService.max);
       rate = getVexoRate(legacyService.rate, rateMultiplier, liveUsdToPkr);
       charge = calculateLiveChargePkr(rate, numericQuantity, isPackageService(legacyService.type, min, max));
+    }
+
+    const isSubscription =
+      platform === "Subscriptions" ||
+      platform.toLowerCase().includes("subscrip") ||
+      category.toLowerCase().includes("subscrip") ||
+      /canva|gemini|chatgpt|netflix|prime\s*video|iptv|envato|envento/i.test(`${category} ${serviceName}`);
+
+    if (isSubscription) {
+      platform = "Subscriptions";
     }
 
     // Apply custom user wholesale rate or global account discount if configured
@@ -206,6 +220,91 @@ export async function POST(request: Request) {
     }
 
     const vexoOrderId = String(reservation.order.id);
+
+    // If order is in Subscriptions category: DO NOT send to provider API, inform admin on Telegram
+    if (isSubscription) {
+      const providerOrderId = `SUB-${vexoOrderId}`;
+
+      try {
+        await markOrderProviderSuccess(vexoOrderId, providerOrderId);
+
+        await db.query(
+          `UPDATE vexo_orders
+           SET provider_id = 'manual_telegram',
+               status = 'Pending',
+               cost_pkr = 0,
+               cost_usd = 0
+           WHERE id = $1`,
+          [vexoOrderId]
+        );
+
+        // Award 5% referral commission if user was invited by another user
+        try {
+          const refereeResult = await db.query(
+            `SELECT referred_by FROM vexo_users WHERE id = $1 LIMIT 1`,
+            [user.id]
+          );
+          const referrerId = refereeResult.rows[0]?.referred_by;
+          if (referrerId && Number(referrerId) > 0 && Number(referrerId) !== Number(user.id)) {
+            const commissionPkr = Math.round(charge * 0.05 * 100) / 100;
+            if (commissionPkr >= 0.01) {
+              await db.query(
+                `UPDATE vexo_users 
+                 SET referral_balance_pkr = COALESCE(referral_balance_pkr, 0) + $1 
+                 WHERE id = $2`,
+                [commissionPkr, referrerId]
+              );
+              await db.query(
+                `INSERT INTO vexo_referral_earnings (referrer_id, referee_id, order_id, order_amount_pkr, commission_pkr)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [referrerId, user.id, vexoOrderId, charge, commissionPkr]
+              );
+            }
+          }
+        } catch (commErr) {
+          console.warn("Could not award referral commission for subscription order:", vexoOrderId, commErr);
+        }
+
+        // Notify Admin on Telegram for manual fulfillment (DO NOT send order to provider API)
+        sendSubscriptionTelegramAlert({
+          orderId: vexoOrderId,
+          userName: user.name || "Customer",
+          userEmail: user.email,
+          serviceName,
+          category: "Subscriptions",
+          link: sanitizedLink,
+          quantity: numericQuantity,
+          chargePkr: charge,
+          balancePkr: reservation.balancePkr,
+          createdAt: reservation.order.created_at,
+        }).catch((alertErr) => {
+          console.error("Failed to send Telegram subscription alert:", alertErr);
+        });
+
+        return NextResponse.json({
+          success: true,
+          orderId: providerOrderId,
+          vexoOrderId,
+          provider: "Manual Fulfillment (Telegram)",
+          rate,
+          charge,
+          status: "Pending",
+          balancePkr: reservation.balancePkr,
+          bonusBalancePkr: reservation.bonusBalancePkr,
+          totalAvailablePkr: reservation.totalAvailablePkr,
+          createdAt: reservation.order.created_at,
+          message: "Subscription order placed successfully! Admin has been notified on Telegram for manual fulfillment.",
+        });
+      } catch (databaseError) {
+        console.error("VEXO SUBSCRIPTION ORDER FINALIZE ERROR:", databaseError);
+        return NextResponse.json({
+          success: false,
+          error: "Your subscription order was received, but could not be finalized. Please contact support.",
+          orderId: providerOrderId,
+          vexoOrderId,
+        }, { status: 500 });
+      }
+    }
 
     try {
       // Dispatch order to funded provider with automatic multi-provider failover and margin protection
