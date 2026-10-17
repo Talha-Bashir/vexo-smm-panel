@@ -45,6 +45,20 @@ export function PlatformSettingsView() {
   // Deposit Bonus
   const [depositBonusSetting, setDepositBonusSetting] = useState("tiered");
 
+  // Security, Captcha & Email Verification
+  const [requireEmailVerification, setRequireEmailVerification] = useState("true");
+  const [captchaMode, setCaptchaMode] = useState<"auto" | "visual" | "turnstile">("auto");
+  const [cfSiteKey, setCfSiteKey] = useState("");
+  const [cfSecretKey, setCfSecretKey] = useState("");
+  const [resendApiKey, setResendApiKey] = useState("");
+  const [resendFromEmail, setResendFromEmail] = useState("Vexaro SMM <onboarding@resend.dev>");
+  const [brevoApiKey, setBrevoApiKey] = useState("");
+
+  // Test Email tool states
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
   useEffect(() => {
     fetchSettings();
     fetch("/api/rates")
@@ -93,11 +107,54 @@ export function PlatformSettingsView() {
         if (s.binance_network !== undefined) setBinanceNetwork(s.binance_network);
 
         if (s.deposit_bonus_percentage !== undefined) setDepositBonusSetting(s.deposit_bonus_percentage);
+
+        // Security, Captcha & Email Verification
+        if (s.require_email_verification !== undefined) setRequireEmailVerification(s.require_email_verification);
+        if (s.captcha_mode !== undefined) setCaptchaMode(s.captcha_mode as any);
+        if (s.cloudflare_turnstile_site_key !== undefined) setCfSiteKey(s.cloudflare_turnstile_site_key);
+        if (s.cloudflare_turnstile_secret_key !== undefined) setCfSecretKey(s.cloudflare_turnstile_secret_key);
+        if (s.resend_api_key !== undefined) setResendApiKey(s.resend_api_key);
+        if (s.resend_from_email !== undefined) setResendFromEmail(s.resend_from_email);
+        else if (s.sender_email !== undefined) setResendFromEmail(s.sender_email);
+        if (s.brevo_api_key !== undefined) setBrevoApiKey(s.brevo_api_key);
       }
     } catch (e: any) {
       setErr(e.message || "Failed to load platform settings");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleTestEmail() {
+    if (!testEmailTo.trim()) {
+      setTestEmailResult({ ok: false, msg: "Please enter a test recipient email address." });
+      return;
+    }
+    setTestEmailLoading(true);
+    setTestEmailResult(null);
+    try {
+      const res = await fetch("/api/admin/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ to: testEmailTo.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTestEmailResult({
+          ok: true,
+          msg: `✓ Email delivered successfully! Sample Code: ${data.sampleCode} (Via: ${data.provider || "Resend"})`,
+        });
+      } else {
+        setTestEmailResult({
+          ok: false,
+          msg: data.error || "Email delivery failed.",
+        });
+      }
+    } catch (e: any) {
+      setTestEmailResult({ ok: false, msg: e.message || "Network error testing email." });
+    } finally {
+      setTestEmailLoading(false);
     }
   }
 
@@ -136,6 +193,14 @@ export function PlatformSettingsView() {
         binance_network: binanceNetwork,
 
         deposit_bonus_percentage: depositBonusSetting,
+
+        require_email_verification: requireEmailVerification,
+        captcha_mode: captchaMode,
+        cloudflare_turnstile_site_key: cfSiteKey,
+        cloudflare_turnstile_secret_key: cfSecretKey,
+        resend_api_key: resendApiKey,
+        resend_from_email: resendFromEmail,
+        brevo_api_key: brevoApiKey,
       };
 
       const res = await fetch("/api/admin/settings", {
@@ -717,6 +782,215 @@ export function PlatformSettingsView() {
               <option value="7">Flat 7% Bonus on all deposits</option>
               <option value="10">Flat 10% Bonus on all deposits</option>
             </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Security, Real CAPTCHA & Email Verification */}
+      <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6 sm:p-7 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#baff00]/10 text-xl text-[#baff00]">
+              🛡️
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-black text-white">Bot Protection, Real CAPTCHA &amp; Email Verification</h3>
+                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-300">
+                  Active Shield
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Stop automated bots, prevent fake account creation, and enforce authentic user verification codes.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Email Verification on Signup Controls */}
+          <div className="rounded-xl border border-white/5 bg-[#091214] p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-black text-white">Require Email Code on Signup</h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Sends a random 6-digit verification code to the user&apos;s email before account creation.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRequireEmailVerification(requireEmailVerification === "true" ? "false" : "true")}
+                className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider transition border ${
+                  requireEmailVerification === "true"
+                    ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300"
+                    : "border-slate-600 bg-slate-800 text-slate-400"
+                }`}
+              >
+                {requireEmailVerification === "true" ? "✓ REQUIRED (ON)" : "OFF"}
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-white/5 bg-[#070e10] p-3 text-[11px] text-slate-400 space-y-1">
+              <p>• <strong className="text-white">Strict Fake Account Prevention:</strong> Eliminates spam bots and invalid emails.</p>
+              <p>• <strong className="text-white">Non-Consecutive Codes:</strong> Codes are cryptographically random, never consecutive sequences like 123456.</p>
+              <p>• <strong className="text-white">Password Reset:</strong> The same secure 6-digit code engine protects password recovery.</p>
+            </div>
+
+            {/* Captcha Mode Selector */}
+            <div className="pt-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                CAPTCHA Protection Engine
+              </label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {[
+                  { id: "auto", name: "⚡ Smart Auto", desc: "Turnstile if keys set, else Real Visual Code" },
+                  { id: "visual", name: "🎨 Visual Code", desc: "Real Distorted Alphanumeric Captcha" },
+                  { id: "turnstile", name: "☁️ Cloudflare", desc: "Cloudflare Turnstile Edge Security" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setCaptchaMode(opt.id as any)}
+                    className={`rounded-xl border p-2.5 text-left transition ${
+                      captchaMode === opt.id
+                        ? "border-[#baff00] bg-[#baff00]/10 text-white"
+                        : "border-white/10 bg-[#070e10] text-slate-400 hover:border-white/20"
+                    }`}
+                  >
+                    <p className="text-xs font-black text-white">{opt.name}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Cloudflare Turnstile Configuration */}
+          <div className="rounded-xl border border-white/5 bg-[#091214] p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-black text-white">Cloudflare Turnstile Integration</h4>
+              <a
+                href="https://dash.cloudflare.com/?to=/:account/turnstile"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] text-[#baff00] hover:underline"
+              >
+                Get Free Turnstile Keys ↗
+              </a>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Cloudflare Site Key
+              </label>
+              <input
+                type="text"
+                value={cfSiteKey}
+                onChange={(e) => setCfSiteKey(e.target.value)}
+                placeholder="0x4AAAAAA..."
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white focus:border-[#baff00] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Cloudflare Secret Key
+              </label>
+              <input
+                type="password"
+                value={cfSecretKey}
+                onChange={(e) => setCfSecretKey(e.target.value)}
+                placeholder="0x4AAAAAA..."
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white focus:border-[#baff00] outline-none"
+              />
+            </div>
+
+            <p className="text-[10px] text-slate-400">
+              When keys are entered, forms automatically verify visitors through Cloudflare Turnstile with zero disruptive image puzzles.
+            </p>
+          </div>
+        </div>
+
+        {/* Transactional Email Service & Delivery Tester */}
+        <div className="rounded-xl border border-white/5 bg-[#091214] p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-black text-white">Transactional Email Delivery Service (Resend &amp; Brevo)</h4>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Configured to dispatch 6-digit verification codes for signup and password reset.
+              </p>
+            </div>
+            <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-bold text-sky-300">
+              ⚡ Multi-Provider Engine
+            </span>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Resend API Key
+              </label>
+              <input
+                type="password"
+                value={resendApiKey}
+                onChange={(e) => setResendApiKey(e.target.value)}
+                placeholder="re_..."
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white focus:border-[#baff00] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Sender Email Address (From)
+              </label>
+              <input
+                type="text"
+                value={resendFromEmail}
+                onChange={(e) => setResendFromEmail(e.target.value)}
+                placeholder="VEXARO SMM <onboarding@resend.dev>"
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white focus:border-[#baff00] outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Interactive Test Email Tool */}
+          <div className="rounded-xl border border-[#baff00]/20 bg-[#070e10] p-4 mt-2">
+            <h5 className="text-xs font-black text-white mb-1 flex items-center gap-1.5">
+              <span>✉️</span> Test Verification Email Delivery
+            </h5>
+            <p className="text-[11px] text-slate-400 mb-3">
+              Send a real sample verification code to test your email provider configuration in real-time.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="email"
+                value={testEmailTo}
+                onChange={(e) => setTestEmailTo(e.target.value)}
+                placeholder="Enter recipient email (e.g. you@gmail.com)"
+                className="flex-1 min-w-[220px] rounded-xl border border-white/10 bg-[#091214] px-3.5 py-2 text-xs text-white focus:border-[#baff00] outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleTestEmail}
+                disabled={testEmailLoading}
+                className="rounded-xl bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition disabled:opacity-50 cursor-pointer"
+              >
+                {testEmailLoading ? "Sending Test Code..." : "Send Test Code →"}
+              </button>
+            </div>
+
+            {testEmailResult && (
+              <div
+                className={`mt-3 rounded-lg p-3 text-xs font-semibold ${
+                  testEmailResult.ok
+                    ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    : "border border-rose-500/30 bg-rose-500/10 text-rose-300"
+                }`}
+              >
+                {testEmailResult.msg}
+              </div>
+            )}
           </div>
         </div>
       </div>

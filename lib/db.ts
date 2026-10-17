@@ -50,6 +50,22 @@ export async function ensureDatabase() {
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES vexo_users(id) ON DELETE SET NULL;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(32);
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+
+        CREATE TABLE IF NOT EXISTS vexo_email_verifications (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email VARCHAR(255) NOT NULL,
+          code_hash VARCHAR(64) NOT NULL,
+          code_salt VARCHAR(32) NOT NULL,
+          type VARCHAR(32) NOT NULL,
+          payload JSONB DEFAULT '{}',
+          attempts INTEGER NOT NULL DEFAULT 0,
+          max_attempts INTEGER NOT NULL DEFAULT 5,
+          expires_at TIMESTAMPTZ NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS vexo_email_verif_lookup_idx ON vexo_email_verifications(email, type, created_at DESC);
 
         CREATE INDEX IF NOT EXISTS vexo_users_referral_code_idx ON vexo_users(referral_code);
         CREATE INDEX IF NOT EXISTS vexo_users_referred_by_idx ON vexo_users(referred_by);

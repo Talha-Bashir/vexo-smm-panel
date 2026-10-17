@@ -141,6 +141,14 @@ export const DEFAULT_PLATFORM_SETTINGS: Record<string, string> = {
   manual_dollar_rate: "285.00",
   usd_to_pkr: "285.00",
 
+  // Security, Captcha & Email Verification
+  require_email_verification: "true",
+  captcha_mode: "auto",
+  cloudflare_turnstile_site_key: "",
+  cloudflare_turnstile_secret_key: "",
+  resend_api_key: "",
+  resend_from_email: "Vexaro SMM <onboarding@resend.dev>",
+
   // Local Accounts
   sadapay_number: "03197008275",
   sadapay_title: "Saeed Bashir",

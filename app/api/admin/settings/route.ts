@@ -45,6 +45,15 @@ export async function POST(req: Request) {
       "manual_dollar_rate",
       "usd_to_pkr",
 
+      // Security, Captcha & Email Verification
+      "require_email_verification",
+      "captcha_mode",
+      "cloudflare_turnstile_site_key",
+      "cloudflare_turnstile_secret_key",
+      "resend_api_key",
+      "resend_from_email",
+      "brevo_api_key",
+
       // Local Accounts
       "sadapay_number",
       "sadapay_title",

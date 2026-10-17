@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { BotShield } from "@/components/bot-shield";
+import { RealCaptcha, CaptchaData } from "@/components/real-captcha";
 
 function Mark() {
   return (
@@ -28,8 +28,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [botToken, setBotToken] = useState("");
-  const [honeypot, setHoneypot] = useState("");
+  const [captchaData, setCaptchaData] = useState<CaptchaData>({
+    captchaResponse: "",
+    captchaToken: "",
+    turnstileToken: "",
+    honeypot: "",
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -41,9 +45,8 @@ export default function LoginPage() {
       return;
     }
 
-    const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY);
-    if (turnstileRequired && !botToken) {
-      setError("Please complete the human verification security check.");
+    if (!captchaData.captchaResponse && !captchaData.turnstileToken) {
+      setError("Please complete the security verification challenge below.");
       return;
     }
 
@@ -56,7 +59,14 @@ export default function LoginPage() {
           "Content-Type": "application/json",
           "ngrok-skip-browser-warning": "true",
         },
-        body: JSON.stringify({ email, password, botToken, honeypot }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          captchaResponse: captchaData.captchaResponse,
+          captchaToken: captchaData.captchaToken,
+          turnstileToken: captchaData.turnstileToken,
+          honeypot: captchaData.honeypot,
+        }),
       });
       const d = await r.json();
       if (!r.ok || !d.success) {
@@ -190,11 +200,10 @@ export default function LoginPage() {
                     </div>
                   </div>
                 )}
-                <BotShield
-                  onVerify={(token, hp) => {
-                    setBotToken(token);
-                    setHoneypot(hp);
-                    if (token && error.includes("verification")) setError("");
+                <RealCaptcha
+                  onVerify={(data) => {
+                    setCaptchaData(data);
+                    if (error && error.includes("verification")) setError("");
                   }}
                 />
 

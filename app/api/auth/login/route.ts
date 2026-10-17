@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db, ensureDatabase } from "@/lib/db";
 import { createSession, verifyPassword } from "@/lib/auth";
 import { getCorsHeaders, handleCorsPreflight } from "@/lib/cors";
-import { verifyBotProtection } from "@/lib/bot-protection";
+import { verifyAnyCaptcha } from "@/lib/captcha";
 
 export async function OPTIONS(request: Request) {
   return handleCorsPreflight(request.headers.get("origin"));
@@ -16,14 +16,22 @@ export async function POST(request: Request) {
     const b = await request.json();
     const email = String(b.email || "").trim().toLowerCase();
     const password = String(b.password || "");
-    const botToken = String(b.botToken || b.turnstileToken || b["cf-turnstile-response"] || "");
+    const captchaResponse = String(b.captchaResponse || "");
+    const captchaToken = String(b.captchaToken || "");
+    const turnstileToken = String(b.turnstileToken || b.botToken || "");
     const honeypot = String(b.honeypot || b._hp_trap || "");
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
 
-    const botCheck = await verifyBotProtection(botToken, honeypot, clientIp);
-    if (!botCheck.success) {
+    const captchaCheck = await verifyAnyCaptcha({
+      captchaResponse,
+      captchaToken,
+      turnstileToken,
+      honeypot,
+      clientIp,
+    });
+    if (!captchaCheck.success) {
       return NextResponse.json(
-        { success: false, error: botCheck.error || "Security verification failed." },
+        { success: false, error: captchaCheck.error || "Security verification failed." },
         { status: 403, headers: corsHeaders }
       );
     }
