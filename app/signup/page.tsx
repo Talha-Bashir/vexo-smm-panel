@@ -298,9 +298,30 @@ export default function SignupPage() {
               </div>
 
               {simulatedCode && (
-                <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-300">
-                  <p className="font-bold">⚡ Sandbox / Test Mode Code:</p>
-                  <p className="font-mono text-base font-black text-[#baff00] tracking-widest">{simulatedCode}</p>
+                <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/15 to-amber-950/30 p-4 text-xs text-amber-200 shadow-lg space-y-2.5">
+                  <div className="flex items-center gap-2 text-amber-300 font-bold">
+                    <span className="text-base">⚠️</span>
+                    <span>Resend Testing Sandbox Active</span>
+                  </div>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    Resend default test sender (<code className="bg-black/30 px-1 py-0.5 rounded text-amber-300">onboarding@resend.dev</code>) only delivers live emails to your account owner email (<strong className="text-white">talhabashir012@gmail.com</strong>).
+                  </p>
+                  <p className="text-[11px] text-amber-200/90">
+                    To deliver live emails to any customer, verify your domain at <a href="https://resend.com/domains" target="_blank" rel="noreferrer" className="underline text-white font-bold hover:text-[#baff00]">resend.com/domains</a>.
+                  </p>
+                  <div className="flex items-center justify-between border-t border-amber-400/20 pt-2.5">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-amber-400 block">Your Verification Code:</span>
+                      <span className="font-mono text-xl font-black text-[#baff00] tracking-widest">{simulatedCode}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setVerificationCode(simulatedCode)}
+                      className="rounded-lg bg-[#baff00] px-3 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer"
+                    >
+                      Fill Code ↵
+                    </button>
+                  </div>
                 </div>
               )}
 
