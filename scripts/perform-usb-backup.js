@@ -2,12 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 
-const USB_DRIVE = 'E:\\';
+const candidateDrives = ['D:\\', 'E:\\'];
+const USB_DRIVE = candidateDrives.find(d => fs.existsSync(d) && (fs.existsSync(path.join(d, 'VEXARO_BACKUP_2026-10-16T06-12-28')) || fs.existsSync(d))) || 'D:\\';
 const SOURCE_DIR = path.resolve(__dirname, '..');
 const ENV_PATH = path.join(SOURCE_DIR, '.env.local');
 
 if (!fs.existsSync(USB_DRIVE)) {
-  console.error(`❌ USB drive ${USB_DRIVE} is not mounted or accessible.`);
+  console.error(`❌ USB drive is not mounted or accessible.`);
   process.exit(1);
 }
 
