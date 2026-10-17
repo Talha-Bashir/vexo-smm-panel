@@ -55,14 +55,27 @@ export async function getRequestUser() {
   const user = result.rows[0];
   if (!user) return null;
 
-  const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-  const isSuperAdmin = Boolean(adminEmail && String(user.email).trim().toLowerCase() === adminEmail);
-  const isSubAdmin = Boolean(user.role === "sub_admin" && user.is_active !== false);
+  const adminEmails = [
+    (process.env.ADMIN_EMAIL || "").trim().toLowerCase(),
+    "talhabashir012@gmail.com",
+    "vexaro.support@gmail.com",
+  ].filter(Boolean);
+
+  const emailLower = String(user.email || "").trim().toLowerCase();
+  const isSuperAdmin = Boolean(
+    adminEmails.includes(emailLower) ||
+    user.role === "super_admin" ||
+    user.role === "admin"
+  );
+  const isSubAdmin = Boolean(
+    (user.role === "sub_admin" || user.role === "admin" || isSuperAdmin) &&
+    user.is_active !== false
+  );
 
   return {
     ...user,
     role: isSuperAdmin ? "super_admin" : user.role,
-    permissions: user.permissions || {},
+    permissions: isSuperAdmin ? { full_access: true, all: true } : (user.permissions || {}),
     is_super_admin: isSuperAdmin,
     is_admin: isSuperAdmin || isSubAdmin,
   };

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/admin-guard";
 import { ensureAdminSchema } from "@/lib/admin";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword, createSession } from "@/lib/auth";
 import { grantAdminBonus } from "@/lib/signup-bonus";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,11 @@ export async function GET(req: Request) {
     await ensureAdminSchema();
     const q = new URL(req.url).searchParams.get("q")?.trim() || "";
     const r = await db.query(
-      `SELECT u.id, u.name, u.email, u.created_at,
+      `SELECT u.id, u.name, u.email, 
+              COALESCE(u.role, 'user') AS role,
+              COALESCE(u.is_active, true) AS is_active,
+              COALESCE(u.email_verified, false) AS email_verified,
+              u.created_at,
               COALESCE(u.custom_discount_percent, 0) AS custom_discount_percent,
               COALESCE(u.custom_rates, '{}'::jsonb) AS custom_rates,
               COALESCE(w.balance_pkr, 0) AS balance_pkr,
@@ -32,10 +36,9 @@ export async function GET(req: Request) {
        FROM vexo_users u
        LEFT JOIN vexo_wallets w ON w.user_id = u.id
        LEFT JOIN vexo_signup_bonus_claims c ON c.user_id = u.id
-       WHERE (u.role = 'user' OR u.role IS NULL)
-         AND ($1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')
+       WHERE ($1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%' OR u.id::text = $1)
        ORDER BY u.created_at DESC
-       LIMIT 300`,
+       LIMIT 500`,
       [q]
     );
     return NextResponse.json({
@@ -44,6 +47,9 @@ export async function GET(req: Request) {
         id: x.id,
         name: x.name,
         email: x.email,
+        role: x.role,
+        isActive: Boolean(x.is_active),
+        emailVerified: Boolean(x.email_verified),
         createdAt: x.created_at,
         balancePkr: +x.balance_pkr,
         bonusBalancePkr: +x.bonus_balance_pkr,
@@ -71,7 +77,128 @@ export async function PATCH(req: Request) {
     await ensureAdminSchema();
     const b = await req.json();
 
-    // Support manual signup / promotional bonus grant by admin
+    // 1. Impersonate / Login as user
+    if (b?.action === "impersonate") {
+      const userId = Number(b?.userId);
+      if (!Number.isInteger(userId) || userId < 1) {
+        return NextResponse.json({ success: false, error: "Invalid user ID." }, { status: 400 });
+      }
+
+      const u = await db.query(`SELECT id, email, name FROM vexo_users WHERE id = $1`, [userId]);
+      if (!u.rows[0]) {
+        return NextResponse.json({ success: false, error: "User not found." }, { status: 404 });
+      }
+
+      await createSession(userId);
+
+      await db.query(
+        `INSERT INTO vexo_admin_activity(admin_user_id, action, target_type, target_id, details)
+         VALUES ($1, 'impersonate_user', 'user', $2, $3::jsonb)`,
+        [+g.user!.id, String(userId), JSON.stringify({ email: u.rows[0].email, name: u.rows[0].name })]
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: `Signed in as ${u.rows[0].name} (${u.rows[0].email}). Redirecting...`,
+        redirectUrl: "/dashboard",
+      });
+    }
+
+    // 2. Change user role
+    if (b?.action === "change_role") {
+      const userId = Number(b?.userId);
+      const newRole = String(b?.role || "").trim().toLowerCase();
+      const validRoles = ["user", "sub_admin", "admin", "super_admin"];
+
+      if (!Number.isInteger(userId) || userId < 1 || !validRoles.includes(newRole)) {
+        return NextResponse.json({ success: false, error: "Invalid role specified." }, { status: 400 });
+      }
+
+      const u = await db.query(`SELECT id, email, role FROM vexo_users WHERE id = $1`, [userId]);
+      if (!u.rows[0]) {
+        return NextResponse.json({ success: false, error: "User not found." }, { status: 404 });
+      }
+
+      await db.query(`UPDATE vexo_users SET role = $1 WHERE id = $2`, [newRole, userId]);
+
+      await db.query(
+        `INSERT INTO vexo_admin_activity(admin_user_id, action, target_type, target_id, details)
+         VALUES ($1, 'change_role', 'user', $2, $3::jsonb)`,
+        [+g.user!.id, String(userId), JSON.stringify({ email: u.rows[0].email, oldRole: u.rows[0].role, newRole })]
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: `User role changed to ${newRole}.`,
+        role: newRole,
+      });
+    }
+
+    // 3. Toggle user active / suspended status
+    if (b?.action === "toggle_active") {
+      const userId = Number(b?.userId);
+      if (!Number.isInteger(userId) || userId < 1) {
+        return NextResponse.json({ success: false, error: "Invalid user ID." }, { status: 400 });
+      }
+
+      const u = await db.query(`SELECT id, email, is_active FROM vexo_users WHERE id = $1`, [userId]);
+      if (!u.rows[0]) {
+        return NextResponse.json({ success: false, error: "User not found." }, { status: 404 });
+      }
+
+      const nextActive = !Boolean(u.rows[0].is_active);
+      await db.query(`UPDATE vexo_users SET is_active = $1 WHERE id = $2`, [nextActive, userId]);
+
+      // If banned, kill all active sessions
+      if (!nextActive) {
+        await db.query(`DELETE FROM vexo_sessions WHERE user_id = $1`, [userId]);
+      }
+
+      await db.query(
+        `INSERT INTO vexo_admin_activity(admin_user_id, action, target_type, target_id, details)
+         VALUES ($1, $2, 'user', $3, $4::jsonb)`,
+        [+g.user!.id, nextActive ? "activate_user" : "ban_user", String(userId), JSON.stringify({ email: u.rows[0].email })]
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: nextActive ? `User ${u.rows[0].email} activated.` : `User ${u.rows[0].email} suspended/banned.`,
+        isActive: nextActive,
+      });
+    }
+
+    // 4. Manually verify or unverify user email
+    if (b?.action === "verify_email") {
+      const userId = Number(b?.userId);
+      if (!Number.isInteger(userId) || userId < 1) {
+        return NextResponse.json({ success: false, error: "Invalid user ID." }, { status: 400 });
+      }
+
+      const u = await db.query(`SELECT id, email, email_verified FROM vexo_users WHERE id = $1`, [userId]);
+      if (!u.rows[0]) {
+        return NextResponse.json({ success: false, error: "User not found." }, { status: 404 });
+      }
+
+      const nextVerified = b?.verified !== undefined ? Boolean(b.verified) : !Boolean(u.rows[0].email_verified);
+      await db.query(
+        `UPDATE vexo_users SET email_verified = $1, email_verified_at = $2 WHERE id = $3`,
+        [nextVerified, nextVerified ? new Date() : null, userId]
+      );
+
+      await db.query(
+        `INSERT INTO vexo_admin_activity(admin_user_id, action, target_type, target_id, details)
+         VALUES ($1, 'manual_email_verify', 'user', $2, $3::jsonb)`,
+        [+g.user!.id, String(userId), JSON.stringify({ email: u.rows[0].email, verified: nextVerified })]
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: nextVerified ? `Email for ${u.rows[0].email} marked verified.` : `Email for ${u.rows[0].email} unverified.`,
+        emailVerified: nextVerified,
+      });
+    }
+
+    // 5. Grant promotional / signup bonus
     if (b?.action === "grant_bonus") {
       const userId = Number(b?.userId);
       const amount = b?.amount !== undefined ? Number(b?.amount) : 50.0;
@@ -95,7 +222,7 @@ export async function PATCH(req: Request) {
       });
     }
 
-    // Support custom user rates and wholesale discounts
+    // 6. Custom user rates and wholesale discounts
     if (b?.action === "set_custom_rates") {
       const userId = Number(b?.userId);
       const discountPercent = Math.max(0, Math.min(99, Number(b?.customDiscountPercent || 0)));
@@ -134,7 +261,7 @@ export async function PATCH(req: Request) {
       });
     }
 
-    // Support admin password reset
+    // 7. Admin password reset
     if (b?.action === "reset_password") {
       const userId = Number(b?.userId);
       const newPassword = String(b?.password || "").trim();
@@ -167,7 +294,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: true, message: `Password reset successfully for ${u.rows[0].email}` });
     }
 
-    // Default: wallet adjustment
+    // 8. Wallet adjustment
     const userId = Number(b?.userId);
     const amount = Number(b?.amount);
     const mode = String(b?.mode || "add");
@@ -214,3 +341,50 @@ export async function PATCH(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const g = await guard();
+    if (g.error) return g.error;
+    await ensureAdminSchema();
+
+    const { searchParams } = new URL(req.url);
+    const userId = Number(searchParams.get("userId") || searchParams.get("id"));
+
+    if (!Number.isInteger(userId) || userId < 1) {
+      return NextResponse.json({ success: false, error: "Invalid user ID." }, { status: 400 });
+    }
+
+    // Do not allow deleting self
+    if (userId === Number(g.user!.id)) {
+      return NextResponse.json({ success: false, error: "You cannot delete your own admin account." }, { status: 400 });
+    }
+
+    const u = await db.query(`SELECT id, email, name FROM vexo_users WHERE id = $1`, [userId]);
+    if (!u.rows[0]) {
+      return NextResponse.json({ success: false, error: "User not found." }, { status: 404 });
+    }
+
+    // Clean up sessions, wallets, deposits, claims
+    await db.query(`DELETE FROM vexo_sessions WHERE user_id = $1`, [userId]);
+    await db.query(`DELETE FROM vexo_wallets WHERE user_id = $1`, [userId]);
+    await db.query(`DELETE FROM vexo_signup_bonus_claims WHERE user_id = $1`, [userId]);
+    await db.query(`DELETE FROM vexo_email_verifications WHERE LOWER(email) = LOWER($1)`, [u.rows[0].email]);
+    await db.query(`DELETE FROM vexo_users WHERE id = $1`, [userId]);
+
+    await db.query(
+      `INSERT INTO vexo_admin_activity(admin_user_id, action, target_type, target_id, details)
+       VALUES ($1, 'delete_user', 'user', $2, $3::jsonb)`,
+      [+g.user!.id, String(userId), JSON.stringify({ email: u.rows[0].email, name: u.rows[0].name })]
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `User ${u.rows[0].email} permanently deleted.`,
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { success: false, error: e instanceof Error ? e.message : "Unable to delete user." },
+      { status: 500 }
+    );
+  }
+}

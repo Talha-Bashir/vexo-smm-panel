@@ -550,6 +550,33 @@ export default function Home() {
     }
   });
 
+  const [dismissedLowBalance, setDismissedLowBalance] = useState<boolean>(false);
+  const [headerSearchOpen, setHeaderSearchOpen] = useState<boolean>(false);
+  const headerSearchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (headerSearchRef.current && !headerSearchRef.current.contains(e.target as Node)) {
+        setHeaderSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const headerSearchMatches = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [];
+    const isNum = /^\d+$/.test(q);
+    return services
+      .filter((s) => {
+        if (isNum && String(s.id) === q) return true;
+        const text = `${s.id} ${s.name} ${s.platform} ${s.category} ${s.description || ""}`.toLowerCase();
+        return text.includes(q);
+      })
+      .slice(0, 8);
+  }, [search, services]);
+
   const markAllNotificationsAsRead = () => {
     const updated: Record<string, boolean> = { ...readNotificationKeys };
     announcements.forEach((a) => {
@@ -1128,15 +1155,93 @@ export default function Home() {
             >
               <Icon name="menu" size={20} />
             </button>
-            <div className="relative hidden w-full max-w-[470px] md:block">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"><Icon name="search" size={19} /></span>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search services..."
-                className="h-11 w-full rounded-xl border border-white/10 bg-[#172126] pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
-              />
-            </div>
+            {activePage !== "New Order" && activePage !== "Services" && (
+              <div className="relative hidden w-full max-w-[470px] md:block" ref={headerSearchRef}>
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                  <Icon name="search" size={19} />
+                </span>
+                <input
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setHeaderSearchOpen(true);
+                  }}
+                  onFocus={() => {
+                    if (search.trim()) setHeaderSearchOpen(true);
+                  }}
+                  placeholder="Search services across all platforms..."
+                  className="h-11 w-full rounded-xl border border-white/10 bg-[#172126] pl-11 pr-9 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch("");
+                      setHeaderSearchOpen(false);
+                    }}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+
+                {/* Live Header Search Dropdown */}
+                {headerSearchOpen && search.trim() && (
+                  <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl border border-white/20 bg-[#0c161a] p-3 shadow-2xl backdrop-blur-2xl max-h-[380px] overflow-y-auto space-y-2 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between px-1.5 pb-1.5 border-b border-white/10 text-[11px] text-slate-400">
+                      <span className="font-semibold text-white">
+                        {headerSearchMatches.length} service{headerSearchMatches.length === 1 ? "" : "s"} found
+                      </span>
+                      <span className="text-[10px]">Click to place order</span>
+                    </div>
+
+                    {headerSearchMatches.length > 0 ? (
+                      headerSearchMatches.map((s) => (
+                        <div
+                          key={s.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            setSelectedServiceId(String(s.id));
+                            navigate("New Order");
+                            setSearch("");
+                            setHeaderSearchOpen(false);
+                          }}
+                          className="w-full text-left rounded-xl p-2.5 transition flex items-center justify-between gap-3 border border-white/5 bg-white/[0.03] hover:border-[#baff00]/40 hover:bg-white/[0.07] text-slate-200 cursor-pointer group"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono text-xs font-bold text-[#baff00]">#{s.id}</span>
+                              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-300">
+                                {s.platform}
+                              </span>
+                              {isServiceGuaranteed(s) && (
+                                <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
+                                  Refill
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-xs font-bold truncate text-white group-hover:text-[#baff00] transition-colors">
+                              {cleanServiceName(s.name, s.platform)}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xs sm:text-sm font-extrabold text-[#baff00]">
+                              ₨{Number(s.price).toFixed(2)}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-semibold group-hover:underline">Order →</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-xs text-slate-400">
+                        No services matching &quot;{search}&quot;.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             {/* Mobile Header Branding - Compact, elegant, zero-overlap */}
             <div className="flex items-center gap-2 md:hidden">
               <div className="relative h-7 w-7 sm:h-8 sm:w-8 shrink-0 rounded-lg overflow-hidden border border-[#baff00]/30 shadow-[0_0_8px_rgba(186,255,0,0.25)]">
@@ -1679,7 +1784,7 @@ export default function Home() {
           )}
 
           {/* Low Balance Alert Nudge */}
-          {walletBalancePkr < 100 && activePage !== "Add Funds" && (
+          {walletBalancePkr < 100 && activePage !== "Add Funds" && !dismissedLowBalance && (
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-base font-bold text-amber-400">
@@ -1694,13 +1799,24 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => navigate("Add Funds")}
-                className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-sm cursor-pointer"
-              >
-                + Add Funds Now →
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigate("Add Funds")}
+                  className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-sm cursor-pointer"
+                >
+                  + Add Funds Now →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDismissedLowBalance(true)}
+                  className="rounded-lg border border-amber-500/30 bg-amber-500/20 p-2 text-amber-300 hover:text-white hover:bg-amber-500/30 transition cursor-pointer"
+                  title="Dismiss warning"
+                  aria-label="Dismiss warning"
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
             </div>
           )}
 
@@ -3599,6 +3715,25 @@ function NewOrder({
     return [...list].sort((a, b) => Number(a.price) - Number(b.price));
   }, [comboboxSearch, servicesByPlatform, actionType, guaranteeFilter, services]);
 
+  const quickSearchMatches = useMemo(() => {
+    const q = comboboxSearch.trim().toLowerCase();
+    if (!q) return [];
+    const isNum = /^\d+$/.test(q);
+    return services
+      .filter((s) => {
+        if (isNum && String(s.id) === q) return true;
+        const text = `${s.id} ${s.name} ${s.platform} ${s.category} ${s.description || ""}`.toLowerCase();
+        return text.includes(q);
+      })
+      .slice(0, 15);
+  }, [comboboxSearch, services]);
+
+  const exactIdMatch = useMemo(() => {
+    const q = comboboxSearch.trim();
+    if (!/^\d+$/.test(q)) return null;
+    return services.find((s) => String(s.id) === q) || null;
+  }, [comboboxSearch, services]);
+
   // Active Service Selection: strictly derived from selectedServiceId or first service
   const service = useMemo(() => {
     if (selectedServiceId) {
@@ -3673,10 +3808,8 @@ function NewOrder({
   const handleSelectComboboxService = (s: Service) => {
     lastSelectedIdRef.current = String(s.id);
     onSelectServiceId(String(s.id));
-    if (platform !== "All") {
-      setPlatform(s.platform || "All");
-      setActionType(detectServiceAction(s));
-    }
+    setPlatform(s.platform || "All");
+    setActionType(detectServiceAction(s));
     setGuaranteeFilter(isServiceGuaranteed(s) ? "guaranteed" : "all");
     setComboboxOpen(false);
     setComboboxSearch("");
@@ -3848,7 +3981,7 @@ function NewOrder({
       {/* Single Cohesive Order Form Card */}
       <div className="w-full max-w-3xl mx-auto antigravity-card rounded-2xl p-5 sm:p-8 space-y-6 shadow-xl">
         {/* Quick Search */}
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 relative">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-300">
               Quick Search (ID or Name)
@@ -3871,6 +4004,17 @@ function NewOrder({
               type="text"
               value={comboboxSearch}
               onChange={(e) => setComboboxSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (exactIdMatch) {
+                    e.preventDefault();
+                    handleSelectComboboxService(exactIdMatch);
+                  } else if (quickSearchMatches.length > 0) {
+                    e.preventDefault();
+                    handleSelectComboboxService(quickSearchMatches[0]);
+                  }
+                }
+              }}
               placeholder="Search by Service ID, name, or keywords (e.g. 1072, Followers, Canva)..."
               className="w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 pr-9 py-2.5 text-xs sm:text-sm text-white outline-none focus:border-[#baff00] placeholder:text-slate-500 transition"
             />
@@ -3884,6 +4028,104 @@ function NewOrder({
               </button>
             )}
           </div>
+
+          {/* Instant Working Search Results Popover */}
+          {comboboxSearch.trim() && (
+            <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-white/20 bg-[#0c161a] p-3 shadow-2xl backdrop-blur-2xl max-h-[380px] overflow-y-auto space-y-2 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between px-1.5 pb-1.5 border-b border-white/10 text-[11px] text-slate-400">
+                <span className="font-semibold text-white">
+                  Found {quickSearchMatches.length} matching service{quickSearchMatches.length === 1 ? "" : "s"}
+                </span>
+                <span className="text-[10px]">Click any item to load package</span>
+              </div>
+
+              {/* Exact Match Badge Callout if user searched an ID like 1072 */}
+              {exactIdMatch && (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleSelectComboboxService(exactIdMatch)}
+                  className="rounded-xl border border-[#baff00]/60 bg-[#baff00]/15 p-3 hover:bg-[#baff00]/25 transition cursor-pointer flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(186,255,0,0.15)] group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="rounded bg-[#baff00] px-1.5 py-0.5 text-[9px] font-black uppercase text-[#07100f]">
+                        Exact ID Match
+                      </span>
+                      <span className="text-xs font-mono font-bold text-[#baff00]">ID #{exactIdMatch.id}</span>
+                      <span className="text-xs font-semibold text-slate-300">({exactIdMatch.platform})</span>
+                    </div>
+                    <p className="mt-1 font-bold text-white text-xs sm:text-sm truncate group-hover:text-[#baff00] transition-colors">
+                      {cleanServiceName(exactIdMatch.name, exactIdMatch.platform)}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Min: {Number(exactIdMatch.min).toLocaleString()} • Max: {Number(exactIdMatch.max).toLocaleString()} • {isServiceGuaranteed(exactIdMatch) ? "30-Day Refill" : "Standard"}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm sm:text-base font-extrabold text-[#baff00]">
+                      ₨{Number(exactIdMatch.price).toFixed(2)}
+                    </div>
+                    <span className="inline-block mt-0.5 text-[10px] font-bold bg-[#baff00] text-[#07100f] px-2 py-0.5 rounded-md">
+                      Apply Now →
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {quickSearchMatches.length > 0 ? (
+                quickSearchMatches.map((s) => {
+                  if (exactIdMatch && s.id === exactIdMatch.id) return null;
+                  const isSel = service?.id === s.id;
+                  const isPkg = isPackageService(s);
+                  return (
+                    <div
+                      key={s.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleSelectComboboxService(s)}
+                      className={`w-full text-left rounded-xl p-2.5 transition flex items-center justify-between gap-3 border cursor-pointer ${
+                        isSel
+                          ? "border-[#baff00] bg-[#baff00]/10 text-white"
+                          : "border-white/5 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.07] text-slate-200"
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-[#baff00]">#{s.id}</span>
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-300">
+                            {s.platform}
+                          </span>
+                          {isServiceGuaranteed(s) && (
+                            <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
+                              Refill
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs font-bold truncate text-white">
+                          {cleanServiceName(s.name, s.platform)}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Min: {isPkg ? "1" : Number(s.min).toLocaleString()} • Max: {isPkg ? "1" : Number(s.max).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-xs sm:text-sm font-extrabold text-[#baff00]">
+                          ₨{Number(s.price).toFixed(2)}
+                        </div>
+                        <span className="text-[10px] text-slate-400">Select →</span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : !exactIdMatch && (
+                <div className="p-6 text-center text-xs text-slate-400">
+                  <p className="font-bold text-slate-300 mb-1">No services found</p>
+                  <p>No services match &quot;{comboboxSearch}&quot;. Try searching with another ID or keyword.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 1. Category / Platform Dropdown */}

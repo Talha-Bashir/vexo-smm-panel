@@ -702,6 +702,7 @@ export default function Admin() {
             update={updateOrderStatus}
             syncing={syncingOrders}
             onSync={handleSyncAllOrders}
+            api={api}
           />
         )}
         {tab === "Withdrawals" && <Withdrawals withdrawals={withdrawals} reload={load} update={updateWithdrawal} busy={busy} />}
@@ -1228,6 +1229,95 @@ function Users({
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [customRatePkr, setCustomRatePkr] = useState("");
   const [allServicesList, setAllServicesList] = useState<any[]>(services || []);
+  const [actionBusyUserId, setActionBusyUserId] = useState<number | null>(null);
+
+  const handleImpersonate = async (userId: number, email: string) => {
+    if (!confirm(`Are you sure you want to sign in as ${email}? You will be logged into their account.`)) return;
+    setActionBusyUserId(userId);
+    try {
+      const res = await api("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "impersonate", userId }),
+      });
+      alert(res.message || "Signed in as user. Opening dashboard...");
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      alert("Failed to sign in as user: " + (err.message || "Error"));
+    } finally {
+      setActionBusyUserId(null);
+    }
+  };
+
+  const handleToggleActive = async (userId: number, currentActive: boolean, email: string) => {
+    const act = currentActive ? "suspend / ban" : "reactivate";
+    if (!confirm(`Are you sure you want to ${act} ${email}?`)) return;
+    setActionBusyUserId(userId);
+    try {
+      const res = await api("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "toggle_active", userId }),
+      });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isActive: res.isActive } : u)));
+      alert(res.message);
+    } catch (err: any) {
+      alert("Status change failed: " + (err.message || "Error"));
+    } finally {
+      setActionBusyUserId(null);
+    }
+  };
+
+  const handleToggleEmailVerify = async (userId: number, currentVerified: boolean, email: string) => {
+    setActionBusyUserId(userId);
+    try {
+      const res = await api("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify_email", userId, verified: !currentVerified }),
+      });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, emailVerified: res.emailVerified } : u)));
+      alert(res.message);
+    } catch (err: any) {
+      alert("Verification update failed: " + (err.message || "Error"));
+    } finally {
+      setActionBusyUserId(null);
+    }
+  };
+
+  const handleChangeRole = async (userId: number, newRole: string, email: string) => {
+    if (!confirm(`Are you sure you want to change ${email}'s role to "${newRole}"?`)) return;
+    setActionBusyUserId(userId);
+    try {
+      const res = await api("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "change_role", userId, role: newRole }),
+      });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: res.role } : u)));
+      alert(res.message);
+    } catch (err: any) {
+      alert("Role update failed: " + (err.message || "Error"));
+    } finally {
+      setActionBusyUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: number, email: string) => {
+    if (!confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE user ${email} (ID #${userId})? This will delete all their sessions and wallet data.`)) return;
+    setActionBusyUserId(userId);
+    try {
+      const res = await api(`/api/admin/users?userId=${userId}`, {
+        method: "DELETE",
+      });
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      alert(res.message || "User deleted.");
+    } catch (err: any) {
+      alert("Delete failed: " + (err.message || "Error"));
+    } finally {
+      setActionBusyUserId(null);
+    }
+  };
 
   const openWholesale = async (u: any) => {
     setWholesaleUser(u);
@@ -1333,7 +1423,7 @@ function Users({
         <table className="min-w-[1000px] w-full text-left">
           <thead className="bg-[#0b1418] text-xs uppercase text-slate-500">
             <tr>
-              {["User", "Balance", "Orders", "Deposits", "Joined", "Actions"].map((x) => (
+              {["User", "Role & Access", "Balance", "Orders", "Deposits", "Joined", "Actions"].map((x) => (
                 <th key={x} className="px-5 py-4">{x}</th>
               ))}
             </tr>
@@ -1343,7 +1433,7 @@ function Users({
               <tr key={u.id} className="hover:bg-white/[.02]">
                 <td className="px-5 py-4">
                   <b>{u.name}</b>
-                  <p className="text-xs text-slate-500">{u.email}</p>
+                  <p className="text-xs text-slate-500 font-mono">ID #{u.id} • {u.email}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {Number(u.customDiscountPercent || 0) > 0 && (
                       <span className="rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">
@@ -1355,6 +1445,56 @@ function Users({
                         🏷️ {Object.keys(u.customRates).length} Custom Rate{Object.keys(u.customRates).length > 1 ? "s" : ""}
                       </span>
                     )}
+                  </div>
+                </td>
+                <td className="px-5 py-4">
+                  <div className="flex flex-col gap-1.5">
+                    {/* Role Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={u.role || "user"}
+                        onChange={(e) => handleChangeRole(u.id, e.target.value, u.email)}
+                        disabled={actionBusyUserId === u.id}
+                        className="rounded-lg border border-white/10 bg-[#0b1418] px-2 py-1 text-[11px] font-bold text-white focus:border-[#baff00] outline-none cursor-pointer"
+                        title="Change user administrative role"
+                      >
+                        <option value="user">User</option>
+                        <option value="sub_admin">Sub-Admin</option>
+                        <option value="admin">Admin</option>
+                        <option value="super_admin">Super Admin</option>
+                      </select>
+                    </div>
+
+                    {/* Status Badges: Active & Email Verified */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(u.id, u.isActive !== false, u.email)}
+                        disabled={actionBusyUserId === u.id}
+                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold cursor-pointer transition ${
+                          u.isActive !== false
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
+                            : "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
+                        }`}
+                        title="Click to toggle Active / Suspended status"
+                      >
+                        {u.isActive !== false ? "🟢 Active" : "🔴 Suspended"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleEmailVerify(u.id, Boolean(u.emailVerified), u.email)}
+                        disabled={actionBusyUserId === u.id}
+                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold cursor-pointer transition ${
+                          u.emailVerified
+                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20"
+                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
+                        }`}
+                        title="Click to toggle email verified status"
+                      >
+                        {u.emailVerified ? "✓ Verified" : "⚠️ Unverified"}
+                      </button>
+                    </div>
                   </div>
                 </td>
                 <td className="px-5 py-4 font-black">
@@ -1393,7 +1533,15 @@ function Users({
                 <td className="px-5 py-4">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
-                      disabled={busy}
+                      disabled={busy || actionBusyUserId === u.id}
+                      onClick={() => handleImpersonate(u.id, u.email)}
+                      className="rounded-lg bg-blue-600/20 border border-blue-500/30 px-2.5 py-1.5 text-xs font-bold text-blue-300 hover:bg-blue-600/30 transition cursor-pointer"
+                      title="Log in directly as this user to test or troubleshoot"
+                    >
+                      🔑 Login As
+                    </button>
+                    <button
+                      disabled={busy || actionBusyUserId === u.id}
                       onClick={() => wallet(u.id, "add")}
                       className="rounded-lg bg-[#baff00] px-2.5 py-1.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer"
                       title="Add real deposited funds"
@@ -1401,7 +1549,7 @@ function Users({
                       + Real
                     </button>
                     <button
-                      disabled={busy}
+                      disabled={busy || actionBusyUserId === u.id}
                       onClick={() => wallet(u.id, "deduct")}
                       className="rounded-lg border border-red-400/20 bg-red-400/10 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20 transition cursor-pointer"
                       title="Deduct real funds"
@@ -1409,7 +1557,7 @@ function Users({
                       − Real
                     </button>
                     <button
-                      disabled={busy}
+                      disabled={busy || actionBusyUserId === u.id}
                       onClick={() => grantBonus(u.id, u.name || u.email, u.bonusBalancePkr)}
                       className="rounded-lg border border-[#baff00]/40 bg-[#baff00]/10 px-2.5 py-1.5 text-xs font-bold text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition shadow-sm cursor-pointer"
                       title="Grant or top-up promotional bonus credit"
@@ -1417,7 +1565,7 @@ function Users({
                       🎁 Add Bonus
                     </button>
                     <button
-                      disabled={busy}
+                      disabled={busy || actionBusyUserId === u.id}
                       onClick={() => resetPass(u.id, u.email)}
                       className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-1.5 text-xs font-bold text-yellow-300 hover:bg-yellow-400/20 transition cursor-pointer"
                       title="Reset user password"
@@ -1425,12 +1573,20 @@ function Users({
                       🔑 Reset
                     </button>
                     <button
-                      disabled={busy}
+                      disabled={busy || actionBusyUserId === u.id}
                       onClick={() => openWholesale(u)}
                       className="rounded-lg border border-purple-400/30 bg-purple-500/10 px-2.5 py-1.5 text-xs font-bold text-purple-300 hover:bg-purple-500/20 transition cursor-pointer"
                       title="Set wholesale custom rates & VIP reseller discounts"
                     >
                       🏷️ Wholesale
+                    </button>
+                    <button
+                      disabled={busy || actionBusyUserId === u.id}
+                      onClick={() => handleDeleteUser(u.id, u.email)}
+                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer"
+                      title="Delete this user and their sessions permanently"
+                    >
+                      🗑️ Delete
                     </button>
                   </div>
                 </td>
@@ -2151,6 +2307,7 @@ function Orders({
   update,
   syncing,
   onSync,
+  api,
 }: {
   orders: any[];
   q: string;
@@ -2161,6 +2318,7 @@ function Orders({
   update: (id: string, s: string) => void;
   syncing?: boolean;
   onSync?: () => void;
+  api?: (url: string, init?: RequestInit) => Promise<any>;
 }) {
   return (
     <section className={card + " overflow-hidden"}>
@@ -2274,15 +2432,66 @@ function Orders({
                   <p className="text-[11px] text-slate-500">{o.createdAt ? new Date(o.createdAt).toLocaleTimeString() : ""}</p>
                 </td>
                 <td className="px-5 py-4">
-                  <select value={o.status} onChange={(e) => update(o.id, e.target.value)} className="rounded-lg border border-white/10 bg-[#0b1418] px-2 py-2 text-xs">
-                    <option>Pending</option>
-                    <option>Processing</option>
-                    <option>In progress</option>
-                    <option>Completed</option>
-                    <option>Partial</option>
-                    <option>Cancelled</option>
-                    <option>Failed</option>
-                  </select>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <select
+                      value={o.status}
+                      onChange={(e) => update(o.id, e.target.value)}
+                      className="rounded-lg border border-white/10 bg-[#0b1418] px-2 py-1.5 text-xs text-white outline-none cursor-pointer"
+                    >
+                      <option>Pending</option>
+                      <option>Processing</option>
+                      <option>In progress</option>
+                      <option>Completed</option>
+                      <option>Partial</option>
+                      <option>Cancelled</option>
+                      <option>Refunded</option>
+                      <option>Failed</option>
+                    </select>
+
+                    {api && o.status !== "Refunded" && Number(o.chargePkr || 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`Refund ₨${Number(o.chargePkr).toFixed(2)} back to user (${o.email || "User"})?`)) return;
+                          try {
+                            const res = await api("/api/admin/orders", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ action: "refund", orderId: o.id }),
+                            });
+                            alert(res.message || "Order refunded.");
+                            reload();
+                          } catch (err: any) {
+                            alert("Refund failed: " + (err.message || "Error"));
+                          }
+                        }}
+                        className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition cursor-pointer"
+                        title="Refund order charge back to user wallet"
+                      >
+                        💸 Refund
+                      </button>
+                    )}
+
+                    {api && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`Delete order #${o.id} from database?`)) return;
+                          try {
+                            const res = await api(`/api/admin/orders?orderId=${o.id}`, { method: "DELETE" });
+                            alert(res.message || "Order deleted.");
+                            reload();
+                          } catch (err: any) {
+                            alert("Delete failed: " + (err.message || "Error"));
+                          }
+                        }}
+                        className="rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer"
+                        title="Delete order"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
