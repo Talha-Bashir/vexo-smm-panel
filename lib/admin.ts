@@ -46,6 +46,7 @@ export function ensureAdminSchema() {
           updated_by INTEGER REFERENCES vexo_users(id) ON DELETE SET NULL
         );
         ALTER TABLE vexo_service_overrides ADD COLUMN IF NOT EXISTS custom_description TEXT;
+        ALTER TABLE vexo_service_overrides ADD COLUMN IF NOT EXISTS custom_rate_pkr NUMERIC(20,6);
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS cost_pkr NUMERIC(14,2);
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS cost_usd NUMERIC(14,6);
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS custom_discount_percent NUMERIC(5,2) DEFAULT 0;
@@ -134,9 +135,11 @@ export const DEFAULT_PLATFORM_SETTINGS: Record<string, string> = {
   platform_theme: "cyber-lime",
 
   // Profit Margins & Currency
-  global_profit_margin: "7",
-  dollar_order_markup: "7",
-  usd_to_pkr: "278.0",
+  global_profit_margin: "8",
+  dollar_order_markup: "8",
+  dollar_rate_mode: "manual",
+  manual_dollar_rate: "285.00",
+  usd_to_pkr: "285.00",
 
   // Local Accounts
   sadapay_number: "03197008275",

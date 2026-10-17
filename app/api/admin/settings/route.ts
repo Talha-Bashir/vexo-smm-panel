@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminPermission } from "@/lib/admin-guard";
 import { getAllPlatformSettings, setPlatformSetting, logAdminActivity } from "@/lib/admin";
+import { invalidateExchangeRateCache } from "@/lib/exchange-rate";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,8 @@ export async function POST(req: Request) {
       // Profit Margins & Currency
       "global_profit_margin",
       "dollar_order_markup",
+      "dollar_rate_mode",
+      "manual_dollar_rate",
       "usd_to_pkr",
 
       // Local Accounts
@@ -112,6 +115,8 @@ export async function POST(req: Request) {
       "global",
       updated
     );
+
+    invalidateExchangeRateCache();
 
     const allSettings = await getAllPlatformSettings();
 

@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       const liveUsdToPkr = await getLiveUsdToPkrRate();
 
       const routedRes = await db.query(
-        `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, refill, cancel, is_guaranteed
+        `SELECT id, name, platform, category, rate_pkr, custom_rate_pkr, base_rate_usd, rate_multiplier, min, max, refill, cancel, is_guaranteed
          FROM vexo_routed_services
          WHERE enabled = true
          ORDER BY platform ASC, rate_pkr ASC`
@@ -102,8 +102,18 @@ export async function POST(request: Request) {
 
       if (routedRes.rows.length > 0) {
         const list = routedRes.rows.map((item) => {
+          const baseRateUsd = Number(item.base_rate_usd || 0);
           const mult = Number(item.rate_multiplier || 1.07);
-          const liveRate = calculateLivePricePkr(item.base_rate_usd, mult, liveUsdToPkr);
+          const rawCustom = Number(item.custom_rate_pkr);
+          const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+          const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+          let liveRate: number;
+          if (Number.isFinite(rawCustom) && rawCustom > 0) {
+            liveRate = rawCustom < minProfitablePkr ? minProfitablePkr : rawCustom;
+          } else {
+            const calc = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
+            liveRate = calc < minProfitablePkr ? minProfitablePkr : calc;
+          }
           return {
             service: item.id,
             name: item.name,
@@ -203,8 +213,8 @@ export async function POST(request: Request) {
       const isNum = /^\d+$/.test(serviceId);
       const routedRes = await db.query(
         isNum
-          ? `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled FROM vexo_routed_services WHERE id = $1 LIMIT 1`
-          : `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled FROM vexo_routed_services WHERE service_group_key = $1 OR id::text = $1 LIMIT 1`,
+          ? `SELECT id, name, platform, category, rate_pkr, custom_rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled FROM vexo_routed_services WHERE id = $1 LIMIT 1`
+          : `SELECT id, name, platform, category, rate_pkr, custom_rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled FROM vexo_routed_services WHERE service_group_key = $1 OR id::text = $1 LIMIT 1`,
         [isNum ? Number(serviceId) : serviceId]
       );
 
@@ -216,8 +226,19 @@ export async function POST(request: Request) {
         serviceName = routed.name;
         platform = routed.platform || "API";
         category = routed.category || "";
+        const baseRateUsd = Number(routed.base_rate_usd || 0);
         const mult = Number(routed.rate_multiplier || 1.07);
-        rate = calculateLivePricePkr(routed.base_rate_usd, mult, liveUsdToPkr);
+        const rawCustom = Number(routed.custom_rate_pkr);
+        const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+        const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+
+        if (Number.isFinite(rawCustom) && rawCustom > 0) {
+          rate = rawCustom < minProfitablePkr ? minProfitablePkr : rawCustom;
+        } else {
+          const calc = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
+          rate = calc < minProfitablePkr ? minProfitablePkr : calc;
+        }
+
         min = Number(routed.min || 1);
         max = Number(routed.max || 100000);
         const isPkg = isPackageService(undefined, min, max);

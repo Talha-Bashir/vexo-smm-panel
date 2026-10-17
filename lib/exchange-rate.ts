@@ -8,7 +8,7 @@
 
 import { isApiEnabled } from "@/lib/api-manager";
 
-const DEFAULT_USD_TO_PKR = Number(process.env.USD_TO_PKR || "278.0");
+const DEFAULT_USD_TO_PKR = Number(process.env.USD_TO_PKR || "285.0");
 export const DEFAULT_VEXO_MARKUP = Number(process.env.VEXO_MARKUP || "0.07"); // 7% profit margin
 export const DEFAULT_RATE_MULTIPLIER = 1 + DEFAULT_VEXO_MARKUP; // 1.070000
 
@@ -93,9 +93,20 @@ export async function getLiveForexUsdRate(): Promise<number> {
   return DEFAULT_USD_TO_PKR;
 }
 
+let cachedOrderRateData: { forexRate: number; markupPercent: number; effectiveRate: number; mode: string } | null = null;
+let lastOrderRateFetchTimestamp = 0;
+const ORDER_RATE_CACHE_TTL_MS = 30 * 1000; // 30 seconds cache for rapid admin updates
+
+export function invalidateExchangeRateCache(): void {
+  cachedUsdToPkr = null;
+  lastFetchTimestamp = 0;
+  cachedOrderRateData = null;
+  lastOrderRateFetchTimestamp = 0;
+}
+
 /**
  * Reads the Dollar Markup percentage for Orders from platform settings.
- * Default is 7% (0.07).
+ * Default is 8%.
  * This markup is applied strictly to service prices & orders, NEVER to deposits/wallet funding.
  */
 export async function getOrderDollarMarkupPercent(): Promise<number> {
@@ -112,24 +123,81 @@ export async function getOrderDollarMarkupPercent(): Promise<number> {
   } catch {
     // Database query fallback
   }
-  return DEFAULT_VEXO_MARKUP * 100; // 7%
+  return DEFAULT_VEXO_MARKUP * 100; // 7-8%
 }
 
 /**
- * Returns the live USD to PKR rate for Orders (auto-checked live forex).
+ * Returns the effective Dollar rate used for calculating all service & order prices.
+ * Supports:
+ * 1. "manual" mode: Uses the admin-configured real dollar rate (e.g. ₨285.00 / USD).
+ * 2. "auto" mode: Uses live global forex feed + configured dollar markup % (e.g. 277 * 1.08 = 299.16).
+ */
+export async function getOrderDollarRate(): Promise<{
+  forexRate: number;
+  markupPercent: number;
+  effectiveRate: number;
+  mode: "manual" | "auto";
+}> {
+  const now = Date.now();
+  if (cachedOrderRateData && (now - lastOrderRateFetchTimestamp) < ORDER_RATE_CACHE_TTL_MS) {
+    return cachedOrderRateData as { forexRate: number; markupPercent: number; effectiveRate: number; mode: "manual" | "auto" };
+  }
+
+  const forexRate = await getLiveForexUsdRate();
+  let mode: "manual" | "auto" = "manual";
+  let manualRate = 285.00;
+  let markupPercent = 8.0;
+
+  try {
+    const { getPlatformSetting } = await import("@/lib/admin");
+    const modeSetting = await getPlatformSetting("dollar_rate_mode", "manual");
+    if (modeSetting === "auto") {
+      mode = "auto";
+    }
+
+    const manualSetting = await getPlatformSetting("manual_dollar_rate", "") || await getPlatformSetting("usd_to_pkr", "285.00");
+    const parsedManual = Number(manualSetting);
+    if (Number.isFinite(parsedManual) && parsedManual >= 200 && parsedManual <= 600) {
+      manualRate = parsedManual;
+    }
+
+    markupPercent = await getOrderDollarMarkupPercent();
+  } catch (err) {
+    console.warn("Failed to load platform dollar rate settings, using defaults:", err);
+  }
+
+  let effectiveRate: number;
+  if (mode === "auto") {
+    effectiveRate = Math.round(forexRate * (1 + markupPercent / 100) * 100) / 100;
+  } else {
+    effectiveRate = manualRate;
+  }
+
+  // Sanity check: Ensure effective rate is never dangerously low
+  if (!Number.isFinite(effectiveRate) || effectiveRate < 200) {
+    effectiveRate = 285.00;
+  }
+
+  const result = {
+    forexRate,
+    markupPercent,
+    effectiveRate,
+    mode,
+  };
+
+  cachedOrderRateData = result;
+  lastOrderRateFetchTimestamp = now;
+
+  return result;
+}
+
+/**
+ * Returns the effective live USD to PKR rate for all service catalog pricing and order fulfillment.
+ * Uses the real dollar rate (Manual setting or Forex + Markup) so that the admin NEVER suffers an exchange rate loss.
  */
 export async function getLiveUsdToPkrRate(): Promise<number> {
-  return getLiveForexUsdRate();
-}
-
-/**
- * Returns the effective Dollar rate used for calculating order prices (Forex * (1 + markup%)).
- */
-export async function getOrderDollarRate(): Promise<{ forexRate: number; markupPercent: number; effectiveRate: number }> {
-  const forexRate = await getLiveForexUsdRate();
-  const markupPercent = await getOrderDollarMarkupPercent();
-  const effectiveRate = Math.round(forexRate * (1 + markupPercent / 100) * 100) / 100;
-  return { forexRate, markupPercent, effectiveRate };
+  const orderRate = await getOrderDollarRate();
+  return orderRate.effectiveRate;
 }
 
 /**

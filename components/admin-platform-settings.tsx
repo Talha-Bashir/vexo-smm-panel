@@ -23,8 +23,10 @@ export function PlatformSettingsView() {
   const [supportEmail, setSupportEmail] = useState("support@vexarosmm.com");
 
   // Profit Margins & Currency
-  const [profitMargin, setProfitMargin] = useState("7");
-  const [dollarOrderMarkup, setDollarOrderMarkup] = useState("7");
+  const [profitMargin, setProfitMargin] = useState("8");
+  const [dollarOrderMarkup, setDollarOrderMarkup] = useState("8");
+  const [dollarRateMode, setDollarRateMode] = useState<"manual" | "auto">("manual");
+  const [manualDollarRate, setManualDollarRate] = useState("285.00");
 
   // Local Accounts
   const [sadaPayNum, setSadaPayNum] = useState("03197008275");
@@ -74,6 +76,9 @@ export function PlatformSettingsView() {
 
         if (s.global_profit_margin !== undefined) setProfitMargin(s.global_profit_margin);
         if (s.dollar_order_markup !== undefined) setDollarOrderMarkup(s.dollar_order_markup);
+        if (s.dollar_rate_mode !== undefined) setDollarRateMode(s.dollar_rate_mode === "auto" ? "auto" : "manual");
+        if (s.manual_dollar_rate !== undefined && s.manual_dollar_rate) setManualDollarRate(s.manual_dollar_rate);
+        else if (s.usd_to_pkr !== undefined && s.usd_to_pkr) setManualDollarRate(s.usd_to_pkr);
 
         if (s.sadapay_number !== undefined) setSadaPayNum(s.sadapay_number);
         if (s.sadapay_title !== undefined) setSadaPayTitle(s.sadapay_title);
@@ -114,6 +119,9 @@ export function PlatformSettingsView() {
 
         global_profit_margin: profitMargin,
         dollar_order_markup: dollarOrderMarkup,
+        dollar_rate_mode: dollarRateMode,
+        manual_dollar_rate: manualDollarRate,
+        usd_to_pkr: manualDollarRate,
 
         sadapay_number: sadaPayNum,
         sadapay_title: sadaPayTitle,
@@ -573,39 +581,123 @@ export function PlatformSettingsView() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6">
+        <div className="rounded-2xl border border-white/10 bg-[#111a1d] p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-base font-black text-white">Dollar Exchange Rate</h3>
-              <p className="mt-1 text-xs text-slate-400">Live Forex feed indicator.</p>
+              <h3 className="text-base font-black text-white">Dollar Exchange Rate ($ to PKR)</h3>
+              <p className="mt-1 text-xs text-slate-400">
+                Applied to all service prices &amp; orders. Eliminates exchange-rate loss.
+              </p>
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span>1 USD = ~₨{liveForexRate}</span>
+              <span>1 USD = ₨{dollarRateMode === "manual" ? Number(manualDollarRate || 285).toFixed(2) : (liveForexRate * (1 + (Number(dollarOrderMarkup) || 0) / 100)).toFixed(2)} (Active on Site)</span>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-white/5">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Dollar Order Markup (%)
-            </label>
-            <div className="mt-1.5 flex items-center gap-3">
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="1"
-                value={dollarOrderMarkup}
-                onChange={(e) => setDollarOrderMarkup(e.target.value)}
-                className="w-28 rounded-xl border border-white/10 bg-[#070d0d] px-4 py-2.5 text-sm font-black text-white focus:border-[#baff00] outline-none"
-              />
-              <span className="text-xs text-slate-400">
-                Effective Order Rate: <strong className="text-white">₨{(liveForexRate * (1 + (Number(dollarOrderMarkup) || 0) / 100)).toFixed(2)}</strong>
-              </span>
+          {/* Mode Switcher */}
+          <div className="flex rounded-xl bg-[#070d0d] p-1 border border-white/10">
+            <button
+              type="button"
+              onClick={() => setDollarRateMode("manual")}
+              className={`flex-1 rounded-lg py-2 text-xs font-black transition ${
+                dollarRateMode === "manual"
+                  ? "bg-[#baff00] text-[#07100f] shadow-md"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              📌 Manual Fixed Rate (Recommended)
+            </button>
+            <button
+              type="button"
+              onClick={() => setDollarRateMode("auto")}
+              className={`flex-1 rounded-lg py-2 text-xs font-black transition ${
+                dollarRateMode === "auto"
+                  ? "bg-[#baff00] text-[#07100f] shadow-md"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              ⚡ Auto Forex + Markup
+            </button>
+          </div>
+
+          {dollarRateMode === "manual" ? (
+            <div className="space-y-3 pt-2">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Real Dollar Rate in Pakistan (₨ per $1 USD)
+                </label>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Set the actual open market or Binance USDT dollar price you pay to suppliers.
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-sm font-black text-[#baff00]">₨</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="200"
+                    max="600"
+                    value={manualDollarRate}
+                    onChange={(e) => setManualDollarRate(e.target.value)}
+                    className="w-32 rounded-xl border border-white/10 bg-[#070d0d] px-4 py-2.5 text-sm font-black text-white focus:border-[#baff00] outline-none"
+                  />
+                  <span className="text-xs text-slate-400">PKR per 1 USD</span>
+                </div>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Quick Presets:</span>
+                {["282.00", "285.00", "288.00", "290.00", "295.00"].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setManualDollarRate(preset)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-mono font-bold transition border ${
+                      manualDollarRate === preset
+                        ? "border-[#baff00] bg-[#baff00]/20 text-[#baff00]"
+                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    ₨{preset}
+                  </button>
+                ))}
+              </div>
             </div>
+          ) : (
+            <div className="space-y-3 pt-2">
+              <div className="rounded-xl border border-white/5 bg-[#070d0d] p-3 text-xs flex justify-between items-center">
+                <span className="text-slate-400">Live Forex Interbank Feed:</span>
+                <span className="font-mono font-bold text-white">1 USD = ~₨{liveForexRate}</span>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Dollar Order Markup (%)
+                </label>
+                <div className="mt-1.5 flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={dollarOrderMarkup}
+                    onChange={(e) => setDollarOrderMarkup(e.target.value)}
+                    className="w-28 rounded-xl border border-white/10 bg-[#070d0d] px-4 py-2.5 text-sm font-black text-white focus:border-[#baff00] outline-none"
+                  />
+                  <span className="text-xs text-slate-400">
+                    Effective Order Rate: <strong className="text-white">₨{(liveForexRate * (1 + (Number(dollarOrderMarkup) || 0) / 100)).toFixed(2)}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-[#baff00]/15 bg-[#baff00]/5 p-2.5 text-[11px] text-[#cfff62] flex items-center gap-2">
+            <span>🛡️</span>
+            <span>Zero-Loss Guarantee: Platform enforces automatic 5% profit margin above wholesale provider costs.</span>
           </div>
         </div>
 

@@ -342,7 +342,7 @@ export async function runLeastCostRouting(): Promise<number> {
 
   // 1. Fetch existing manual overrides and auto_route preferences from vexo_routed_services
   const existingRouted = await db.query(
-    `SELECT id, service_group_key, auto_route, active_provider_id, active_remote_service_id, rate_multiplier, popular, enabled
+    `SELECT id, service_group_key, auto_route, active_provider_id, active_remote_service_id, rate_multiplier, custom_rate_pkr, popular, enabled
      FROM vexo_routed_services`
   );
 
@@ -489,8 +489,20 @@ export async function runLeastCostRouting(): Promise<number> {
     const activeRemoteServiceId = selectedQuote.remoteServiceId;
     const baseRateUsd = selectedQuote.rateUsd;
 
-    // Calculate retail PKR price with multiplier and markup
-    const ratePkr = Math.round(baseRateUsd * liveUsdToPkr * rateMultiplier * 10000) / 10000;
+    // Calculate retail PKR price with multiplier and markup, respecting custom_rate_pkr & enforcing loss prevention
+    const rawExistingCustomPkr = existing?.custom_rate_pkr != null ? Number(existing.custom_rate_pkr) : null;
+    const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+    const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+    let ratePkr: number;
+    let customRatePkr: number | null = null;
+
+    if (rawExistingCustomPkr !== null && Number.isFinite(rawExistingCustomPkr) && rawExistingCustomPkr > 0) {
+      ratePkr = rawExistingCustomPkr < minProfitablePkr ? minProfitablePkr : Math.round(rawExistingCustomPkr * 10000) / 10000;
+      customRatePkr = ratePkr;
+    } else {
+      const calculatedPkr = Math.round(baseRateUsd * liveUsdToPkr * rateMultiplier * 10000) / 10000;
+      ratePkr = calculatedPkr < minProfitablePkr ? minProfitablePkr : calculatedPkr;
+    }
 
     // Check if the selected service is drop-able or no-refill
     const isServiceDrop = isDropOrNoRefill(selectedQuote.name, selectedQuote.category, selectedQuote.description);
@@ -512,6 +524,7 @@ export async function runLeastCostRouting(): Promise<number> {
       baseRateUsd,
       rateMultiplier,
       ratePkr,
+      customRatePkr,
       min: selectedQuote.min,
       max: selectedQuote.max,
       refill: finalRefill,
@@ -542,7 +555,7 @@ export async function runLeastCostRouting(): Promise<number> {
     const params: unknown[] = [];
     let pIdx = 1;
     for (const r of chunk) {
-      valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18}, $${pIdx+19})`);
+      valClauses.push(`($${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18}, $${pIdx+19}, $${pIdx+20})`);
       params.push(
         r.cleanTitle,
         r.platform,
@@ -555,6 +568,7 @@ export async function runLeastCostRouting(): Promise<number> {
         r.baseRateUsd,
         r.rateMultiplier,
         r.ratePkr,
+        r.customRatePkr,
         r.min,
         r.max,
         r.refill,
@@ -565,12 +579,12 @@ export async function runLeastCostRouting(): Promise<number> {
         JSON.stringify(r.providerRatesObj),
         r.description
       );
-      pIdx += 20;
+      pIdx += 21;
     }
 
     await db.query(
       `INSERT INTO vexo_routed_services
-       (name, platform, category, service_group_key, is_guaranteed, auto_route, active_provider_id, active_remote_service_id, base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel, enabled, popular, fallback_queue, provider_rates, description)
+       (name, platform, category, service_group_key, is_guaranteed, auto_route, active_provider_id, active_remote_service_id, base_rate_usd, rate_multiplier, rate_pkr, custom_rate_pkr, min, max, refill, cancel, enabled, popular, fallback_queue, provider_rates, description)
        VALUES ${valClauses.join(", ")}
        ON CONFLICT (service_group_key) DO UPDATE SET
          name = EXCLUDED.name,
@@ -582,6 +596,7 @@ export async function runLeastCostRouting(): Promise<number> {
          base_rate_usd = EXCLUDED.base_rate_usd,
          rate_multiplier = EXCLUDED.rate_multiplier,
          rate_pkr = EXCLUDED.rate_pkr,
+         custom_rate_pkr = COALESCE(EXCLUDED.custom_rate_pkr, vexo_routed_services.custom_rate_pkr),
          min = EXCLUDED.min,
          max = EXCLUDED.max,
          refill = EXCLUDED.refill,

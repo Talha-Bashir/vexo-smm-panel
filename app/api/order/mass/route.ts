@@ -142,7 +142,7 @@ export async function POST(request: Request) {
 
     // 1. Fetch current services catalog: first vexo_routed_services, then legacy fallback
     const [routedRes, servicesResponse, overridesResult] = await Promise.all([
-      db.query(`SELECT id, name, platform, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled FROM vexo_routed_services`),
+      db.query(`SELECT id, name, platform, rate_pkr, custom_rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled FROM vexo_routed_services`),
       getRizviServices().catch(() => []),
       db.query(`SELECT service_id, enabled, rate_multiplier FROM vexo_service_overrides`).catch(() => ({ rows: [] })),
     ]);
@@ -162,8 +162,19 @@ export async function POST(request: Request) {
 
     // Load routed services
     for (const r of routedRes.rows) {
+      const baseRateUsd = Number(r.base_rate_usd || 0);
       const mult = Number(r.rate_multiplier || 1.07);
-      const livePkr = calculateLivePricePkr(r.base_rate_usd, mult, liveUsdToPkr);
+      const rawCustom = Number(r.custom_rate_pkr);
+      const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+      const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+      let livePkr: number;
+      if (Number.isFinite(rawCustom) && rawCustom > 0) {
+        livePkr = rawCustom < minProfitablePkr ? minProfitablePkr : rawCustom;
+      } else {
+        const calc = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
+        livePkr = calc < minProfitablePkr ? minProfitablePkr : calc;
+      }
+
       serviceMap.set(String(r.id), {
         id: String(r.id),
         name: r.name,

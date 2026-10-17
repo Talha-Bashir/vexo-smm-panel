@@ -84,6 +84,13 @@ export async function GET() {
       }
     }
 
+    try {
+      const { getLiveUsdToPkrRate } = await import("@/lib/exchange-rate");
+      rates.USD = await getLiveUsdToPkrRate();
+    } catch {
+      // Fallback to calculated USD
+    }
+
     cachedRates = {
       rates,
       updatedAt: new Date().toISOString(),

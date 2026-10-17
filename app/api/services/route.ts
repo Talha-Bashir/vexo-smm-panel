@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     let query = `
       SELECT id, name, platform, category, service_group_key, is_guaranteed,
              auto_route, active_provider_id, active_remote_service_id,
-             base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel,
+             base_rate_usd, rate_multiplier, rate_pkr, custom_rate_pkr, min, max, refill, cancel,
              popular, enabled, provider_rates, fallback_queue, description
       FROM vexo_routed_services
       WHERE enabled = true
@@ -38,17 +38,43 @@ export async function GET(req: Request) {
       const balances = await getCachedProviderBalances();
 
       const services = routedRes.rows.map((row) => {
-        const pricing = row.auto_route !== false
-          ? resolveEffectiveServicePricing(row, balances, liveUsdToPkr)
-          : {
-              activeProviderId: row.active_provider_id,
-              activeRemoteServiceId: row.active_remote_service_id,
-              baseRateUsd: Number(row.base_rate_usd || 0),
-              rateMultiplier: Number(row.rate_multiplier || 1.07),
-              rateUsd: Math.round(Number(row.base_rate_usd || 0) * Number(row.rate_multiplier || 1.07) * 10000) / 10000,
-              ratePkr: calculateLivePricePkr(row.base_rate_usd, Number(row.rate_multiplier || 1.07), liveUsdToPkr),
-              isFunded: true,
-            };
+        let pricing: {
+          activeProviderId?: string | null;
+          activeRemoteServiceId?: string | null;
+          baseRateUsd: number;
+          rateMultiplier: number;
+          rateUsd: number;
+          ratePkr: number;
+          isFunded: boolean;
+        };
+
+        if (row.auto_route !== false) {
+          pricing = resolveEffectiveServicePricing(row, balances, liveUsdToPkr);
+        } else {
+          const baseRateUsd = Number(row.base_rate_usd || 0);
+          const mult = Number(row.rate_multiplier || 1.07);
+          const rawCustom = Number(row.custom_rate_pkr);
+          const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+          const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+          let manualRatePkr: number;
+          if (Number.isFinite(rawCustom) && rawCustom > 0) {
+            manualRatePkr = rawCustom < minProfitablePkr ? minProfitablePkr : Math.round(rawCustom * 10000) / 10000;
+          } else {
+            const calc = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
+            manualRatePkr = calc < minProfitablePkr ? minProfitablePkr : calc;
+          }
+          const manualRateUsd = Math.round((manualRatePkr / (liveUsdToPkr || 285)) * 10000) / 10000;
+
+          pricing = {
+            activeProviderId: row.active_provider_id,
+            activeRemoteServiceId: row.active_remote_service_id,
+            baseRateUsd,
+            rateMultiplier: mult,
+            rateUsd: manualRateUsd,
+            ratePkr: manualRatePkr,
+            isFunded: true,
+          };
+        }
 
         const livePkr = pricing.ratePkr;
         const rateUsd = pricing.rateUsd;

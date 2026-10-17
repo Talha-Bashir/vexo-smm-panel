@@ -28,7 +28,7 @@ export async function GET() {
     const result = await db.query(
       `SELECT id, name, platform, category, service_group_key, is_guaranteed,
               auto_route, active_provider_id, active_remote_service_id,
-              base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel,
+              base_rate_usd, rate_multiplier, rate_pkr, custom_rate_pkr, min, max, refill, cancel,
               enabled, popular, fallback_queue, provider_rates, updated_at, description
        FROM vexo_routed_services
        ORDER BY platform ASC, id ASC`
@@ -38,9 +38,19 @@ export async function GET() {
       success: true,
       usd_to_pkr: liveUsdToPkr,
       services: result.rows.map((row) => {
+        const baseRateUsd = Number(row.base_rate_usd || 0);
         const mult = Number(row.rate_multiplier || 1.07);
-        const liveRatePkr = calculateLivePricePkr(row.base_rate_usd, mult, liveUsdToPkr);
-        const rateUsd = Math.round(Number(row.base_rate_usd) * mult * 10000) / 10000;
+        const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+        const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+        const rawCustom = Number(row.custom_rate_pkr);
+        let liveRatePkr: number;
+        if (Number.isFinite(rawCustom) && rawCustom > 0) {
+          liveRatePkr = rawCustom < minProfitablePkr ? minProfitablePkr : Math.round(rawCustom * 10000) / 10000;
+        } else {
+          const calc = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
+          liveRatePkr = calc < minProfitablePkr ? minProfitablePkr : calc;
+        }
+        const rateUsd = Math.round((liveRatePkr / (liveUsdToPkr || 285)) * 10000) / 10000;
         const normText = `${row.name} ${row.category || ""} ${row.description || ""}`.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-");
         const isDrop = /no[\s-]*refill|without[\s-]*refill|refill[\s:]*no|refill[\s:]*0|0%[\s-]*refill|drop[\s-]*100%|100%[\s-]*drop|drop[\s-]*able|dropable|high[\s-]*drop|drop[\s-]*high|no[\s-]*guarantee|non[\s-]*guaranteed|not[\s-]*guaranteed|can[\s-]*drop|drop[\s-]*possible/i.test(normText);
         const isGuaranteed = isDrop ? false : Boolean(row.is_guaranteed);
@@ -57,10 +67,11 @@ export async function GET() {
           auto_route: Boolean(row.auto_route),
           active_provider_id: row.active_provider_id,
           active_remote_service_id: row.active_remote_service_id,
-          base_rate_usd: Number(row.base_rate_usd),
+          base_rate_usd: baseRateUsd,
           rate_multiplier: mult,
           rate_usd: rateUsd,
           rate_pkr: liveRatePkr,
+          custom_rate_pkr: row.custom_rate_pkr != null ? Number(row.custom_rate_pkr) : null,
           min: Number(row.min || 1),
           max: Number(row.max || 100000),
           refill: isRefill,
@@ -102,7 +113,7 @@ export async function POST(req: Request) {
     const min = Math.max(1, Number(body.min) || 10);
     const max = Math.max(min, Number(body.max) || 100000);
     const baseRateUsd = Math.max(0, Number(body.baseRateUsd ?? body.base_rate_usd) || 0);
-    const rateMultiplier = Math.max(0.1, Number(body.rateMultiplier ?? body.rate_multiplier) || 1.07);
+    let rateMultiplier = Math.max(0.1, Number(body.rateMultiplier ?? body.rate_multiplier) || 1.07);
     const enabled = body.enabled !== false;
     const popular = Boolean(body.popular);
     const refill = Boolean(body.refill);
@@ -114,8 +125,21 @@ export async function POST(req: Request) {
     const description = String(body.description || "");
 
     const liveUsdToPkr = await getLiveUsdToPkrRate();
-    const ratePkr = calculateLivePricePkr(baseRateUsd, rateMultiplier, liveUsdToPkr);
-    const rateUsd = Math.round(baseRateUsd * rateMultiplier * 10000) / 10000;
+    const rawTargetPkr = Number(body.ratePkr ?? body.rate_pkr ?? body.custom_rate_pkr);
+    const customRatePkr = Number.isFinite(rawTargetPkr) && rawTargetPkr > 0 ? rawTargetPkr : null;
+    const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+    const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+    let ratePkr: number;
+    if (customRatePkr !== null && customRatePkr > 0) {
+      ratePkr = customRatePkr < minProfitablePkr ? minProfitablePkr : customRatePkr;
+      if (baseRateUsd > 0 && liveUsdToPkr > 0) {
+        rateMultiplier = Math.round(((ratePkr / liveUsdToPkr) / baseRateUsd) * 10000) / 10000;
+      }
+    } else {
+      const calc = calculateLivePricePkr(baseRateUsd, rateMultiplier, liveUsdToPkr);
+      ratePkr = calc < minProfitablePkr ? minProfitablePkr : calc;
+    }
+    const rateUsd = Math.round((ratePkr / (liveUsdToPkr || 285)) * 10000) / 10000;
 
     // Generate unique service_group_key
     const sanitizedKey = `${platform.toLowerCase()}_${name.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 45)}`;
@@ -125,18 +149,18 @@ export async function POST(req: Request) {
       `INSERT INTO vexo_routed_services (
          name, platform, category, service_group_key, is_guaranteed,
          auto_route, active_provider_id, active_remote_service_id,
-         base_rate_usd, rate_multiplier, rate_pkr, min, max, refill, cancel,
+         base_rate_usd, rate_multiplier, rate_pkr, custom_rate_pkr, min, max, refill, cancel,
          enabled, popular, fallback_queue, provider_rates, description, updated_at
        ) VALUES (
          $1, $2, $3, $4, $5,
          $6, $7, $8,
-         $9, $10, $11, $12, $13, $14, $15,
-         $16, $17, $18, $19, $20, NOW()
+         $9, $10, $11, $12, $13, $14, $15, $16,
+         $17, $18, $19, $20, $21, NOW()
        ) RETURNING *`,
       [
         name, platform, category, uniqueKey, isGuaranteed,
         autoRoute, activeProviderId, activeRemoteServiceId,
-        baseRateUsd, rateMultiplier, ratePkr, min, max, refill, cancel,
+        baseRateUsd, rateMultiplier, ratePkr, customRatePkr, min, max, refill, cancel,
         enabled, popular, JSON.stringify([]), JSON.stringify({}), description
       ]
     );
@@ -145,16 +169,17 @@ export async function POST(req: Request) {
 
     // Persist in vexo_service_overrides
     await db.query(
-      `INSERT INTO vexo_service_overrides (service_id, enabled, popular, rate_multiplier, custom_description, updated_at, updated_by)
-       VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+      `INSERT INTO vexo_service_overrides (service_id, enabled, popular, rate_multiplier, custom_rate_pkr, custom_description, updated_at, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
        ON CONFLICT (service_id) DO UPDATE
        SET enabled = EXCLUDED.enabled,
            popular = EXCLUDED.popular,
            rate_multiplier = EXCLUDED.rate_multiplier,
+           custom_rate_pkr = EXCLUDED.custom_rate_pkr,
            custom_description = EXCLUDED.custom_description,
            updated_at = NOW(),
            updated_by = EXCLUDED.updated_by`,
-      [String(newService.id), enabled, popular, rateMultiplier, description, Number(g.user!.id)]
+      [String(newService.id), enabled, popular, rateMultiplier, customRatePkr, description, Number(g.user!.id)]
     );
 
     await logAdminActivity(Number(g.user!.id), "service_create", "routed_service", String(newService.id), {
@@ -337,7 +362,20 @@ export async function PATCH(req: Request) {
       activeRemoteServiceId = body.activeRemoteServiceId ? String(body.activeRemoteServiceId).trim() : null;
     }
 
-    if (body.rateUsd !== undefined || body.rate_usd !== undefined) {
+    let customRatePkr: number | null = service.custom_rate_pkr != null ? Number(service.custom_rate_pkr) : null;
+
+    if (body.ratePkr !== undefined || body.rate_pkr !== undefined || body.custom_rate_pkr !== undefined) {
+      const targetPkr = Number(body.ratePkr ?? body.rate_pkr ?? body.custom_rate_pkr);
+      if (Number.isFinite(targetPkr) && targetPkr > 0) {
+        customRatePkr = targetPkr;
+        const liveNow = await getLiveUsdToPkrRate();
+        if (baseRateUsd > 0 && liveNow > 0) {
+          rateMultiplier = Math.round(((targetPkr / liveNow) / baseRateUsd) * 10000) / 10000;
+        }
+      } else if (targetPkr === 0) {
+        customRatePkr = null;
+      }
+    } else if (body.rateUsd !== undefined || body.rate_usd !== undefined) {
       const targetUsd = Number(body.rateUsd ?? body.rate_usd);
       if (Number.isFinite(targetUsd) && targetUsd >= 0) {
         if (baseRateUsd > 0) {
@@ -346,6 +384,8 @@ export async function PATCH(req: Request) {
           baseRateUsd = targetUsd;
           rateMultiplier = 1;
         }
+        const liveNow = await getLiveUsdToPkrRate();
+        customRatePkr = Math.round(targetUsd * liveNow * 10000) / 10000;
       }
     } else if (body.rateMultiplier !== undefined && body.rateMultiplier !== null) {
       const mult = Number(body.rateMultiplier);
@@ -353,6 +393,7 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ success: false, error: "Multiplier must be between 0.1 and 50." }, { status: 400 });
       }
       rateMultiplier = mult;
+      customRatePkr = null;
     }
 
     // Provider override or auto-route change
@@ -387,8 +428,16 @@ export async function PATCH(req: Request) {
     }
 
     const liveUsdToPkr = await getLiveUsdToPkrRate();
-    const ratePkr = calculateLivePricePkr(baseRateUsd, rateMultiplier, liveUsdToPkr);
-    const rateUsd = Math.round(baseRateUsd * rateMultiplier * 10000) / 10000;
+    const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+    const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100; // Strict 5% profit margin floor
+    let ratePkr: number;
+    if (customRatePkr !== null && customRatePkr > 0) {
+      ratePkr = customRatePkr < minProfitablePkr ? minProfitablePkr : customRatePkr;
+    } else {
+      const calc = calculateLivePricePkr(baseRateUsd, rateMultiplier, liveUsdToPkr);
+      ratePkr = calc < minProfitablePkr ? minProfitablePkr : calc;
+    }
+    const rateUsd = Math.round((ratePkr / (liveUsdToPkr || 285)) * 10000) / 10000;
 
     await db.query(
       `UPDATE vexo_routed_services
@@ -396,29 +445,30 @@ export async function PATCH(req: Request) {
            refill = $6, cancel = $7, is_guaranteed = $8,
            enabled = $9, popular = $10, auto_route = $11, active_provider_id = $12,
            active_remote_service_id = $13, base_rate_usd = $14, rate_multiplier = $15,
-           rate_pkr = $16, description = $17, updated_at = NOW()
-       WHERE id = $18`,
+           rate_pkr = $16, custom_rate_pkr = $17, description = $18, updated_at = NOW()
+       WHERE id = $19`,
       [
         name, platform, category, min, max,
         refill, cancel, isGuaranteed,
         enabled, popular, autoRoute, activeProviderId,
         activeRemoteServiceId, baseRateUsd, rateMultiplier,
-        ratePkr, description, service.id
+        ratePkr, customRatePkr, description, service.id
       ]
     );
 
     // Also persist in vexo_service_overrides
     await db.query(
-      `INSERT INTO vexo_service_overrides (service_id, enabled, popular, rate_multiplier, custom_description, updated_at, updated_by)
-       VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+      `INSERT INTO vexo_service_overrides (service_id, enabled, popular, rate_multiplier, custom_rate_pkr, custom_description, updated_at, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
        ON CONFLICT (service_id) DO UPDATE
        SET enabled = EXCLUDED.enabled,
            popular = EXCLUDED.popular,
            rate_multiplier = EXCLUDED.rate_multiplier,
+           custom_rate_pkr = EXCLUDED.custom_rate_pkr,
            custom_description = EXCLUDED.custom_description,
            updated_at = NOW(),
            updated_by = EXCLUDED.updated_by`,
-      [String(service.id), enabled, popular, rateMultiplier, description, Number(g.user!.id)]
+      [String(service.id), enabled, popular, rateMultiplier, customRatePkr, description, Number(g.user!.id)]
     );
 
     await logAdminActivity(Number(g.user!.id), "service_update", "routed_service", String(service.id), {
@@ -432,6 +482,7 @@ export async function PATCH(req: Request) {
       rateMultiplier,
       rateUsd,
       ratePkr,
+      customRatePkr,
       descriptionUpdated: body.description !== undefined,
     });
 
@@ -456,6 +507,7 @@ export async function PATCH(req: Request) {
         base_rate_usd: baseRateUsd,
         rate_usd: rateUsd,
         rate_pkr: ratePkr,
+        custom_rate_pkr: customRatePkr,
         enabled,
         popular,
         description,

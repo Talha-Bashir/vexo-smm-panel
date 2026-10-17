@@ -114,6 +114,7 @@ export function resolveEffectiveServicePricing(
     active_remote_service_id: string;
     base_rate_usd: number | string;
     rate_multiplier?: number | string;
+    custom_rate_pkr?: number | string;
     fallback_queue?: FallbackQueueCandidate[];
   },
   balances: Map<string, number>,
@@ -135,8 +136,23 @@ export function resolveEffectiveServicePricing(
 
   // Always use the service's own base_rate_usd for display/order pricing so prices match the upstream API
   const baseRateUsd = defaultBaseUsd > 0 ? defaultBaseUsd : candidate.rateUsd;
-  const rateUsd = Math.round(baseRateUsd * mult * 10000) / 10000;
-  const ratePkr = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
+  const rawCustomPkr = Number(service.custom_rate_pkr);
+  const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+  const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100; // Strict 5% profit margin floor
+
+  let ratePkr: number;
+  let rateUsd: number;
+
+  if (Number.isFinite(rawCustomPkr) && rawCustomPkr > 0) {
+    // Admin set an explicit PKR price: Honor it, guaranteed never below wholesale cost + 5%
+    ratePkr = rawCustomPkr < minProfitablePkr ? minProfitablePkr : Math.round(rawCustomPkr * 10000) / 10000;
+    rateUsd = Math.round((ratePkr / (liveUsdToPkr || 285)) * 10000) / 10000;
+  } else {
+    // Dynamic pricing based on wholesale USD * multiplier * real dollar rate
+    const calculatedPkr = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
+    ratePkr = calculatedPkr < minProfitablePkr ? minProfitablePkr : calculatedPkr;
+    rateUsd = Math.round(baseRateUsd * mult * 10000) / 10000;
+  }
 
   return {
     activeProviderId: service.active_provider_id || candidate.providerId,

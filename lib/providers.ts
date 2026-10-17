@@ -106,6 +106,7 @@ export async function ensureProvidersSchema(): Promise<void> {
           base_rate_usd NUMERIC(14,6) NOT NULL DEFAULT 0,
           rate_multiplier NUMERIC(12,6) NOT NULL DEFAULT 1.07,
           rate_pkr NUMERIC(14,6) NOT NULL DEFAULT 0,
+          custom_rate_pkr NUMERIC(20,6),
           min INTEGER NOT NULL DEFAULT 10,
           max INTEGER NOT NULL DEFAULT 100000,
           refill BOOLEAN DEFAULT FALSE,
@@ -132,6 +133,7 @@ export async function ensureProvidersSchema(): Promise<void> {
 
         ALTER TABLE vexo_provider_services ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
         ALTER TABLE vexo_routed_services ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+        ALTER TABLE vexo_routed_services ADD COLUMN IF NOT EXISTS custom_rate_pkr NUMERIC(20,6);
 
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS provider_id VARCHAR(50);
         ALTER TABLE vexo_orders ADD COLUMN IF NOT EXISTS failover_attempts JSONB DEFAULT '[]';

@@ -83,8 +83,8 @@ export async function POST(request: Request) {
     const isNum = /^\d+$/.test(serviceId);
     const routedRes = await db.query(
       isNum
-        ? `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled, active_provider_id, active_remote_service_id, fallback_queue, auto_route FROM vexo_routed_services WHERE id = $1 LIMIT 1`
-        : `SELECT id, name, platform, category, rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled, active_provider_id, active_remote_service_id, fallback_queue, auto_route FROM vexo_routed_services WHERE service_group_key = $1 OR id::text = $1 LIMIT 1`,
+        ? `SELECT id, name, platform, category, rate_pkr, custom_rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled, active_provider_id, active_remote_service_id, fallback_queue, auto_route FROM vexo_routed_services WHERE id = $1 LIMIT 1`
+        : `SELECT id, name, platform, category, rate_pkr, custom_rate_pkr, base_rate_usd, rate_multiplier, min, max, enabled, active_provider_id, active_remote_service_id, fallback_queue, auto_route FROM vexo_routed_services WHERE service_group_key = $1 OR id::text = $1 LIMIT 1`,
       [isNum ? Number(serviceId) : serviceId]
     );
 
@@ -107,8 +107,20 @@ export async function POST(request: Request) {
         preferredProviderId = pricing.activeProviderId;
       } else {
         const mult = Number(routed.rate_multiplier || 1.07);
-        rate = calculateLivePricePkr(effectiveBaseUsd, mult, liveUsdToPkr);
+        const rawCustom = Number(routed.custom_rate_pkr);
+        if (Number.isFinite(rawCustom) && rawCustom > 0) {
+          rate = rawCustom;
+        } else {
+          rate = calculateLivePricePkr(effectiveBaseUsd, mult, liveUsdToPkr);
+        }
         preferredProviderId = routed.active_provider_id || undefined;
+      }
+
+      // Negative-Margin Protection: Floor customer price to never sell at a loss
+      const minWholesalePkr = effectiveBaseUsd * liveUsdToPkr;
+      const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+      if (rate < minProfitablePkr) {
+        rate = minProfitablePkr;
       }
 
       // Maximum wholesale cost allowed to prevent negative profit (Margin Protection)

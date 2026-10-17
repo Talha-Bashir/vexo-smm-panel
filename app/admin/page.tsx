@@ -415,6 +415,8 @@ export default function Admin() {
           baseRateUsd: s.base_rate_usd,
           rateMultiplier: Number(s.rate_multiplier || 1.07),
           rateUsd: s.rate_usd != null ? Number(s.rate_usd) : undefined,
+          ratePkr: s.rate_pkr != null ? Number(s.rate_pkr) : undefined,
+          customRatePkr: s.custom_rate_pkr != null ? Number(s.custom_rate_pkr) : (s.rate_pkr != null ? Number(s.rate_pkr) : undefined),
           description: s.description,
         }),
       });
@@ -2316,6 +2318,7 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
   // Local multiplier and retail price state to allow instant keystrokes without re-rendering the whole page
   const [localMult, setLocalMult] = useState(s.rate_multiplier ?? 1.07);
   const [localRetailUsd, setLocalRetailUsd] = useState(s.rate_usd != null ? s.rate_usd : "");
+  const [localRetailPkr, setLocalRetailPkr] = useState(s.rate_pkr != null ? s.rate_pkr : "");
 
   // Synchronize when s changes
   useEffect(() => {
@@ -2326,7 +2329,10 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
     if (s.rate_usd != null) {
       setLocalRetailUsd(s.rate_usd);
     }
-  }, [s.rate_usd]);
+    if (s.rate_pkr != null) {
+      setLocalRetailPkr(s.rate_pkr);
+    }
+  }, [s.rate_usd, s.rate_pkr]);
 
   // Determine lowest rate across all 5 quotes
   let lowestProvId: string | null = null;
@@ -2624,13 +2630,19 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
               onBlur={() => {
                 const val = Number(localRetailUsd !== "" ? localRetailUsd : retailUsd);
                 const curBase = Number(s.base_rate_usd || 0);
+                const effectiveRate = usdToPkr || 285;
                 const newMult = curBase > 0 ? Math.round((val / curBase) * 10000) / 10000 : 1.07;
+                const targetPkr = Math.round(val * effectiveRate * 100) / 100;
+                const minProfitablePkr = Math.round(curBase * effectiveRate * 1.05 * 100) / 100;
+                const finalPkr = targetPkr < minProfitablePkr && targetPkr > 0 ? minProfitablePkr : targetPkr;
                 const updated = {
                   ...s,
                   rate_usd: val,
                   rate_multiplier: newMult,
-                  rate_pkr: Math.round(val * (usdToPkr || 278) * 100) / 100,
+                  rate_pkr: finalPkr,
+                  custom_rate_pkr: finalPkr,
                 };
+                setLocalRetailPkr(String(finalPkr));
                 onInlineSave(updated);
               }}
               onKeyDown={(e) => {
@@ -2645,10 +2657,54 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
         </div>
       </td>
 
-      {/* Retail PKR Price */}
+      {/* Retail PKR Price - DIRECTLY EDITABLE WITH AUTO-SAVE */}
       <td className="px-4 py-3.5 font-mono font-bold text-[#baff00]">
-        <div>₨{retailPkr.toFixed(2)}</div>
-        <p className="text-[9px] font-normal text-slate-500">per 1k (auto)</p>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-bold text-[#baff00]">₨</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={localRetailPkr !== "" ? localRetailPkr : (s.rate_pkr != null ? Number(s.rate_pkr).toFixed(2) : Number(retailPkr).toFixed(2))}
+              onChange={(e) => {
+                setLocalRetailPkr(e.target.value);
+                const pVal = Number(e.target.value);
+                if (Number.isFinite(pVal) && pVal > 0) {
+                  const uVal = Math.round((pVal / (usdToPkr || 285)) * 10000) / 10000;
+                  setLocalRetailUsd(String(uVal));
+                }
+              }}
+              onBlur={() => {
+                const valPkr = Number(localRetailPkr !== "" ? localRetailPkr : retailPkr);
+                const curBase = Number(s.base_rate_usd || 0);
+                const effectiveRate = usdToPkr || 285;
+                const minCostPkr = curBase * effectiveRate;
+                const minProfitablePkr = Math.round(minCostPkr * 1.05 * 100) / 100;
+                const finalPkr = valPkr < minProfitablePkr && valPkr > 0 ? minProfitablePkr : valPkr;
+                const valUsd = Math.round((finalPkr / effectiveRate) * 10000) / 10000;
+                const newMult = curBase > 0 ? Math.round((valUsd / curBase) * 10000) / 10000 : 1.07;
+                const updated = {
+                  ...s,
+                  rate_pkr: finalPkr,
+                  custom_rate_pkr: finalPkr,
+                  rate_usd: valUsd,
+                  rate_multiplier: newMult,
+                };
+                setLocalRetailPkr(String(finalPkr));
+                setLocalRetailUsd(String(valUsd));
+                onInlineSave(updated);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              className="w-24 rounded-lg border border-[#baff00]/30 bg-[#071317] px-2.5 py-1 font-mono text-xs font-bold text-[#baff00] outline-none focus:border-[#baff00] focus:ring-1 focus:ring-[#baff00]/30 transition"
+            />
+          </div>
+          <span className="text-[9px] font-normal text-slate-500">per 1k</span>
+        </div>
       </td>
 
       {/* Status checkboxes */}
@@ -3057,6 +3113,9 @@ function Services({
           activeRemoteServiceId: editingFullService.active_remote_service_id,
           baseRateUsd: editingFullService.base_rate_usd,
           rateMultiplier: Number(editingFullService.rate_multiplier || 1.07),
+          ratePkr: editingFullService.rate_pkr != null ? Number(editingFullService.rate_pkr) : undefined,
+          custom_rate_pkr: editingFullService.custom_rate_pkr != null ? Number(editingFullService.custom_rate_pkr) : (editingFullService.rate_pkr != null ? Number(editingFullService.rate_pkr) : undefined),
+          rateUsd: editingFullService.rate_usd != null ? Number(editingFullService.rate_usd) : undefined,
           description: editingFullService.description,
         }),
       });
@@ -3903,25 +3962,36 @@ function Services({
                 </div>
               </div>
 
-              {/* Row 4: Base Rate USD & Margin Multiplier */}
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* Row 4: Base Rate USD, Multiplier & Direct Retail PKR Price */}
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Wholesale Base Cost ($ USD per 1k)
+                    Wholesale Base Cost ($ USD)
                   </label>
                   <input
                     type="number"
                     step="0.0001"
                     min="0"
                     value={editingFullService.base_rate_usd ?? 0}
-                    onChange={(e) => setEditingFullService({ ...editingFullService, base_rate_usd: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const curBase = parseFloat(e.target.value) || 0;
+                      const effectiveRate = usdToPkr || 285;
+                      const curMult = Number(editingFullService.rate_multiplier || 1.07);
+                      const calcPkr = Math.round(curBase * curMult * effectiveRate * 100) / 100;
+                      setEditingFullService({
+                        ...editingFullService,
+                        base_rate_usd: curBase,
+                        rate_pkr: editingFullService.custom_rate_pkr ? editingFullService.rate_pkr : calcPkr,
+                        rate_usd: Math.round(curBase * curMult * 10000) / 10000,
+                      });
+                    }}
                     className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Profit Margin Multiplier (e.g. 1.07 = +7%)
+                    Profit Multiplier (e.g. 1.07)
                   </label>
                   <input
                     type="number"
@@ -3929,37 +3999,103 @@ function Services({
                     min="0.1"
                     max="20"
                     value={editingFullService.rate_multiplier ?? 1.07}
-                    onChange={(e) => setEditingFullService({ ...editingFullService, rate_multiplier: parseFloat(e.target.value) || 1.07 })}
+                    onChange={(e) => {
+                      const multVal = parseFloat(e.target.value) || 1.07;
+                      const curBase = Number(editingFullService.base_rate_usd || 0);
+                      const effectiveRate = usdToPkr || 285;
+                      const calcPkr = Math.round(curBase * multVal * effectiveRate * 100) / 100;
+                      setEditingFullService({
+                        ...editingFullService,
+                        rate_multiplier: multVal,
+                        rate_pkr: calcPkr,
+                        custom_rate_pkr: undefined,
+                        rate_usd: Math.round(curBase * multVal * 10000) / 10000,
+                      });
+                    }}
                     className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50 font-mono"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#baff00] mb-1.5 flex items-center justify-between">
+                    <span>Retail PKR Price (₨)</span>
+                    <span className="text-[10px] text-emerald-400 font-normal">Direct Input</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#baff00]">₨</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editingFullService.rate_pkr !== undefined ? editingFullService.rate_pkr : Math.round(Number(editingFullService.base_rate_usd || 0) * Number(editingFullService.rate_multiplier || 1.07) * (usdToPkr || 285) * 100) / 100}
+                      onChange={(e) => {
+                        const pkrVal = parseFloat(e.target.value) || 0;
+                        const curBase = Number(editingFullService.base_rate_usd || 0);
+                        const effectiveRate = usdToPkr || 285;
+                        const uVal = Math.round((pkrVal / effectiveRate) * 10000) / 10000;
+                        const newMult = curBase > 0 ? Math.round((uVal / curBase) * 10000) / 10000 : 1.07;
+                        setEditingFullService({
+                          ...editingFullService,
+                          rate_pkr: pkrVal,
+                          custom_rate_pkr: pkrVal,
+                          rate_usd: uVal,
+                          rate_multiplier: newMult,
+                        });
+                      }}
+                      className="w-full h-10 rounded-xl border border-[#baff00]/40 bg-[#0b1418] pl-8 pr-3.5 text-xs font-black text-[#baff00] outline-none focus:border-[#baff00] font-mono shadow-[0_0_12px_rgba(186,255,0,0.1)]"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Live Price Preview Box */}
-              <div className="rounded-xl border border-[#baff00]/20 bg-[#baff00]/5 p-3.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#cfff62]">💰 Real-Time Price Calculation</span>
-                  <span className="text-[10px] font-mono text-slate-400">1 USD = ₨{Number(usdToPkr || 278).toFixed(2)}</span>
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-white/5 p-2">
-                    <p className="text-[10px] text-slate-400">Base Cost USD</p>
-                    <p className="text-sm font-black font-mono text-white">${Number(editingFullService.base_rate_usd || 0).toFixed(4)}</p>
+              {/* Live Price & Profitability Metrics Box */}
+              {(() => {
+                const curBase = Number(editingFullService.base_rate_usd || 0);
+                const effectiveRate = usdToPkr || 285;
+                const wholesalePkr = Math.round(curBase * effectiveRate * 100) / 100;
+                const currentRetailPkr = editingFullService.rate_pkr != null
+                  ? Number(editingFullService.rate_pkr)
+                  : Math.round(curBase * Number(editingFullService.rate_multiplier || 1.07) * effectiveRate * 100) / 100;
+                const profitPkr = Math.round((currentRetailPkr - wholesalePkr) * 100) / 100;
+                const marginPct = wholesalePkr > 0 ? Math.round((profitPkr / wholesalePkr) * 100) : 0;
+                const isLoss = currentRetailPkr < wholesalePkr;
+
+                return (
+                  <div className="space-y-2">
+                    <div className="rounded-xl border border-[#baff00]/20 bg-[#baff00]/5 p-3.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-[#cfff62]">💰 Real-Time Profit &amp; Pricing Breakdown</span>
+                        <span className="text-[10px] font-mono text-slate-400">Rate: 1 USD = ₨{Number(effectiveRate).toFixed(2)}</span>
+                      </div>
+                      <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+                        <div className="rounded-lg bg-white/5 p-2">
+                          <p className="text-[10px] text-slate-400">Wholesale USD</p>
+                          <p className="text-sm font-black font-mono text-white">${curBase.toFixed(4)}</p>
+                        </div>
+                        <div className="rounded-lg bg-white/5 p-2">
+                          <p className="text-[10px] text-slate-400">Wholesale PKR</p>
+                          <p className="text-sm font-black font-mono text-slate-300">₨{wholesalePkr.toFixed(2)}</p>
+                        </div>
+                        <div className="rounded-lg bg-[#baff00]/10 border border-[#baff00]/20 p-2">
+                          <p className="text-[10px] text-[#cfff62]">Customer PKR</p>
+                          <p className="text-sm font-black font-mono text-[#baff00]">₨{currentRetailPkr.toFixed(2)}</p>
+                        </div>
+                        <div className={`rounded-lg p-2 border ${isLoss ? "bg-rose-500/15 border-rose-500/30 text-rose-400" : "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"}`}>
+                          <p className="text-[10px] uppercase font-bold">{isLoss ? "LOSS / 1k" : "PROFIT / 1k"}</p>
+                          <p className="text-sm font-black font-mono">{isLoss ? `-₨${Math.abs(profitPkr).toFixed(2)}` : `+₨${profitPkr.toFixed(2)}`} ({marginPct}%)</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isLoss && (
+                      <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-center gap-2">
+                        <span>⚠️</span>
+                        <span><strong>Negative Margin Warning:</strong> Retail price is lower than wholesale cost (₨{wholesalePkr.toFixed(2)}). Platform will automatically enforce a 5% floor (₨{(wholesalePkr * 1.05).toFixed(2)}) to prevent loss.</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="rounded-lg bg-white/5 p-2">
-                    <p className="text-[10px] text-slate-400">Retail USD</p>
-                    <p className="text-sm font-black font-mono text-cyan-400">
-                      ${(Number(editingFullService.base_rate_usd || 0) * Number(editingFullService.rate_multiplier || 1.07)).toFixed(4)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg bg-[#baff00]/10 border border-[#baff00]/20 p-2">
-                    <p className="text-[10px] text-[#cfff62]">Customer PKR Rate</p>
-                    <p className="text-sm font-black font-mono text-[#baff00]">
-                      ₨{(Number(editingFullService.base_rate_usd || 0) * Number(editingFullService.rate_multiplier || 1.07) * (usdToPkr || 278)).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Row 5: Min & Max Limits */}
               <div className="grid gap-4 sm:grid-cols-2">
