@@ -39,11 +39,11 @@ export function GlobalSupportWidget() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-20 md:bottom-5 right-4 sm:right-5 z-40 flex flex-col items-end print:hidden select-none"
+      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] md:bottom-5 right-3 sm:right-5 z-30 flex flex-col items-end print:hidden select-none"
     >
       {/* Help Popup Drawer */}
       {open && (
-        <div className="mb-3.5 w-[clamp(18rem,90vw,22.5rem)] rounded-[26px] border border-[#25d366]/30 bg-[#091316]/95 p-5 shadow-[0_25px_60px_rgba(0,0,0,0.9),0_0_35px_rgba(37,211,102,0.18)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="mb-3 w-[clamp(17rem,calc(100vw-1.75rem),22.5rem)] rounded-[24px] border border-[#25d366]/30 bg-[#091316]/95 p-4 sm:p-5 shadow-[0_25px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(37,211,102,0.18)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 z-50">
           {/* Header with Admin Presence */}
           <div className="flex items-center justify-between border-b border-white/10 pb-3.5">
             <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ export function GlobalSupportWidget() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="group relative flex items-center gap-2 rounded-full p-1.5 sm:p-2 bg-[#091316]/95 border border-[#25d366]/40 backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.8),0_0_20px_rgba(37,211,102,0.35)] hover:border-[#baff00] hover:shadow-[0_15px_45px_rgba(37,211,102,0.55),0_0_30px_rgba(186,255,0,0.4)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
+        className="group relative flex items-center gap-2 rounded-full p-1 sm:p-2 bg-[#091316]/95 border border-[#25d366]/40 backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.8),0_0_20px_rgba(37,211,102,0.35)] hover:border-[#baff00] hover:shadow-[0_15px_45px_rgba(37,211,102,0.55),0_0_30px_rgba(186,255,0,0.4)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
         aria-label="Open 24/7 customer support"
         title="24/7 Live WhatsApp & Telegram Support"
       >
@@ -165,19 +165,19 @@ export function GlobalSupportWidget() {
         <span className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-[#25d366] via-[#10b981] to-[#baff00] opacity-35 blur-sm group-hover:opacity-75 transition duration-500 animate-pulse" />
 
         {/* Circular Icon Orb */}
-        <span className="relative flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-gradient-to-tr from-[#128c3e] via-[#25d366] to-[#2ecc71] text-[#07100f] shadow-[0_4px_16px_rgba(37,211,102,0.45)]">
+        <span className="relative flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-gradient-to-tr from-[#128c3e] via-[#25d366] to-[#2ecc71] text-[#07100f] shadow-[0_4px_16px_rgba(37,211,102,0.45)]">
           {/* Double-ring pulsing online dot */}
-          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
+          <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3 sm:h-3.5 sm:w-3.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#baff00] opacity-80" />
-            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#baff00] border-2 border-[#091316]" />
+            <span className="relative inline-flex rounded-full h-3 w-3 sm:h-3.5 sm:w-3.5 bg-[#baff00] border-2 border-[#091316]" />
           </span>
 
           {open ? (
-            <svg className="h-5 w-5 text-[#07100f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-[#07100f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.8} d="M6 18L18 6M6 6l12 12" />
             </svg>
           ) : (
-            <svg className="h-6 w-6 text-[#07100f]" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 sm:h-6 sm:w-6 text-[#07100f]" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 012.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 01-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.38-1.72-.15-.25-.02-.38.11-.51.11-.11.25-.29.37-.44.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.09s.9 2.43 1.03 2.6c.13.17 1.76 2.69 4.27 3.77.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.22-.16-.47-.29z" />
             </svg>
           )}

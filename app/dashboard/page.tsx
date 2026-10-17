@@ -1120,7 +1120,7 @@ export default function Home() {
       <div className="min-w-0 w-full max-w-full overflow-x-hidden lg:ml-[284px] lg:w-[calc(100%-284px)] lg:pr-4 lg:py-4">
         {/* Header */}
         <header className="sticky top-3 lg:top-4 z-30 mx-3 lg:mx-0 mb-4 lg:mb-6 flex h-16 sm:h-18 items-center justify-between rounded-2xl border border-white/10 bg-[#091215]/90 px-3 sm:px-6 backdrop-blur-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(186,255,0,0.03)]">
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 mr-2">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3 mr-1.5 sm:mr-3">
             <button
               onClick={() => setSidebarOpen(true)}
               className="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 lg:hidden"
@@ -1137,29 +1137,29 @@ export default function Home() {
                 className="h-11 w-full rounded-xl border border-white/10 bg-[#172126] pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10"
               />
             </div>
-            <div className="min-w-0 flex-1 md:hidden flex items-center gap-2.5">
-              <div className="relative h-8 w-8 shrink-0 rounded-lg overflow-hidden border border-[#baff00]/30 shadow-[0_0_10px_rgba(186,255,0,0.3)]">
+            {/* Mobile Header Branding - Compact, elegant, zero-overlap */}
+            <div className="flex items-center gap-2 md:hidden">
+              <div className="relative h-7 w-7 sm:h-8 sm:w-8 shrink-0 rounded-lg overflow-hidden border border-[#baff00]/30 shadow-[0_0_8px_rgba(186,255,0,0.25)]">
                 <img src="/logo.png" alt="VEXARO" className="h-full w-full object-cover" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">VEXARO</p>
-                <h1 className="text-sm sm:text-base font-black text-white truncate leading-tight">{activePage}</h1>
-              </div>
+              <span className="text-xs font-black tracking-wider text-white uppercase hidden xs:inline-block">
+                VEXARO
+              </span>
             </div>
           </div>
 
-          <div className="shrink-0 flex items-center gap-1.5 sm:gap-2.5">
+          <div className="shrink-0 flex items-center gap-1 sm:gap-2">
             {/* Quick Currency Selector Button */}
             <button
               type="button"
               onClick={() => setCurrencyModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-slate-200 hover:border-[#baff00]/40 hover:text-white hover:bg-white/10 transition shrink-0 cursor-pointer shadow-sm"
+              className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-slate-200 hover:border-[#baff00]/40 hover:text-white hover:bg-white/10 transition shrink-0 cursor-pointer shadow-sm"
               title="Change Display Currency"
             >
-              <span>{currencyInfo(selectedCurrency)[3]}</span>
-              <span className="font-mono text-[#baff00] font-black">{currencyInfo(selectedCurrency)[2]}</span>
-              <span className="font-black text-white">{selectedCurrency}</span>
-              <span className="text-[10px] text-slate-400">▼</span>
+              <span className="text-xs sm:text-sm">{currencyInfo(selectedCurrency)[3]}</span>
+              <span className="font-mono text-[#baff00] font-black text-xs">{currencyInfo(selectedCurrency)[2]}</span>
+              <span className="hidden sm:inline font-black text-white">{selectedCurrency}</span>
+              <span className="text-[9px] text-slate-400">▼</span>
             </button>
 
             {/* Quick Notification Feed Box */}
@@ -1546,10 +1546,14 @@ export default function Home() {
                       className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-[#baff00]/40 bg-gradient-to-r from-[#0e241b] via-[#102220] to-[#0e241b] shadow-[0_0_25px_rgba(186,255,0,0.1)] animate-in fade-in slide-in-from-top-3 duration-300"
                     >
                       {/* Mobile compact non-intrusive bar (sm:hidden) */}
-                      <div className="sm:hidden p-3">
+                      <div className="sm:hidden p-2.5 sm:p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#baff00] text-[#07100f] text-xs font-black">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedMobileAnnouncement(isExpanded ? null : a.id)}
+                            className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
+                          >
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#baff00] text-[#07100f] text-xs font-black">
                               📢
                             </span>
                             <div className="min-w-0 flex-1">
@@ -1557,34 +1561,37 @@ export default function Home() {
                                 {a.title}
                               </p>
                             </div>
-                          </div>
+                          </button>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1 shrink-0">
                             {url && (
                               <a
                                 href={url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="rounded-lg bg-[#baff00] px-2 py-1 text-[10px] font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                                className="rounded-lg bg-[#baff00] px-2 py-1 text-[10px] font-black text-[#07100f] hover:bg-[#d2ff5a] transition flex items-center gap-0.5"
+                                title="Open Link"
                               >
-                                Link ↗
+                                <span>Link</span>
+                                <span className="text-[11px] font-black">↗</span>
                               </a>
                             )}
                             <button
                               type="button"
                               onClick={() => setExpandedMobileAnnouncement(isExpanded ? null : a.id)}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 hover:text-white"
+                              className="rounded-lg border border-white/10 bg-white/5 px-1.5 py-1 text-[10px] font-bold text-slate-300 hover:text-white"
+                              aria-label={isExpanded ? "Collapse announcement" : "Expand announcement"}
                             >
-                              {isExpanded ? "Less ▲" : "View ▼"}
+                              {isExpanded ? "▲" : "▼"}
                             </button>
                             <button
                               type="button"
                               onClick={() => dismissAnnouncement(a.id)}
-                              className="rounded-lg p-1 text-slate-400 hover:text-white"
+                              className="rounded-lg p-1 text-slate-400 hover:text-white transition"
                               title="Dismiss announcement"
                               aria-label="Dismiss Announcement"
                             >
-                              <Icon name="x" size={15} />
+                              <Icon name="x" size={14} />
                             </button>
                           </div>
                         </div>
@@ -1674,15 +1681,15 @@ export default function Home() {
           {/* Low Balance Alert Nudge */}
           {walletBalancePkr < 100 && activePage !== "Add Funds" && (
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/20 text-base font-bold text-amber-400">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-base font-bold text-amber-400">
                   ⚠️
                 </span>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="font-bold text-amber-200">
                     Low Wallet Balance: <span className="font-mono text-white">₨{walletBalancePkr.toFixed(2)}</span>
                   </p>
-                  <p className="text-[11px] text-amber-300/80">
+                  <p className="text-[11px] text-amber-300/80 leading-snug">
                     Add funds via SadaPay, Easypaisa, or JazzCash to ensure your automated orders process without interruption.
                   </p>
                 </div>
@@ -1847,74 +1854,74 @@ export default function Home() {
       {/* Mobile Bottom Navigation Bar */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-white/10 bg-[#0b1418]/95 px-2 py-2 backdrop-blur-lg pb-safe md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-white/10 bg-[#0b1418]/95 px-1 sm:px-2 py-1.5 sm:py-2 backdrop-blur-lg pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] md:hidden"
       >
         <button
           onClick={() => navigate("Dashboard")}
-          className={`flex flex-col items-center gap-0.5 rounded-xl px-2.5 py-1 transition ${
+          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 sm:px-2.5 py-1 transition ${
             activePage === "Dashboard"
               ? "text-[#baff00]"
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Icon name="home" size={20} />
-          <span className="text-[10px] font-semibold">Home</span>
+          <Icon name="home" size={19} />
+          <span className="text-[9px] sm:text-[10px] font-semibold">Home</span>
         </button>
 
         <button
           onClick={() => navigate("Services")}
-          className={`flex flex-col items-center gap-0.5 rounded-xl px-2.5 py-1 transition ${
+          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 sm:px-2.5 py-1 transition ${
             activePage === "Services"
               ? "text-[#baff00]"
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Icon name="layers" size={20} />
-          <span className="text-[10px] font-semibold">Services</span>
+          <Icon name="layers" size={19} />
+          <span className="text-[9px] sm:text-[10px] font-semibold">Services</span>
         </button>
 
         <button
           onClick={() => navigate("New Order")}
-          className="relative -top-3 flex flex-col items-center"
+          className="relative -top-2.5 flex flex-col items-center shrink-0"
           title="Place New Order"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#baff00] text-[#07100f] shadow-lg shadow-[#baff00]/25 transition active:scale-95">
-            <Icon name="plus" size={22} strokeWidth={2.5} />
+          <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-[#baff00] text-[#07100f] shadow-lg shadow-[#baff00]/25 transition active:scale-95">
+            <Icon name="plus" size={20} strokeWidth={2.5} />
           </div>
-          <span className="mt-0.5 text-[10px] font-bold text-white">Order</span>
+          <span className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-white">Order</span>
         </button>
 
         <button
           onClick={() => navigate("Orders")}
-          className={`flex flex-col items-center gap-0.5 rounded-xl px-2.5 py-1 transition ${
+          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 sm:px-2.5 py-1 transition ${
             activePage === "Orders"
               ? "text-[#baff00]"
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Icon name="cart" size={20} />
-          <span className="text-[10px] font-semibold">Orders</span>
+          <Icon name="cart" size={19} />
+          <span className="text-[9px] sm:text-[10px] font-semibold">Orders</span>
         </button>
 
         <button
           onClick={() => navigate("Add Funds")}
-          className={`flex flex-col items-center gap-0.5 rounded-xl px-2.5 py-1 transition ${
+          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 sm:px-2.5 py-1 transition ${
             activePage === "Add Funds"
               ? "text-[#baff00]"
               : "text-slate-400 hover:text-white"
           }`}
         >
-          <Icon name="wallet" size={20} />
-          <span className="text-[10px] font-semibold">Funds</span>
+          <Icon name="wallet" size={19} />
+          <span className="text-[9px] sm:text-[10px] font-semibold">Funds</span>
         </button>
 
         <button
           onClick={() => setSidebarOpen(true)}
-          className="flex flex-col items-center gap-0.5 rounded-xl px-2.5 py-1 text-slate-400 transition hover:text-white"
+          className="flex flex-col items-center gap-0.5 rounded-xl px-1.5 sm:px-2.5 py-1 text-slate-400 transition hover:text-white"
           title="Open Menu"
         >
-          <Icon name="menu" size={20} />
-          <span className="text-[10px] font-semibold">Menu</span>
+          <Icon name="menu" size={19} />
+          <span className="text-[9px] sm:text-[10px] font-semibold">Menu</span>
         </button>
       </nav>
 
