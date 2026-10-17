@@ -5,7 +5,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
   title: "Instagram SMM Panel Pakistan – Buy Followers, Likes & Reels Views with JazzCash",
-  description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Rs 50 free signup bonus.",
+  description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Free views & likes test trial.",
   keywords: [
     "smm panel",
     "best smm panel",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Instagram SMM Panel Pakistan – Buy Followers, Likes & Reels Views with JazzCash",
-    description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Rs 50 free signup bonus.",
+    description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Free views & likes test trial.",
     url: "https://vexarosmm.com/instagram-services",
     siteName: "VEXARO SMM Services",
     type: "website",
@@ -44,7 +44,7 @@ const jsonLd = {
         url: SITE_URL,
       },
       serviceType: "Instagram Services",
-      description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Rs 50 free signup bonus.",
+      description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Free views & likes test trial.",
       areaServed: ["Worldwide", "Pakistan"],
     },
     {

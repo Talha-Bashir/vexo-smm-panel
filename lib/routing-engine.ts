@@ -613,7 +613,7 @@ export async function runLeastCostRouting(): Promise<number> {
   // Purge any stale/obsolete routed services that no longer match any valid groupKey
   const activeKeys = routedItems.map((r) => r.groupKey as string);
   if (activeKeys.length > 0) {
-    await db.query(`DELETE FROM vexo_routed_services WHERE service_group_key != ALL($1::varchar[])`, [activeKeys]);
+    await db.query(`DELETE FROM vexo_routed_services WHERE service_group_key != ALL($1::varchar[]) AND service_group_key NOT LIKE 'free_trial_%'`, [activeKeys]);
   }
 
   return routedItems.length;

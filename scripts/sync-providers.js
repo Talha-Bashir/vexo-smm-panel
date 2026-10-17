@@ -757,7 +757,7 @@ async function main() {
   // Purge any stale/obsolete routed services that no longer match any valid groupKey
   const activeKeys = routedItems.map((r) => r.groupKey);
   if (activeKeys.length > 0) {
-    await pool.query(`DELETE FROM vexo_routed_services WHERE service_group_key != ALL($1::varchar[])`, [activeKeys]);
+    await pool.query(`DELETE FROM vexo_routed_services WHERE service_group_key != ALL($1::varchar[]) AND service_group_key NOT LIKE 'free_trial_%'`, [activeKeys]);
   }
 
   const routedCount = routedItems.length;

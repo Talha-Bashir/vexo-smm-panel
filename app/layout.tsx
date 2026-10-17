@@ -40,7 +40,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = settings.seo_meta_title || "SMM Panel Pakistan – Buy Instagram Followers, TikTok Likes & YouTube Views";
   const desc =
     settings.seo_meta_description ||
-    "VEXARO SMM is an affordable SMM panel in Pakistan. Buy Instagram followers, TikTok likes, YouTube watch time & views, Facebook followers and Telegram members. Pay with JazzCash, Easypaisa, SadaPay or crypto. Instant delivery + Rs 50 free signup bonus.";
+    "VEXARO SMM is an affordable SMM panel in Pakistan. Buy Instagram followers, TikTok likes, YouTube watch time & views, Facebook followers and Telegram members. Pay with JazzCash, Easypaisa, SadaPay or crypto. Instant delivery + Free TikTok/Instagram views & likes test trial.";
 
   const rawKeywords = settings.seo_meta_keywords || "";
   const keywords = rawKeywords

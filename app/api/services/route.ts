@@ -51,24 +51,33 @@ export async function GET(req: Request) {
         if (row.auto_route !== false) {
           pricing = resolveEffectiveServicePricing(row, balances, liveUsdToPkr);
         } else {
+          const isFreeTrial =
+            String(row.category || "").includes("Free Test Trial") ||
+            String(row.service_group_key || "").startsWith("free_trial_") ||
+            (Number(row.custom_rate_pkr) === 0 && Number(row.rate_pkr) === 0);
+
+          let manualRatePkr = 0;
+          let manualRateUsd = 0;
           const baseRateUsd = Number(row.base_rate_usd || 0);
           const mult = Number(row.rate_multiplier || 1.07);
-          const rawCustom = Number(row.custom_rate_pkr);
-          const minWholesalePkr = baseRateUsd * liveUsdToPkr;
-          const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
-          let manualRatePkr: number;
-          if (Number.isFinite(rawCustom) && rawCustom > 0) {
-            manualRatePkr = rawCustom < minProfitablePkr ? minProfitablePkr : Math.round(rawCustom * 10000) / 10000;
-          } else {
-            const calc = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
-            manualRatePkr = calc < minProfitablePkr ? minProfitablePkr : calc;
+
+          if (!isFreeTrial) {
+            const rawCustom = Number(row.custom_rate_pkr);
+            const minWholesalePkr = baseRateUsd * liveUsdToPkr;
+            const minProfitablePkr = Math.round(minWholesalePkr * 1.05 * 100) / 100;
+            if (Number.isFinite(rawCustom) && rawCustom > 0) {
+              manualRatePkr = rawCustom < minProfitablePkr ? minProfitablePkr : Math.round(rawCustom * 10000) / 10000;
+            } else {
+              const calc = calculateLivePricePkr(baseRateUsd, mult, liveUsdToPkr);
+              manualRatePkr = calc < minProfitablePkr ? minProfitablePkr : calc;
+            }
+            manualRateUsd = Math.round((manualRatePkr / (liveUsdToPkr || 285)) * 10000) / 10000;
           }
-          const manualRateUsd = Math.round((manualRatePkr / (liveUsdToPkr || 285)) * 10000) / 10000;
 
           pricing = {
             activeProviderId: row.active_provider_id,
             activeRemoteServiceId: row.active_remote_service_id,
-            baseRateUsd,
+            baseRateUsd: isFreeTrial ? 0 : baseRateUsd,
             rateMultiplier: mult,
             rateUsd: manualRateUsd,
             ratePkr: manualRatePkr,

@@ -959,25 +959,25 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ---------------- 3B. FREE SIGNUP BONUS PROMO ---------------- */}
+        {/* ---------------- 3B. FREE TEST TRIAL PROMO ---------------- */}
         <section className="w-full border-b border-white/10 bg-gradient-to-r from-[#101b08] via-[#0b1315] to-[#101b08] py-[clamp(2rem,5vw,3.5rem)]">
           <div className="mx-auto max-w-5xl px-[clamp(1rem,4vw,2.5rem)] text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-lime-300/30 bg-lime-300/10 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-[#baff00]">
               <span>🎁</span>
-              <span>Welcome Offer — No Deposit Needed</span>
+              <span>1-Time Free Test Trial — Zero Deposit Needed</span>
             </div>
             <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
-              Get <span className="text-[#baff00]">Rs 50 FREE</span> to Try Real Followers, Likes &amp; Views
+              Get <span className="text-[#baff00]">Free Views or Likes</span> for TikTok &amp; Instagram
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm sm:text-base font-medium leading-relaxed text-slate-300">
-              Create your free account and we add Rs 50 bonus credit instantly — test our services before you spend a single rupee. Fair use: one bonus per person; our system automatically blocks repeat claims.
+              Test our real high-speed servers before depositing a single rupee. Claim up to <strong>1,000 Free Views</strong> or <strong>50 Free Likes</strong> on TikTok or Instagram (powered by smoothsmm). 100% free, 1-time trial per account!
             </p>
             <div className="mt-6 flex justify-center">
               <Link
-                href="/signup"
+                href="/dashboard"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#baff00] px-8 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105"
               >
-                <span>Claim My Free Rs 50</span>
+                <span>Claim Free Test Services</span>
                 <Icon name="arrowRight" size={16} />
               </Link>
             </div>

@@ -14,16 +14,15 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Authentication required." }, { status: 401 });
     }
 
-    const [wallet, settings, liveUsdRate, bonusClaim] = await Promise.all([
+    const [wallet, settings, liveUsdRate, freeTrialClaim] = await Promise.all([
       getUserWallet(Number(user.id)),
       getAllPlatformSettings(),
       getLiveForexUsdRate(),
       db
         .query(
-          `SELECT id, amount_pkr, status, reason, claim_reference, created_at, updated_at
-           FROM vexo_signup_bonus_claims
-           WHERE user_id = $1 AND status = 'CLAIMED'
-           ORDER BY updated_at DESC, created_at DESC
+          `SELECT id, service_name, quantity, created_at
+           FROM vexo_free_trial_claims
+           WHERE user_id = $1
            LIMIT 1`,
           [Number(user.id)]
         )
@@ -34,14 +33,13 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       ...wallet,
-      bonusClaim: bonusClaim
+      freeTrialClaimed: Boolean(freeTrialClaim),
+      freeTrialClaim: freeTrialClaim
         ? {
-            id: String(bonusClaim.id),
-            amount: Number(bonusClaim.amount_pkr),
-            status: bonusClaim.status,
-            reason: bonusClaim.reason,
-            claimReference: bonusClaim.claim_reference,
-            grantedAt: bonusClaim.updated_at || bonusClaim.created_at,
+            id: String(freeTrialClaim.id),
+            serviceName: freeTrialClaim.service_name,
+            quantity: Number(freeTrialClaim.quantity),
+            claimedAt: freeTrialClaim.created_at,
           }
         : null,
       sadaPayNumber: settings.sadapay_number || "03197008275",

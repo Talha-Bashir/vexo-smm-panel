@@ -302,12 +302,12 @@ export default function ServiceLandingPage() {
                 <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-bold text-[#baff00]">Exclusive Bonus</span>
               </div>
               <h3 className="text-base font-bold text-white group-hover:text-[#baff00] transition">
-                Free Signup Bonus SMM Panel in Pakistan: Claim ₨50 Free Balance
+                Free SMM Test Trial in Pakistan: Claim Free Views &amp; Likes
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
-                New users get ₨50 automatically credited to test Instagram, TikTok, or YouTube services with zero risk.
+                New users can claim up to 1,000 free views or 50 free likes to test our servers before depositing. 1-time trial per user.
               </p>
-              <span className="text-[11px] font-semibold text-[#baff00] block pt-1">Claim Free Bonus →</span>
+              <span className="text-[11px] font-semibold text-[#baff00] block pt-1">Claim Free Trial →</span>
             </Link>
           </div>
         </section>

@@ -258,17 +258,17 @@ export async function reserveWalletForOrder(input: {
     const totalAvailable = Math.round((realBalancePkr + bonusBalancePkr) * 100) / 100;
     const chargePkr = Math.round(input.chargePkr * 100) / 100;
 
-    if (!Number.isFinite(chargePkr) || chargePkr <= 0) {
+    if (!Number.isFinite(chargePkr) || chargePkr < 0) {
       throw new Error("Invalid order charge.");
     }
 
-    if (totalAvailable + 0.000001 < chargePkr) {
+    if (chargePkr > 0 && totalAvailable + 0.000001 < chargePkr) {
       throw new InsufficientWalletBalanceError(totalAvailable, chargePkr);
     }
 
     // Promotional bonus credit is deducted first, then real deposited balance
-    const bonusChargePkr = Math.round(Math.min(bonusBalancePkr, chargePkr) * 100) / 100;
-    const realChargePkr = Math.round((chargePkr - bonusChargePkr) * 100) / 100;
+    const bonusChargePkr = chargePkr > 0 ? Math.round(Math.min(bonusBalancePkr, chargePkr) * 100) / 100 : 0;
+    const realChargePkr = chargePkr > 0 ? Math.round((chargePkr - bonusChargePkr) * 100) / 100 : 0;
 
     const orderResult = await client.query(
       `INSERT INTO vexo_orders

@@ -5,7 +5,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
   title: "TikTok SMM Panel Pakistan – Buy Followers, Likes & Views with Easypaisa",
-  description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Rs 50 free signup bonus.",
+  description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Free views & likes test trial.",
   keywords: [
     "smm panel",
     "best smm panel",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "TikTok SMM Panel Pakistan – Buy Followers, Likes & Views with Easypaisa",
-    description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Rs 50 free signup bonus.",
+    description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Free views & likes test trial.",
     url: "https://vexarosmm.com/tiktok-services",
     siteName: "VEXARO SMM Services",
     type: "website",
@@ -44,7 +44,7 @@ const jsonLd = {
         url: SITE_URL,
       },
       serviceType: "TikTok Services",
-      description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Rs 50 free signup bonus.",
+      description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Free views & likes test trial.",
       areaServed: ["Worldwide", "Pakistan"],
     },
     {
@@ -328,12 +328,12 @@ export default function ServiceLandingPage() {
                 <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-bold text-[#baff00]">Exclusive Bonus</span>
               </div>
               <h3 className="text-base font-bold text-white group-hover:text-[#baff00] transition">
-                Free Signup Bonus SMM Panel in Pakistan: Claim ₨50 Free Balance
+                Free SMM Test Trial in Pakistan: Claim Free Views &amp; Likes
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
-                Test 15k-20k instant TikTok views or followers with zero upfront deposit using VEXARO's welcome bonus.
+                Test up to 1,000 free TikTok views or 50 free likes with zero upfront deposit. 1-time free trial per account!
               </p>
-              <span className="text-[11px] font-semibold text-[#baff00] block pt-1">Claim Free Bonus →</span>
+              <span className="text-[11px] font-semibold text-[#baff00] block pt-1">Claim Free Trial →</span>
             </Link>
           </div>
         </section>
