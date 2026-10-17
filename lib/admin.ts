@@ -147,7 +147,8 @@ export const DEFAULT_PLATFORM_SETTINGS: Record<string, string> = {
   cloudflare_turnstile_site_key: "",
   cloudflare_turnstile_secret_key: "",
   resend_api_key: "",
-  resend_from_email: "Vexaro SMM <onboarding@resend.dev>",
+  resend_from_email: "VEXARO SMM <noreply@vexarosmm.com>",
+  sender_email: "VEXARO SMM <noreply@vexarosmm.com>",
 
   // Local Accounts
   sadapay_number: "03197008275",

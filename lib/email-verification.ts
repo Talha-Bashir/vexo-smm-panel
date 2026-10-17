@@ -129,10 +129,16 @@ export async function createAndSendVerification(params: {
   if (!emailResult.ok) {
     console.error("[EmailVerification] Failed to deliver code to", cleanEmail, emailResult.error);
     // In dev / unverified sandbox domain scenario, we return simulatedCode so testing does not block
+    if (process.env.NODE_ENV !== "production" || emailResult.isSandboxRestricted) {
+      return {
+        ok: true,
+        error: emailResult.error,
+        simulatedCode: code,
+      };
+    }
     return {
-      ok: true, // Verification record was generated in DB
-      error: emailResult.error,
-      simulatedCode: process.env.NODE_ENV !== "production" || emailResult.isSandboxRestricted ? code : undefined,
+      ok: false,
+      error: emailResult.error || "Failed to deliver verification email. Please check your email address or try again.",
     };
   }
 

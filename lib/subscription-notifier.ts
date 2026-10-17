@@ -45,7 +45,13 @@ export async function sendSubscriptionEmail(params: {
   }
 
   const resendApiKey = await getNotificationSetting("resend_api_key", "RESEND_API_KEY");
-  const senderEmail = (await getNotificationSetting("sender_email", "SENDER_EMAIL")) || "Vexaro Subscriptions <onboarding@resend.dev>";
+  let senderEmail =
+    (await getNotificationSetting("resend_from_email", "RESEND_FROM_EMAIL")) ||
+    (await getNotificationSetting("sender_email", "SENDER_EMAIL")) ||
+    "VEXARO SMM <noreply@vexarosmm.com>";
+  if (!senderEmail || senderEmail.includes("onboarding@resend.dev")) {
+    senderEmail = "VEXARO SMM <noreply@vexarosmm.com>";
+  }
 
   if (!resendApiKey) {
     return {

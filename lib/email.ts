@@ -200,11 +200,16 @@ export async function sendVerificationEmail(params: SendVerificationEmailParams)
     process.env.RESEND_API_KEY ||
     "";
 
-  const senderEmail =
-    (await getPlatformSetting("sender_email", "").catch(() => "")) ||
+  let senderEmail =
     (await getPlatformSetting("resend_from_email", "").catch(() => "")) ||
+    (await getPlatformSetting("sender_email", "").catch(() => "")) ||
     process.env.RESEND_FROM_EMAIL ||
-    "Vexaro SMM <onboarding@resend.dev>";
+    "VEXARO SMM <noreply@vexarosmm.com>";
+
+  // Ensure we NEVER use sandbox onboarding@resend.dev since vexarosmm.com is verified
+  if (!senderEmail || senderEmail.includes("onboarding@resend.dev")) {
+    senderEmail = "VEXARO SMM <noreply@vexarosmm.com>";
+  }
 
   if (resendApiKey && resendApiKey.trim().length > 5) {
     try {

@@ -52,6 +52,7 @@ export async function POST(req: Request) {
       "cloudflare_turnstile_secret_key",
       "resend_api_key",
       "resend_from_email",
+      "sender_email",
       "brevo_api_key",
 
       // Local Accounts

@@ -6595,11 +6595,11 @@ function SubscriptionsAdmin({
                 type="text"
                 value={senderEmailInput}
                 onChange={(e) => setSenderEmailInput(e.target.value)}
-                placeholder="Vexaro Subscriptions <onboarding@resend.dev>"
+                placeholder="VEXARO SMM <noreply@vexarosmm.com>"
                 className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2 font-mono text-xs text-white outline-none focus:border-[#00D4FF]"
               />
               <p className="text-[10px] text-slate-500">
-                Default: onboarding@resend.dev (or verified domain address)
+                Default: VEXARO SMM &lt;noreply@vexarosmm.com&gt; (verified domain)
               </p>
             </div>
           </div>

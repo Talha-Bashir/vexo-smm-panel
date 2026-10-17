@@ -51,7 +51,7 @@ export function PlatformSettingsView() {
   const [cfSiteKey, setCfSiteKey] = useState("");
   const [cfSecretKey, setCfSecretKey] = useState("");
   const [resendApiKey, setResendApiKey] = useState("");
-  const [resendFromEmail, setResendFromEmail] = useState("Vexaro SMM <onboarding@resend.dev>");
+  const [resendFromEmail, setResendFromEmail] = useState("VEXARO SMM <noreply@vexarosmm.com>");
   const [brevoApiKey, setBrevoApiKey] = useState("");
 
   // Test Email tool states
@@ -200,6 +200,7 @@ export function PlatformSettingsView() {
         cloudflare_turnstile_secret_key: cfSecretKey,
         resend_api_key: resendApiKey,
         resend_from_email: resendFromEmail,
+        sender_email: resendFromEmail,
         brevo_api_key: brevoApiKey,
       };
 
@@ -947,7 +948,7 @@ export function PlatformSettingsView() {
                 type="text"
                 value={resendFromEmail}
                 onChange={(e) => setResendFromEmail(e.target.value)}
-                placeholder="VEXARO SMM <onboarding@resend.dev>"
+                placeholder="VEXARO SMM <noreply@vexarosmm.com>"
                 className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070e10] px-3.5 py-2.5 font-mono text-xs text-white focus:border-[#baff00] outline-none"
               />
             </div>
