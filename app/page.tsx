@@ -9,8 +9,8 @@ import { Social3DIcon } from "@/components/social-3d-icon";
 export type PlatformTheme = "dark" | "light";
 
 export const THEME_OPTIONS: { id: PlatformTheme; name: string; icon: string; dot: string }[] = [
-  { id: "dark", name: "Cyber Dark", icon: "⚡", dot: "#baff00" },
-  { id: "light", name: "Clean Light", icon: "☀️", dot: "#10b981" },
+  { id: "dark", name: "Smooth Dark", icon: "⚡", dot: "#6366f1" },
+  { id: "light", name: "Clean Light", icon: "☀️", dot: "#3b82f6" },
 ];
 
 type Service = {
@@ -196,7 +196,7 @@ function Icon({
 
 function BrandMark() {
   return (
-    <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(186,255,0,0.35)] border border-[#baff00]/30 group-hover:border-[#baff00]/60 transition-all duration-300">
+    <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(99,102,241,0.25)] border border-indigo-500/30 group-hover:border-indigo-500/60 transition-all duration-300">
       <img
         src="/logo.png"
         alt="VEXARO SMM Panel - Direct Provider for Social Media Growth in Pakistan"
@@ -289,7 +289,7 @@ function renderFormattedAnnouncement(text: string) {
                 href={part}
                 target="_blank"
                 rel="noreferrer"
-                className="font-bold text-[#baff00] underline hover:text-[#d2ff5a] transition break-all inline-flex items-center gap-1"
+                className="font-bold text-indigo-400 underline hover:text-indigo-300 transition break-all inline-flex items-center gap-1"
               >
                 <span>{part}</span>
                 <span className="text-[10px]">↗</span>
@@ -449,20 +449,20 @@ export default function LandingPage() {
   }, [currentTheme]);
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#070d0d] font-sans text-white selection:bg-[#baff00] selection:text-[#07100f]">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#0b0f19] font-sans text-white selection:bg-indigo-500 selection:text-white">
       {/* Background Ambient Glows */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden hero-ambient-glow">
-        <div className="absolute -left-32 top-10 h-[clamp(16rem,30vw,32rem)] w-[clamp(16rem,30vw,32rem)] rounded-full bg-[#baff00]/5 blur-[120px]" />
-        <div className="absolute right-0 top-1/4 h-[clamp(20rem,35vw,36rem)] w-[clamp(20rem,35vw,36rem)] rounded-full bg-[#00ffcc]/4 blur-[140px]" />
-        <div className="absolute bottom-10 left-1/3 h-[clamp(14rem,25vw,28rem)] w-[clamp(14rem,25vw,28rem)] rounded-full bg-[#baff00]/4 blur-[130px]" />
+        <div className="absolute -left-32 top-10 h-[clamp(16rem,30vw,32rem)] w-[clamp(16rem,30vw,32rem)] rounded-full bg-indigo-600/10 blur-[130px]" />
+        <div className="absolute right-0 top-1/4 h-[clamp(20rem,35vw,36rem)] w-[clamp(20rem,35vw,36rem)] rounded-full bg-blue-600/10 blur-[140px]" />
+        <div className="absolute bottom-10 left-1/3 h-[clamp(14rem,25vw,28rem)] w-[clamp(14rem,25vw,28rem)] rounded-full bg-indigo-500/8 blur-[130px]" />
       </div>
 
       {/* ---------------- 0. TOP ANNOUNCEMENT BAR (WHATSAPP CHANNEL & LIVE SITE) ---------------- */}
       {!topBannerDismissed && (
-        <div className="relative z-50 w-full border-b border-emerald-500/20 bg-[#071914] px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-emerald-300 animate-in fade-in duration-200">
+        <div className="relative z-50 w-full border-b border-indigo-500/20 bg-[#0e172a] px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-indigo-300 animate-in fade-in duration-200">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="flex h-2 w-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
               <span className="font-bold text-white shrink-0 text-[11px] sm:text-xs">📢 Updates:</span>
               {announcements.length > 0 ? (
                 <button
@@ -472,10 +472,10 @@ export default function LandingPage() {
                     setSelectedAnnouncement(announcements[0]);
                     setAnnouncementModalOpen(true);
                   }}
-                  className="font-bold text-lime-400 hover:text-white hover:underline transition text-left cursor-pointer truncate text-[11px] sm:text-xs min-w-0"
+                  className="font-bold text-indigo-300 hover:text-white hover:underline transition text-left cursor-pointer truncate text-[11px] sm:text-xs min-w-0"
                 >
                   <span className="truncate">{announcements[0].title}</span>
-                  <span className="ml-1.5 hidden sm:inline-block rounded bg-lime-400/20 px-1.5 py-0.5 text-[9px] font-black text-[#baff00] uppercase">VIEW NOTICE</span>
+                  <span className="ml-1.5 hidden sm:inline-block rounded bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-black text-indigo-300 uppercase">VIEW NOTICE</span>
                 </button>
               ) : (
                 <span className="truncate text-[11px] sm:text-xs text-slate-300">Join our WhatsApp Channel for daily discounts &amp; live platform status</span>
@@ -486,7 +486,7 @@ export default function LandingPage() {
                 href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] sm:text-xs font-black text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-black transition"
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition"
               >
                 <Icon name="whatsapp" size={12} />
                 <span className="hidden sm:inline">Join WhatsApp Channel</span>
@@ -519,112 +519,65 @@ export default function LandingPage() {
       )}
 
       {/* ---------------- 1. NAVBAR (HEADER) ---------------- */}
-      <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#070d0d]/90 backdrop-blur-xl transition-all">
-        <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-[clamp(1rem,3vw,2rem)]">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-xl transition-all">
+        <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-[clamp(1rem,3vw,2.5rem)]">
           {/* Brand Logo */}
           <div className="flex items-center gap-3 shrink-0 mr-4 sm:mr-6 lg:mr-8 xl:mr-10">
             <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
               <BrandMark />
-              <span className="text-xl sm:text-2xl font-black tracking-tight text-white group-hover:text-[#baff00] transition whitespace-nowrap">
-                VEXARO <span className="text-[#baff00]">SMM</span>
+              <span className="text-xl sm:text-2xl font-black tracking-tight text-white group-hover:text-indigo-400 transition whitespace-nowrap">
+                VEXARO <span className="bg-gradient-to-r from-indigo-400 to-blue-500 bg-clip-text text-transparent">SMM</span>
               </span>
             </Link>
           </div>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-5 xl:gap-8 text-sm font-semibold text-slate-300">
-            <Link href="/services" className="transition hover:text-[#baff00] whitespace-nowrap">
+            <Link href="/services" className="transition hover:text-indigo-400 whitespace-nowrap">
               Services
             </Link>
-            <a href="#features" className="transition hover:text-[#baff00] whitespace-nowrap">
+            <a href="#features" className="transition hover:text-indigo-400 whitespace-nowrap">
               Features
             </a>
-            <a href="#how-it-works" className="transition hover:text-[#baff00] whitespace-nowrap">
+            <a href="#how-it-works" className="transition hover:text-indigo-400 whitespace-nowrap">
               How It Works
             </a>
-            <a href="#faq" className="transition hover:text-[#baff00] whitespace-nowrap">
+            <a href="#faq" className="transition hover:text-indigo-400 whitespace-nowrap">
               FAQ
             </a>
-            <a href="#updates" className="transition hover:text-[#baff00] whitespace-nowrap">
+            <a href="#updates" className="transition hover:text-indigo-400 whitespace-nowrap">
               Updates
             </a>
-            <Link href="/blog" className="transition hover:text-[#baff00] text-emerald-300 font-bold flex items-center gap-1 whitespace-nowrap">
+            <Link href="/blog" className="transition hover:text-indigo-400 text-slate-300 font-semibold flex items-center gap-1.5 whitespace-nowrap">
               <span>Blog</span>
-              <span className="flex h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
+              <span className="flex h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
             </Link>
-            <Link href="/dashboard" className="transition hover:text-[#baff00] whitespace-nowrap">
+            <Link href="/dashboard" className="transition hover:text-indigo-400 whitespace-nowrap">
               API Docs
             </Link>
           </nav>
 
           {/* Action Buttons */}
-          <div className="hidden sm:flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* 4-Theme Selector Dropdown */}
-            <div className="relative" ref={themeMenuRef}>
-              <button
-                type="button"
-                onClick={() => setThemeMenuOpen(!themeMenuOpen)}
-                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 sm:px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-white/30 shrink-0 cursor-pointer"
-                title="Choose Theme"
-                aria-label="Choose Theme"
-              >
-                <span>{currentThemeOption.icon}</span>
-                <span className="hidden md:inline font-bold">{currentThemeOption.name}</span>
-                <Icon name="chevronDown" size={12} className="text-slate-400" />
-              </button>
-
-              {themeMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-white/10 bg-[#0d1617] p-1.5 shadow-2xl z-50 animate-in fade-in duration-150">
-                  <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    Select Theme
-                  </div>
-                  {THEME_OPTIONS.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        selectTheme(t.id);
-                        setThemeMenuOpen(false);
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition cursor-pointer ${
-                        currentTheme === t.id
-                          ? "bg-white/15 text-white"
-                          : "text-slate-300 hover:bg-white/5 hover:text-white"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span>{t.icon}</span>
-                        <span>{t.name}</span>
-                      </div>
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: t.dot }}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
+          <div className="hidden sm:flex items-center gap-2 sm:gap-3 shrink-0">
             {hasSession ? (
               <Link
                 href="/dashboard"
-                className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105 whitespace-nowrap shrink-0"
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-indigo-500/20 transition hover:scale-105 whitespace-nowrap shrink-0"
               >
                 <Icon name="bolt" size={15} />
-                <span>Open Panel</span>
+                <span>Open Dashboard</span>
               </Link>
             ) : (
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Link
                   href="/login"
-                  className="rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-white/5 transition whitespace-nowrap shrink-0"
+                  className="rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap shrink-0"
                 >
                   Login
                 </Link>
                 <Link
                   href="/signup"
-                  className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105 whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-md shadow-indigo-500/20 transition hover:scale-105 whitespace-nowrap shrink-0"
                 >
                   <span>Sign Up</span>
                   <span className="text-[11px] font-black">→</span>
@@ -633,26 +586,13 @@ export default function LandingPage() {
             )}
           </div>
 
-          {/* Mobile Theme Cycle (< 640px) & Hamburger Button */}
+          {/* Mobile Hamburger Button */}
           <div className="flex items-center gap-2 lg:hidden">
-            <button
-              type="button"
-              onClick={() => {
-                const idx = THEME_OPTIONS.findIndex((t) => t.id === currentTheme);
-                const next = THEME_OPTIONS[(idx + 1) % THEME_OPTIONS.length].id;
-                selectTheme(next);
-              }}
-              className="flex sm:hidden h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#121b1d] text-slate-300"
-              title={`Theme: ${currentThemeOption.name} (Tap to change)`}
-              aria-label="Cycle Theme"
-            >
-              <span className="text-base">{currentThemeOption.icon}</span>
-            </button>
             <button
               type="button"
               suppressHydrationWarning
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#121b1d] text-slate-300"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-[#111827] text-slate-300 hover:text-white"
               aria-label="Toggle navigation menu"
             >
               <Icon name={mobileMenuOpen ? "x" : "menu"} size={20} />
@@ -662,71 +602,71 @@ export default function LandingPage() {
 
         {/* Mobile / Tablet Dropdown Sheet */}
         {mobileMenuOpen && (
-          <div className="border-b border-white/10 bg-[#0d1617] px-4 py-6 lg:hidden">
+          <div className="border-b border-slate-800 bg-[#111827] px-4 py-6 lg:hidden">
             <nav className="flex flex-col gap-4 text-sm font-semibold text-slate-300">
               <Link
                 href="/services"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 hover:text-[#baff00]"
+                className="py-1 hover:text-indigo-400"
               >
                 Services Catalog
               </Link>
               <a
                 href="#features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 hover:text-[#baff00]"
+                className="py-1 hover:text-indigo-400"
               >
                 Platform Features
               </a>
               <a
                 href="#how-it-works"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 hover:text-[#baff00]"
+                className="py-1 hover:text-indigo-400"
               >
                 How It Works
               </a>
               <a
                 href="#faq"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 hover:text-[#baff00]"
+                className="py-1 hover:text-indigo-400"
               >
                 FAQ
               </a>
               <a
                 href="#updates"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 hover:text-[#baff00]"
+                className="py-1 hover:text-indigo-400"
               >
                 System Updates
               </a>
               <Link
                 href="/blog"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 hover:text-[#baff00] text-[#baff00] font-bold flex items-center justify-between"
+                className="py-1 hover:text-indigo-400 text-indigo-400 font-bold flex items-center justify-between"
               >
                 <span>Growth Blog &amp; Guides</span>
-                <span className="text-[10px] bg-[#baff00]/20 text-[#baff00] rounded-full px-2 py-0.5 font-bold">New</span>
+                <span className="text-[10px] bg-indigo-500/20 text-indigo-300 rounded-full px-2 py-0.5 font-bold">New</span>
               </Link>
               <Link
                 href="/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 hover:text-[#baff00]"
+                className="py-1 hover:text-indigo-400"
               >
                 API Documentation
               </Link>
             </nav>
-            <div className="mt-6 flex flex-col gap-3 pt-4 border-t border-white/10">
+            <div className="mt-6 flex flex-col gap-3 pt-4 border-t border-slate-800">
               <Link
                 href="/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3 text-center text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.3)]"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 py-3 text-center text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-400 hover:to-blue-500 transition"
               >
                 <span>⚡ Launch Antigravity New Order</span>
               </Link>
               {hasSession ? (
                 <Link
                   href="/dashboard"
-                  className="w-full rounded-xl border border-white/20 bg-white/10 py-2.5 text-center text-sm font-bold text-white"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2.5 text-center text-sm font-bold text-white hover:bg-slate-700 transition"
                 >
                   Go to Dashboard →
                 </Link>
@@ -734,13 +674,13 @@ export default function LandingPage() {
                 <>
                   <Link
                     href="/login"
-                    className="w-full rounded-xl border border-white/15 bg-white/5 py-2.5 text-center text-sm font-bold text-white"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 text-center text-sm font-bold text-white hover:bg-slate-700 transition"
                   >
                     Login to Account
                   </Link>
                   <Link
                     href="/signup"
-                    className="w-full rounded-xl border border-white/15 bg-white/5 py-2.5 text-center text-sm font-bold text-white"
+                    className="w-full rounded-xl bg-indigo-600 py-2.5 text-center text-sm font-bold text-white hover:bg-indigo-500 transition shadow-md shadow-indigo-500/20"
                   >
                     Create Free Account
                   </Link>
@@ -756,8 +696,8 @@ export default function LandingPage() {
                     onClick={() => selectTheme(t.id)}
                     className={`flex items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-bold transition ${
                       currentTheme === t.id
-                        ? "border-[#baff00] bg-white/15 text-white"
-                        : "border-white/10 bg-white/5 text-slate-300"
+                        ? "border-indigo-500 bg-indigo-500/15 text-white"
+                        : "border-slate-800 bg-slate-800/50 text-slate-300 hover:border-slate-700"
                     }`}
                   >
                     <span>{t.icon}</span>
@@ -771,7 +711,7 @@ export default function LandingPage() {
                 href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#25d366]/40 bg-[#25d366]/15 py-2.5 text-center text-xs font-bold text-[#25d366] transition hover:bg-[#25d366] hover:text-[#07100f]"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/15 py-2.5 text-center text-xs font-bold text-emerald-400 transition hover:bg-emerald-500 hover:text-white"
               >
                 <Icon name="whatsapp" size={16} />
                 <span>Join Official WhatsApp Channel</span>
@@ -781,9 +721,9 @@ export default function LandingPage() {
                 href="https://vexarosmm.com/"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2 text-center text-[11px] font-mono text-slate-300 transition hover:text-[#baff00]"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-800/50 py-2 text-center text-[11px] font-mono text-slate-300 transition hover:text-indigo-400"
               >
-                <Icon name="globe" size={13} className="text-[#baff00]" />
+                <Icon name="globe" size={13} className="text-indigo-400" />
                 <span>vexarosmm.com</span>
               </a>
             </div>
@@ -798,14 +738,14 @@ export default function LandingPage() {
             <div className="grid gap-[clamp(2rem,4vw,3.5rem)] lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
               {/* Left Column: Clean Headline & Value Proposition */}
               <div className="w-full min-w-0">
-                <div className="inline-flex items-center gap-2 rounded-full border border-lime-300/20 bg-lime-300/10 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-[#baff00]">
+                <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400">
                   <Icon name="spark" size={14} />
                   <span>Affordable SMM Panel for Pakistan — Local Payments Accepted</span>
                 </div>
 
                 <h1 className="mt-5 text-fluid-hero font-black tracking-tight text-white leading-[1.2] sm:leading-[1.24] pb-1">
                   Accelerate Your Social Growth at{" "}
-                  <span className="text-[#baff00] inline-block sm:inline">
+                  <span className="bg-gradient-to-r from-indigo-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent inline-block sm:inline">
                     Wholesale Rates
                   </span>
                 </h1>
@@ -816,13 +756,13 @@ export default function LandingPage() {
 
                 {/* Minimalist Trust Features */}
                 <div className="mt-7 sm:mt-8 flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2 text-xs font-semibold text-slate-300">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-[#111827]/70 px-2.5 py-1">
                     <span className="text-emerald-400 font-bold">✓</span> No Passwords Required
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-[#111827]/70 px-2.5 py-1">
                     <span className="text-emerald-400 font-bold">✓</span> 0 - 15m Instant Start
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-[#111827]/70 px-2.5 py-1">
                     <span className="text-emerald-400 font-bold">✓</span> 24/7 WhatsApp Support
                   </span>
                 </div>
@@ -831,14 +771,14 @@ export default function LandingPage() {
                 <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <Link
                     href={hasSession ? "/dashboard" : "/signup"}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#baff00] px-7 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:scale-105"
                   >
                     <span>{hasSession ? "Open Customer Dashboard" : "🚀 Get Started Free"}</span>
                     <Icon name="arrowRight" size={16} />
                   </Link>
                   <a
                     href="#services"
-                    className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/10"
+                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-white px-6 py-3.5 text-sm font-bold transition"
                   >
                     <span>View 500+ Services &amp; Rates ↓</span>
                   </a>
@@ -847,10 +787,10 @@ export default function LandingPage() {
 
               {/* Right Column: Clean Client Access Portal */}
               <div className="w-full max-w-[min(100%,28rem)] mx-auto lg:max-w-md xl:max-w-[27.5rem] lg:ml-auto">
-                <div className="rounded-3xl border border-white/10 bg-[#10191b]/95 p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
-                  <div className="border-b border-white/10 pb-4">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#baff00]/10 px-2.5 py-1 text-[11px] font-bold text-[#baff00]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#baff00] animate-pulse" />
+                <div className="rounded-3xl border border-slate-800 bg-[#111827]/95 p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
+                  <div className="border-b border-slate-800 pb-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-2.5 py-1 text-[11px] font-bold text-indigo-400 border border-indigo-500/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
                       Client Portal
                     </span>
                     <h2 className="mt-2 text-xl font-black text-white">
@@ -867,7 +807,7 @@ export default function LandingPage() {
                     {hasSession ? (
                       <Link
                         href="/dashboard"
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a]"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition"
                       >
                         <span>Go to Dashboard →</span>
                       </Link>
@@ -875,20 +815,20 @@ export default function LandingPage() {
                       <>
                         <Link
                           href="/login"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a]"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition"
                         >
                           <span>Sign In to Account →</span>
                         </Link>
                         <Link
                           href="/signup"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-3 text-xs font-bold text-white transition hover:bg-white/10"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 py-3 text-xs font-bold text-white transition"
                         >
                           <span>Create Free Account</span>
                         </Link>
                       </>
                     )}
 
-                    <div className="rounded-xl border border-white/5 bg-[#0b1315] p-3 text-center">
+                    <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-3 text-center">
                       <p className="text-[11px] font-bold text-slate-300">Accepted Gateways</p>
                       <p className="mt-1 text-[11px] text-slate-400">
                         Easypaisa • JazzCash • SadaPay • Binance Pay (USDT)
@@ -898,7 +838,7 @@ export default function LandingPage() {
                     <div className="pt-1 text-center text-xs text-slate-400 flex items-center justify-between">
                       <Link
                         href="/forgot-password"
-                        className="hover:text-[#baff00] transition text-[11px]"
+                        className="hover:text-indigo-400 transition text-[11px]"
                       >
                         Forgot password?
                       </Link>
@@ -920,18 +860,18 @@ export default function LandingPage() {
         </section>
 
         {/* ---------------- 3. TRUST HIGHLIGHTS BANNER (AUTO-FIT GRID) ---------------- */}
-        <section className="w-full border-y border-white/10 bg-[#0b1315]/80 py-[clamp(1.5rem,3.5vw,2.5rem)] backdrop-blur-md">
+        <section className="w-full border-y border-slate-800 bg-[#0e1424] py-[clamp(1.5rem,3.5vw,2.5rem)]">
           <div className="mx-auto max-w-7xl px-[clamp(1rem,3vw,2rem)]">
             <div className="grid-fluid-stats">
-              <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
-                <p className="text-fluid-h2 font-black text-[#baff00]">
+              <div className="rounded-2xl border border-slate-800/80 bg-[#111827] p-4 sm:p-5 text-center sm:text-left">
+                <p className="text-fluid-h2 font-black text-indigo-400">
                   1,000+
                 </p>
                 <p className="mt-1 text-xs sm:text-sm font-semibold text-slate-300">
                   Premium Services
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
+              <div className="rounded-2xl border border-slate-800/80 bg-[#111827] p-4 sm:p-5 text-center sm:text-left">
                 <p className="text-fluid-h2 font-black text-white">
                   0–15 min
                 </p>
@@ -939,15 +879,15 @@ export default function LandingPage() {
                   Instant Delivery Start
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
-                <p className="text-fluid-h2 font-black text-[#baff00]">
+              <div className="rounded-2xl border border-slate-800/80 bg-[#111827] p-4 sm:p-5 text-center sm:text-left">
+                <p className="text-fluid-h2 font-black text-indigo-400">
                   24/7
                 </p>
                 <p className="mt-1 text-xs sm:text-sm font-semibold text-slate-300">
                   WhatsApp Human Support
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/5 bg-[#10191b]/50 p-4 sm:p-5 text-center sm:text-left">
+              <div className="rounded-2xl border border-slate-800/80 bg-[#111827] p-4 sm:p-5 text-center sm:text-left">
                 <p className="text-fluid-h2 font-black text-white">
                   Local Payments
                 </p>
@@ -960,14 +900,14 @@ export default function LandingPage() {
         </section>
 
         {/* ---------------- 3B. FREE TEST TRIAL PROMO ---------------- */}
-        <section className="w-full border-b border-white/10 bg-gradient-to-r from-[#101b08] via-[#0b1315] to-[#101b08] py-[clamp(2rem,5vw,3.5rem)]">
+        <section className="w-full border-b border-slate-800 bg-gradient-to-r from-[#0d1527] via-[#111827] to-[#0d1527] py-[clamp(2rem,5vw,3.5rem)]">
           <div className="mx-auto max-w-5xl px-[clamp(1rem,4vw,2.5rem)] text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-lime-300/30 bg-lime-300/10 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-[#baff00]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400">
               <span>🎁</span>
               <span>1-Time Free Test Trial — Zero Deposit Needed</span>
             </div>
             <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
-              Get <span className="text-[#baff00]">Free Views or Likes</span> for TikTok &amp; Instagram
+              Get <span className="text-indigo-400">Free Views or Likes</span> for TikTok &amp; Instagram
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm sm:text-base font-medium leading-relaxed text-slate-300">
               Test our real high-speed servers before depositing a single rupee. Claim up to <strong>1,000 Free Views</strong> or <strong>50 Free Likes</strong> on TikTok or Instagram (powered by smoothsmm). 100% free, 1-time trial per account!
@@ -975,7 +915,7 @@ export default function LandingPage() {
             <div className="mt-6 flex justify-center">
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#baff00] px-8 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(186,255,0,0.25)] transition hover:bg-[#d2ff5a] hover:scale-105"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:scale-105"
               >
                 <span>Claim Free Test Services</span>
                 <Icon name="arrowRight" size={16} />
@@ -985,7 +925,7 @@ export default function LandingPage() {
         </section>
 
         {/* ---------------- 4. SUPPORTED PLATFORMS MARQUEE (SEAMLESS INFINITE TRACK) ---------------- */}
-        <section className="w-full overflow-hidden border-b border-white/10 bg-[#070d0d] py-6">
+        <section className="w-full overflow-hidden border-b border-slate-800 bg-[#0a0e17] py-6">
           <div className="mb-3 text-center">
             <span className="text-[11px] font-extrabold uppercase tracking-[0.25em] text-slate-400">
               Supported Social Networks &amp; Streaming Platforms
@@ -993,14 +933,14 @@ export default function LandingPage() {
           </div>
           <div className="relative w-full overflow-hidden">
             {/* Fade masks */}
-            <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-16 bg-gradient-to-r from-[#070d0d] to-transparent" />
-            <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-16 bg-gradient-to-l from-[#070d0d] to-transparent" />
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-16 bg-gradient-to-r from-[#0a0e17] to-transparent" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-16 bg-gradient-to-l from-[#0a0e17] to-transparent" />
 
             <div className="vexo-marquee-track flex gap-4 px-4">
               {[...MARQUEE_NETWORKS, ...MARQUEE_NETWORKS].map((network, index) => (
                 <div
                   key={`${network.name}-${index}`}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#10191b] px-5 py-3 shrink-0 transition hover:border-[#baff00]/50"
+                  className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-[#111827] px-5 py-3 shrink-0 transition hover:border-indigo-500/50"
                 >
                   <Social3DIcon platform={network.name} size={28} glow />
                   <div>
@@ -1014,11 +954,11 @@ export default function LandingPage() {
         </section>
 
         {/* ---------------- 5. GLOBAL PAYMENT TRUST BADGES (FLEX-WRAP STRIP) ---------------- */}
-        <section className="w-full border-b border-white/10 bg-[#0a1214] py-8 px-[clamp(1rem,3vw,2rem)]">
+        <section className="w-full border-b border-slate-800 bg-[#0b0f19] py-8 px-[clamp(1rem,3vw,2rem)]">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#baff00]">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
                   Verified Secure Payments
                 </span>
                 <p className="mt-0.5 text-xs text-slate-400">
@@ -1029,7 +969,7 @@ export default function LandingPage() {
                 {PAYMENT_METHODS.map((method) => (
                   <div
                     key={method.name}
-                    className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#10191b] px-3 py-1.5 text-xs font-bold text-slate-300"
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-[#111827] px-3 py-1.5 text-xs font-bold text-slate-300"
                   >
                     <span>{method.icon}</span>
                     <span className={method.color}>{method.name}</span>
@@ -1044,7 +984,7 @@ export default function LandingPage() {
         <section id="features" className="w-full px-[clamp(1rem,4vw,2.5rem)] py-[clamp(3rem,6vw,5rem)]">
           <div className="mx-auto max-w-7xl">
             <div className="text-center">
-              <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-[#baff00]">
+              <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-400">
                 Why Choose VEXARO SMM Panel
               </span>
               <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
@@ -1057,8 +997,8 @@ export default function LandingPage() {
 
             <div className="mt-12 grid-fluid-cards">
               {/* Card 1 */}
-              <div className="group rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,2.5vw,2rem)] transition hover:border-[#baff00]/50 hover:bg-[#131f22]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#baff00]/10 text-[#baff00] transition group-hover:bg-[#baff00] group-hover:text-[#07100f]">
+              <div className="group rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,2.5vw,2rem)] transition hover:border-indigo-500/40 hover:bg-slate-800/60">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400 transition group-hover:bg-indigo-600 group-hover:text-white">
                   <Icon name="globe" size={24} />
                 </div>
                 <h3 className="mt-5 text-fluid-h3 font-black text-white">
@@ -1071,8 +1011,8 @@ export default function LandingPage() {
               </div>
 
               {/* Card 2 */}
-              <div className="group rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,2.5vw,2rem)] transition hover:border-[#baff00]/50 hover:bg-[#131f22]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#baff00]/10 text-[#baff00] transition group-hover:bg-[#baff00] group-hover:text-[#07100f]">
+              <div className="group rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,2.5vw,2rem)] transition hover:border-indigo-500/40 hover:bg-slate-800/60">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400 transition group-hover:bg-indigo-600 group-hover:text-white">
                   <Icon name="spark" size={24} />
                 </div>
                 <h3 className="mt-5 text-fluid-h3 font-black text-white">
@@ -1085,8 +1025,8 @@ export default function LandingPage() {
               </div>
 
               {/* Card 3 */}
-              <div className="group rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,2.5vw,2rem)] transition hover:border-[#baff00]/50 hover:bg-[#131f22]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#baff00]/10 text-[#baff00] transition group-hover:bg-[#baff00] group-hover:text-[#07100f]">
+              <div className="group rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,2.5vw,2rem)] transition hover:border-indigo-500/40 hover:bg-slate-800/60">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400 transition group-hover:bg-indigo-600 group-hover:text-white">
                   <Icon name="code" size={24} />
                 </div>
                 <h3 className="mt-5 text-fluid-h3 font-black text-white">
@@ -1099,8 +1039,8 @@ export default function LandingPage() {
               </div>
 
               {/* Card 4 */}
-              <div className="group rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,2.5vw,2rem)] transition hover:border-[#baff00]/50 hover:bg-[#131f22]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#baff00]/10 text-[#baff00] transition group-hover:bg-[#baff00] group-hover:text-[#07100f]">
+              <div className="group rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,2.5vw,2rem)] transition hover:border-indigo-500/40 hover:bg-slate-800/60">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400 transition group-hover:bg-indigo-600 group-hover:text-white">
                   <Icon name="rocket" size={24} />
                 </div>
                 <h3 className="mt-5 text-fluid-h3 font-black text-white">
@@ -1118,11 +1058,11 @@ export default function LandingPage() {
         {/* ---------------- 7. "HOW IT WORKS" 4-STEP SECTION ---------------- */}
         <section
           id="how-it-works"
-          className="w-full border-t border-white/10 bg-[#091113] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(3rem,6vw,5rem)]"
+          className="w-full border-t border-slate-800 bg-[#0d1220] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(3rem,6vw,5rem)]"
         >
           <div className="mx-auto max-w-7xl">
             <div className="text-center">
-              <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-[#baff00]">
+              <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-400">
                 Simple 4-Step Flow
               </span>
               <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
@@ -1135,9 +1075,9 @@ export default function LandingPage() {
 
             <div className="mt-12 grid-fluid-cards">
               {/* Step 1 */}
-              <div className="relative rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,2.5vw,1.75rem)]">
-                <span className="text-3xl font-black text-[#baff00]/30">01</span>
-                <div className="mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
+              <div className="relative rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,2.5vw,1.75rem)]">
+                <span className="text-3xl font-black text-indigo-400/30">01</span>
+                <div className="mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
                   <Icon name="spark" size={18} />
                 </div>
                 <h3 className="mt-4 text-base font-black text-white">
@@ -1150,9 +1090,9 @@ export default function LandingPage() {
               </div>
 
               {/* Step 2 */}
-              <div className="relative rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,2.5vw,1.75rem)]">
-                <span className="text-3xl font-black text-[#baff00]/30">02</span>
-                <div className="mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
+              <div className="relative rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,2.5vw,1.75rem)]">
+                <span className="text-3xl font-black text-indigo-400/30">02</span>
+                <div className="mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
                   <Icon name="wallet" size={18} />
                 </div>
                 <h3 className="mt-4 text-base font-black text-white">
@@ -1165,9 +1105,9 @@ export default function LandingPage() {
               </div>
 
               {/* Step 3 */}
-              <div className="relative rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,2.5vw,1.75rem)]">
-                <span className="text-3xl font-black text-[#baff00]/30">03</span>
-                <div className="mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
+              <div className="relative rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,2.5vw,1.75rem)]">
+                <span className="text-3xl font-black text-indigo-400/30">03</span>
+                <div className="mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
                   <Icon name="search" size={18} />
                 </div>
                 <h3 className="mt-4 text-base font-black text-white">
@@ -1180,9 +1120,9 @@ export default function LandingPage() {
               </div>
 
               {/* Step 4 */}
-              <div className="relative rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,2.5vw,1.75rem)]">
-                <span className="text-3xl font-black text-[#baff00]/30">04</span>
-                <div className="mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]">
+              <div className="relative rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,2.5vw,1.75rem)]">
+                <span className="text-3xl font-black text-indigo-400/30">04</span>
+                <div className="mt-3 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
                   <Icon name="rocket" size={18} />
                 </div>
                 <h3 className="mt-4 text-base font-black text-white">
@@ -1202,7 +1142,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
               <div>
-                <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-[#baff00]">
+                <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-400">
                   Live Wholesale Rates
                 </span>
                 <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
@@ -1214,7 +1154,7 @@ export default function LandingPage() {
               </div>
               <Link
                 href="/signup"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#baff00] px-6 py-3 text-xs sm:text-sm font-black text-[#07100f] shadow-[0_0_20px_rgba(186,255,0,0.18)] hover:bg-[#d2ff5a] transition self-start md:self-auto"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-md shadow-indigo-500/20 transition self-start md:self-auto"
               >
                 <span>Get Full Catalog Access</span>
                 <span>→</span>
@@ -1249,8 +1189,8 @@ export default function LandingPage() {
                     onClick={() => setSelectedPlatform(p)}
                     className={`flex items-center gap-2 shrink-0 rounded-xl px-3.5 py-2 transition cursor-pointer ${
                       selectedPlatform === p
-                        ? "bg-[#baff00] text-[#07100f] font-bold shadow-[0_2px_12px_rgba(186,255,0,0.2)]"
-                        : "border border-white/10 bg-[#121b1d] text-slate-400 hover:text-white hover:border-white/20"
+                        ? "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30"
+                        : "border border-slate-800 bg-[#111827] text-slate-400 hover:text-white hover:border-slate-700"
                     }`}
                   >
                     <Social3DIcon platform={p} size={17} />
@@ -1267,7 +1207,7 @@ export default function LandingPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter by ID, platform, or keyword..."
-                  className="w-full rounded-xl border border-white/10 bg-[#121b1d] px-4 py-2.5 pl-9 text-white placeholder-slate-500 outline-none transition focus:border-[#baff00]"
+                  className="w-full rounded-xl border border-slate-800 bg-[#111827] px-4 py-2.5 pl-9 text-white placeholder-slate-500 outline-none transition focus:border-indigo-500"
                 />
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
                   <Icon name="search" size={14} />
@@ -1276,10 +1216,10 @@ export default function LandingPage() {
             </div>
 
             {/* Services Table Card with Horizontal Scroll Wrapper */}
-            <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-[#10191b]">
+            <div className="mt-6 overflow-hidden rounded-3xl border border-slate-800 bg-[#111827]">
               <div className="w-full overflow-x-auto">
                 <table className="w-full min-w-[640px] text-left text-xs text-slate-300">
-                  <thead className="border-b border-white/10 bg-[#142022] text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <thead className="border-b border-slate-800 bg-[#0f172a] text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     <tr>
                       <th className="py-4 px-4 sm:px-6">ID</th>
                       <th className="py-4 px-4 sm:px-6">Service Name</th>
@@ -1290,12 +1230,12 @@ export default function LandingPage() {
                       <th className="py-4 px-4 sm:px-6 text-center">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 font-medium">
+                  <tbody className="divide-y divide-slate-800/80 font-medium">
                     {loadingServices ? (
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-slate-400">
                           <div className="inline-flex items-center gap-2">
-                            <span className="h-4 w-4 rounded-full border-2 border-[#baff00] border-t-transparent animate-spin" />
+                            <span className="h-4 w-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
                             <span>Loading live catalog...</span>
                           </div>
                         </td>
@@ -1313,7 +1253,7 @@ export default function LandingPage() {
                         return (
                           <tr
                             key={svc.service}
-                            className="transition hover:bg-white/[0.03]"
+                            className="transition hover:bg-slate-800/40"
                           >
                             <td className="py-3.5 px-4 sm:px-6 font-mono text-slate-400">
                               #{svc.service}
@@ -1321,7 +1261,7 @@ export default function LandingPage() {
                             <td className="py-3.5 px-4 sm:px-6 font-bold text-white max-w-xs sm:max-w-md">
                               <span className="line-clamp-2">{svc.name}</span>
                             </td>
-                            <td className="py-3.5 px-4 sm:px-6 font-bold text-[#baff00]">
+                            <td className="py-3.5 px-4 sm:px-6 font-bold text-indigo-400">
                               ${usdRate.toFixed(4)}
                             </td>
                             <td className="py-3.5 px-4 sm:px-6 font-semibold text-slate-300">
@@ -1336,7 +1276,7 @@ export default function LandingPage() {
                             <td className="py-3.5 px-4 sm:px-6 text-center">
                               <Link
                                 href={`/dashboard?service=${svc.service}`}
-                                className="inline-block rounded-lg bg-[#baff00] px-3.5 py-1.5 text-[11px] font-black text-[#07100f] hover:bg-[#d2ff5a] transition shadow-[0_2px_10px_rgba(186,255,0,0.15)]"
+                                className="inline-block rounded-lg bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 px-3.5 py-1.5 text-[11px] font-bold text-white transition shadow-sm"
                               >
                                 Order Now
                               </Link>
@@ -1350,14 +1290,14 @@ export default function LandingPage() {
               </div>
 
               {/* Table Footer */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-white/10 bg-[#121b1d] p-4 text-xs text-slate-400">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-800 bg-[#0e1424] p-4 text-xs text-slate-400">
                 <span>
                   Showing <strong className="text-white">{previewList.length}</strong> of{" "}
                   <strong className="text-white">{services.length || "1,000+"}</strong> active services
                 </span>
                 <Link
                   href="/services"
-                  className="font-bold text-[#baff00] hover:underline flex items-center gap-1.5"
+                  className="font-bold text-indigo-400 hover:underline flex items-center gap-1.5"
                 >
                   <span>Browse full public catalog &amp; live rates</span>
                   <span>→</span>
@@ -1368,10 +1308,10 @@ export default function LandingPage() {
         </section>
 
         {/* ---------------- 9. INTERACTIVE FAQ ACCORDION ---------------- */}
-        <section id="faq" className="w-full border-t border-white/10 bg-[#091113] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(3rem,6vw,5rem)]">
+        <section id="faq" className="w-full border-t border-slate-800 bg-[#0b0f19] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(3rem,6vw,5rem)]">
           <div className="mx-auto max-w-4xl">
             <div className="text-center">
-              <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-[#baff00]">
+              <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-400">
                 Got Questions?
               </span>
               <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
@@ -1388,25 +1328,25 @@ export default function LandingPage() {
                 return (
                   <div
                     key={item.q}
-                    className="overflow-hidden rounded-2xl border border-white/10 bg-[#10191b] transition"
+                    className="overflow-hidden rounded-2xl border border-slate-800 bg-[#111827] transition hover:border-slate-700"
                   >
                     <button
                       type="button"
                       suppressHydrationWarning
                       onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                      className="flex w-full items-center justify-between p-5 text-left text-sm sm:text-base font-bold text-white transition hover:text-[#baff00]"
+                      className="flex w-full items-center justify-between p-5 text-left text-sm sm:text-base font-bold text-white transition hover:text-indigo-400 cursor-pointer"
                     >
                       <span>{item.q}</span>
                       <span
                         className={`ml-4 shrink-0 transition-transform duration-200 ${
-                          isOpen ? "rotate-180 text-[#baff00]" : "text-slate-400"
+                          isOpen ? "rotate-180 text-indigo-400" : "text-slate-400"
                         }`}
                       >
                         <Icon name="chevronDown" size={18} />
                       </span>
                     </button>
                     {isOpen && (
-                      <div className="border-t border-white/5 px-5 pb-5 pt-3 text-xs sm:text-sm leading-relaxed text-slate-300">
+                      <div className="border-t border-slate-800/80 px-5 pb-5 pt-3 text-xs sm:text-sm leading-relaxed text-slate-300">
                         {item.a}
                       </div>
                     )}
@@ -1420,11 +1360,11 @@ export default function LandingPage() {
         {/* ---------------- 10. LIVE UPDATES & SYSTEM STATUS ---------------- */}
         <section id="updates" className="w-full px-[clamp(1rem,4vw,2.5rem)] py-[clamp(2.5rem,5vw,4rem)]">
           <div className="mx-auto max-w-7xl">
-            <div className="rounded-3xl border border-white/10 bg-[#10191b] p-[clamp(1.25rem,3vw,2.5rem)]">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/10 pb-6">
+            <div className="rounded-3xl border border-slate-800 bg-[#111827] p-[clamp(1.25rem,3vw,2.5rem)]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-6">
                 <div>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-lime-400/25 bg-lime-400/10 px-3 py-1 text-xs font-bold text-[#baff00]">
-                    <span className="h-2 w-2 rounded-full bg-[#baff00] animate-pulse" />
+                  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                     All Systems Fully Operational
                   </span>
                   <h3 className="mt-3 text-fluid-h3 font-black text-white">
@@ -1432,15 +1372,15 @@ export default function LandingPage() {
                   </h3>
                 </div>
                 <div className="text-xs text-slate-400">
-                  Status: <strong className="text-[#baff00]">Live 24/7 Uptime</strong>
+                  Status: <strong className="text-emerald-400">Live 24/7 Uptime</strong>
                 </div>
               </div>
 
               {/* Broadcast Announcement If Available */}
               {announcements.length > 0 && (
-                <div className="mt-6 rounded-2xl border border-lime-400/40 bg-gradient-to-r from-lime-400/10 via-[#10241b] to-transparent p-5 sm:p-6">
+                <div className="mt-6 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/30 via-[#131d31] to-slate-900/50 p-5 sm:p-6">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#baff00]">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-indigo-400">
                       <span className="text-base">📢</span>
                       <span>Official Network Broadcast</span>
                     </div>
@@ -1462,7 +1402,7 @@ export default function LandingPage() {
                         setSelectedAnnouncement(announcements[0]);
                         setAnnouncementModalOpen(true);
                       }}
-                      className="rounded-xl bg-[#baff00] px-4 py-2.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                      className="rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-400 hover:to-blue-500 transition cursor-pointer"
                     >
                       Read Full Announcement
                     </button>
@@ -1471,7 +1411,7 @@ export default function LandingPage() {
                         href={extractFirstAnnouncementUrl(announcements[0].message)!}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-xl border border-[#25d366]/40 bg-[#25d366]/15 px-4 py-2.5 text-xs font-bold text-[#25d366] hover:bg-[#25d366] hover:text-[#07100f] transition inline-flex items-center gap-1.5"
+                        className="rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-2.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500 hover:text-white transition inline-flex items-center gap-1.5"
                       >
                         <Icon name="whatsapp" size={14} />
                         <span>Join Channel</span>
@@ -1483,33 +1423,33 @@ export default function LandingPage() {
               )}
 
               <div className="mt-6 grid-fluid-stats text-xs">
-                <div className="rounded-2xl border border-white/5 bg-[#0a1110] p-4">
+                <div className="rounded-2xl border border-slate-800 bg-[#0d131f] p-4">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white">API Dispatcher</span>
-                    <span className="text-[#baff00] font-bold">100% Operational</span>
+                    <span className="text-emerald-400 font-bold">100% Operational</span>
                   </div>
-                  <p className="mt-1 text-slate-500">Sub-second order forwarding</p>
+                  <p className="mt-1 text-slate-400">Sub-second order forwarding</p>
                 </div>
-                <div className="rounded-2xl border border-white/5 bg-[#0a1110] p-4">
+                <div className="rounded-2xl border border-slate-800 bg-[#0d131f] p-4">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white">Instagram Delivery</span>
-                    <span className="text-[#baff00] font-bold">Normal (0-15m)</span>
+                    <span className="text-emerald-400 font-bold">Normal (0-15m)</span>
                   </div>
-                  <p className="mt-1 text-slate-500">Followers, Likes &amp; Views</p>
+                  <p className="mt-1 text-slate-400">Followers, Likes &amp; Views</p>
                 </div>
-                <div className="rounded-2xl border border-white/5 bg-[#0a1110] p-4">
+                <div className="rounded-2xl border border-slate-800 bg-[#0d131f] p-4">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white">TikTok Views &amp; Likes</span>
-                    <span className="text-[#baff00] font-bold">Instant Start</span>
+                    <span className="text-emerald-400 font-bold">Instant Start</span>
                   </div>
-                  <p className="mt-1 text-slate-500">High speed auto execution</p>
+                  <p className="mt-1 text-slate-400">High speed auto execution</p>
                 </div>
-                <div className="rounded-2xl border border-white/5 bg-[#0a1110] p-4">
+                <div className="rounded-2xl border border-slate-800 bg-[#0d131f] p-4">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white">YouTube Services</span>
-                    <span className="text-[#baff00] font-bold">Stable &amp; Verified</span>
+                    <span className="text-emerald-400 font-bold">Stable &amp; Verified</span>
                   </div>
-                  <p className="mt-1 text-slate-500">Watchtime &amp; Subscribers active</p>
+                  <p className="mt-1 text-slate-400">Watchtime &amp; Subscribers active</p>
                 </div>
               </div>
             </div>
@@ -1519,12 +1459,12 @@ export default function LandingPage() {
         {/* ---------------- 11. DIRECT WHATSAPP & TELEGRAM CTA BANNER ---------------- */}
         <section className="w-full px-[clamp(1rem,4vw,2.5rem)] pb-[clamp(3rem,6vw,5rem)]">
           <div className="mx-auto max-w-7xl">
-            <div className="relative overflow-hidden rounded-3xl border border-[#25d366]/30 bg-gradient-to-r from-[#0d2218] to-[#10191b] p-[clamp(1.5rem,4vw,3rem)]">
+            <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-r from-slate-900 via-[#111827] to-indigo-950/40 p-[clamp(1.5rem,4vw,3rem)] shadow-xl">
               <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-[#25d366]">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-400">
                     <Icon name="whatsapp" size={16} />
-                    Direct Human Support
+                    Direct Reseller &amp; VIP Support
                   </span>
                   <h3 className="mt-2 text-fluid-h3 font-black text-white">
                     Need Custom Bulk Pricing or Instant Deposit Approval?
@@ -1538,7 +1478,7 @@ export default function LandingPage() {
                     href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-xl border border-[#25d366] bg-[#25d366]/20 px-5 py-3.5 text-sm font-black text-[#25d366] shadow-[0_0_24px_rgba(37,211,102,0.25)] transition hover:bg-[#25d366] hover:text-[#07100f]"
+                    className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3.5 text-sm font-bold text-emerald-400 transition hover:bg-emerald-500 hover:text-white"
                   >
                     <Icon name="whatsapp" size={18} />
                     <span>WhatsApp Channel</span>
@@ -1547,7 +1487,7 @@ export default function LandingPage() {
                     href="https://wa.me/923176437013"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#25d366] px-5 py-3.5 text-sm font-black text-[#07100f] shadow-[0_0_24px_rgba(37,211,102,0.3)] transition hover:bg-[#20ba5a]"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600"
                   >
                     <Icon name="whatsapp" size={18} />
                     <span>Chat on WhatsApp (+92 317 6437013)</span>
@@ -1556,7 +1496,7 @@ export default function LandingPage() {
                     href="https://t.me/VexaroSMMAdmin"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#229ed9] px-5 py-3.5 text-sm font-black text-white shadow-[0_0_24px_rgba(34,158,217,0.3)] transition hover:bg-[#1f8ec4]"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-[#229ed9] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#229ed9]/25 transition hover:bg-[#1f8ec4]"
                   >
                     <Icon name="telegram" size={18} />
                     <span>Telegram</span>
@@ -1569,7 +1509,7 @@ export default function LandingPage() {
       </main>
 
       {/* ---------------- 13. FOOTER ---------------- */}
-      <footer className="w-full border-t border-white/10 bg-[#050a0a] px-[clamp(1rem,4vw,2.5rem)] py-12 text-xs text-slate-400">
+      <footer className="w-full border-t border-slate-800/80 bg-[#070a12] px-[clamp(1rem,4vw,2.5rem)] py-12 text-xs text-slate-400">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
             <div className="lg:col-span-2">
@@ -1596,7 +1536,7 @@ export default function LandingPage() {
                   href="https://wa.me/923176437013"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#25d366] font-bold hover:underline"
+                  className="text-emerald-400 font-bold hover:underline"
                 >
                   WhatsApp
                 </a>
@@ -1609,32 +1549,32 @@ export default function LandingPage() {
               </h4>
               <ul className="mt-3 space-y-2">
                 <li>
-                  <Link href="/smm-panel" className="hover:text-[#baff00] transition">
+                  <Link href="/smm-panel" className="hover:text-indigo-400 transition">
                     Best SMM Panel
                   </Link>
                 </li>
                 <li>
-                  <Link href="/instagram-services" className="hover:text-[#baff00] transition">
+                  <Link href="/instagram-services" className="hover:text-indigo-400 transition">
                     Instagram SMM Panel
                   </Link>
                 </li>
                 <li>
-                  <Link href="/tiktok-services" className="hover:text-[#baff00] transition">
+                  <Link href="/tiktok-services" className="hover:text-indigo-400 transition">
                     TikTok SMM Panel
                   </Link>
                 </li>
                 <li>
-                  <Link href="/youtube-services" className="hover:text-[#baff00] transition">
+                  <Link href="/youtube-services" className="hover:text-indigo-400 transition">
                     YouTube SMM Panel
                   </Link>
                 </li>
                 <li>
-                  <Link href="/facebook-services" className="hover:text-[#baff00] transition">
+                  <Link href="/facebook-services" className="hover:text-indigo-400 transition">
                     Facebook SMM Panel
                   </Link>
                 </li>
                 <li>
-                  <Link href="/telegram-services" className="hover:text-[#baff00] transition">
+                  <Link href="/telegram-services" className="hover:text-indigo-400 transition">
                     Telegram SMM Panel
                   </Link>
                 </li>
@@ -1647,33 +1587,33 @@ export default function LandingPage() {
               </h4>
               <ul className="mt-3 space-y-2">
                 <li>
-                  <Link href="/blog" className="hover:text-[#baff00] transition text-[#baff00] font-bold flex items-center gap-1.5">
+                  <Link href="/blog" className="hover:text-indigo-400 transition text-indigo-400 font-bold flex items-center gap-1.5">
                     <span>Growth Blog &amp; Guides</span>
-                    <span className="text-[9px] bg-[#baff00]/20 px-1.5 py-0.5 rounded font-extrabold">NEW</span>
+                    <span className="text-[9px] bg-indigo-500/20 px-1.5 py-0.5 rounded font-extrabold text-indigo-300">NEW</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/dashboard" className="hover:text-[#baff00] transition">
+                  <Link href="/dashboard" className="hover:text-indigo-400 transition">
                     REST API Documentation
                   </Link>
                 </li>
                 <li>
-                  <a href="#updates" className="hover:text-[#baff00] transition">
+                  <a href="#updates" className="hover:text-indigo-400 transition">
                     Live Server Updates
                   </a>
                 </li>
                 <li>
-                  <Link href="/login" className="hover:text-[#baff00] transition">
+                  <Link href="/login" className="hover:text-indigo-400 transition">
                     Reseller Sign In
                   </Link>
                 </li>
                 <li>
-                  <Link href="/signup" className="hover:text-[#baff00] transition">
+                  <Link href="/signup" className="hover:text-indigo-400 transition">
                     Create Free Account
                   </Link>
                 </li>
                 <li>
-                  <a href="#faq" className="hover:text-[#baff00] transition">
+                  <a href="#faq" className="hover:text-indigo-400 transition">
                     FAQ &amp; Guarantees
                   </a>
                 </li>
@@ -1691,7 +1631,7 @@ export default function LandingPage() {
                     href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[#25d366] font-bold hover:underline inline-flex items-center gap-1"
+                    className="text-emerald-400 font-bold hover:underline inline-flex items-center gap-1"
                   >
                     <Icon name="whatsapp" size={13} />
                     <span>Follow for Updates</span>
@@ -1703,7 +1643,7 @@ export default function LandingPage() {
                     href="https://wa.me/923176437013"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[#25d366] font-bold hover:underline"
+                    className="text-emerald-400 font-bold hover:underline"
                   >
                     +92 317 6437013
                   </a>
@@ -1725,7 +1665,7 @@ export default function LandingPage() {
                     href="https://vexarosmm.com/"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-lime-400 font-mono text-[11px] font-bold hover:underline inline-flex items-center gap-1"
+                    className="text-indigo-400 font-mono text-[11px] font-bold hover:underline inline-flex items-center gap-1"
                   >
                     <Icon name="globe" size={12} />
                     <span>vexarosmm.com</span>
@@ -1735,7 +1675,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 pt-6 text-[11px]">
+          <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800/80 pt-6 text-[11px]">
             <div className="flex flex-wrap items-center gap-2">
               <p>© 2026 VEXARO SMM. All rights reserved.</p>
               <span className="text-slate-600 hidden sm:inline">•</span>
@@ -1743,20 +1683,20 @@ export default function LandingPage() {
                 href="https://vexarosmm.com/"
                 target="_blank"
                 rel="noreferrer"
-                className="text-slate-400 hover:text-[#baff00] inline-flex items-center gap-1 font-mono text-[11px] transition"
+                className="text-slate-400 hover:text-indigo-400 inline-flex items-center gap-1 font-mono text-[11px] transition"
               >
-                <Icon name="globe" size={12} className="text-[#baff00]" />
+                <Icon name="globe" size={12} className="text-indigo-400" />
                 <span>vexarosmm.com</span>
               </a>
             </div>
             <div className="flex items-center gap-6">
-              <Link href="/terms" className="hover:text-[#baff00] transition">
+              <Link href="/terms" className="hover:text-indigo-400 transition">
                 Terms of Service
               </Link>
-              <Link href="/privacy" className="hover:text-[#baff00] transition">
+              <Link href="/privacy" className="hover:text-indigo-400 transition">
                 Privacy Policy
               </Link>
-              <Link href="/terms" className="hover:text-[#baff00] transition">
+              <Link href="/terms" className="hover:text-indigo-400 transition">
                 Refund Policy
               </Link>
             </div>
@@ -1766,14 +1706,14 @@ export default function LandingPage() {
       {/* Dynamic Announcement Modal */}
       {announcementModalOpen && selectedAnnouncement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl rounded-3xl border border-lime-400/40 bg-[#0e1819] p-6 sm:p-8 shadow-2xl shadow-black">
-            <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
+          <div className="relative w-full max-w-xl rounded-3xl border border-slate-800 bg-[#111827] p-6 sm:p-8 shadow-2xl shadow-black">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#baff00] text-lg font-black text-[#07100f] shadow-[0_0_15px_rgba(186,255,0,0.35)]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-lg font-black text-white shadow-[0_0_15px_rgba(99,102,241,0.35)]">
                   📢
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#baff00]">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400">
                     Official Announcement
                   </span>
                   <h3 className="text-lg sm:text-xl font-black text-white">
@@ -1795,7 +1735,7 @@ export default function LandingPage() {
               {renderFormattedAnnouncement(selectedAnnouncement.message)}
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-4">
               <span className="text-[11px] text-slate-500 font-mono">
                 Published: {new Date(selectedAnnouncement.createdAt).toLocaleDateString()}
               </span>
@@ -1805,7 +1745,7 @@ export default function LandingPage() {
                     href={extractFirstAnnouncementUrl(selectedAnnouncement.message)!}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-xl bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition"
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow hover:from-indigo-400 hover:to-blue-500 transition"
                   >
                     <span>Open Channel / Link</span>
                     <span>↗</span>
@@ -1815,7 +1755,7 @@ export default function LandingPage() {
                   type="button"
                   suppressHydrationWarning
                   onClick={() => setAnnouncementModalOpen(false)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10 transition"
+                  className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-bold text-white hover:bg-slate-700 transition"
                 >
                   Close
                 </button>

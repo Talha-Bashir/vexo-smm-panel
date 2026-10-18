@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #070d0d;
+  --background: #0b0f19;
   --foreground: #ffffff;
 }
 
@@ -19,7 +19,7 @@ html {
   overflow-x: hidden;
   max-width: 100vw;
   width: 100%;
-  background: #070d0d;
+  background: #0b0f19;
   color: #ffffff;
 }
 
@@ -193,19 +193,20 @@ input, select, textarea {
 
 :root,
 html[data-theme="dark"],
+html[data-theme="smooth-indigo"],
 html[data-theme="cyber-lime"] {
   color-scheme: dark;
-  --bg-main: #0b0f17;
-  --bg-surface: #121826;
-  --bg-surface-hover: #1a2234;
+  --bg-main: #0b0f19;
+  --bg-surface: #111827;
+  --bg-surface-hover: #1f2937;
   --border-color: rgba(255, 255, 255, 0.08);
-  --accent-primary: #baff00;
-  --accent-hover: #d2ff5a;
+  --accent-primary: #6366f1;
+  --accent-hover: #4f46e5;
   --text-primary: #ffffff;
   --text-secondary: #94a3b8;
-  --text-accent: #07100f;
-  --accent-glow: rgba(186, 255, 0, 0.25);
-  --accent-glow-subtle: rgba(186, 255, 0, 0.04);
+  --text-accent: #ffffff;
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  --accent-glow-subtle: rgba(99, 102, 241, 0.04);
 }
 
 html[data-theme="light"] {

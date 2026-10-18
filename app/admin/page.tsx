@@ -2320,6 +2320,8 @@ function Orders({
   onSync?: () => void;
   api?: (url: string, init?: RequestInit) => Promise<any>;
 }) {
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
   return (
     <section className={card + " overflow-hidden"}>
       <div className="flex flex-col gap-3 border-b border-white/10 p-5 md:flex-row md:items-center">
@@ -2327,7 +2329,7 @@ function Orders({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && reload()}
-          placeholder="Search order, service, email..."
+          placeholder="Search order, service, email, provider..."
           className="h-11 flex-1 rounded-xl border border-white/10 bg-[#0b1418] px-4 text-sm outline-none"
         />
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-11 rounded-xl border border-white/10 bg-[#0b1418] px-4 text-sm">
@@ -2344,7 +2346,9 @@ function Orders({
           onClick={() => {
             const rows = orders.map((o) => [
               o.id,
-              o.userEmail || "",
+              o.providerName || o.providerId || "",
+              o.providerOrderId || "",
+              o.email || "",
               o.serviceName || o.serviceId,
               o.link,
               o.quantity,
@@ -2352,7 +2356,7 @@ function Orders({
               o.status,
               o.createdAt ? new Date(o.createdAt).toISOString() : "",
             ]);
-            downloadCsv("vexaro_orders_export.csv", ["Order ID", "User", "Service", "Link", "Quantity", "Charge PKR", "Status", "Created At"], rows);
+            downloadCsv("vexaro_orders_export.csv", ["Order ID", "API Provider", "API Order ID", "User", "Service", "Link", "Quantity", "Charge PKR", "Status", "Created At"], rows);
           }}
           className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
         >
@@ -2383,10 +2387,10 @@ function Orders({
         )}
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-[1200px] w-full text-left">
+        <table className="min-w-[1300px] w-full text-left">
           <thead className="bg-[#0b1418] text-xs uppercase text-slate-500">
             <tr>
-              {["Order", "User", "Service", "Link", "Qty", "Charge", "Start", "Remains", "Status", "Date & Time", "Action"].map((x) => (
+              {["Order", "API Provider", "User", "Service", "Link", "Qty", "Charge", "Start", "Remains", "Status", "Date & Time", "Action"].map((x) => (
                 <th key={x} className="px-5 py-4">{x}</th>
               ))}
             </tr>
@@ -2398,12 +2402,29 @@ function Orders({
                   <b>{o.providerOrderId || "—"}</b>
                   <p className="text-[10px] text-slate-500 font-mono">{o.id}</p>
                 </td>
+                <td className="px-5 py-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="inline-flex items-center w-fit rounded-md px-2 py-0.5 text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                      ⚡ {o.providerName || o.providerId || "Not Dispatched"}
+                    </span>
+                    {o.providerOrderId && (
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        API ID: <b className="text-white">{o.providerOrderId}</b>
+                      </span>
+                    )}
+                    {o.remoteServiceId && (
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        Remote Serv: #{o.remoteServiceId}
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-5 py-4 text-sm">{o.email || "Guest"}</td>
-                <td className="max-w-[260px] px-5 py-4 text-sm">
+                <td className="max-w-[240px] px-5 py-4 text-sm">
                   <div className="line-clamp-2" title={o.serviceName}>{o.serviceName}</div>
                   <p className="text-xs text-slate-500">ID {o.serviceId}</p>
                 </td>
-                <td className="max-w-[220px] px-5 py-4 text-xs">
+                <td className="max-w-[200px] px-5 py-4 text-xs">
                   {o.link ? (
                     <a
                       href={o.link.startsWith("http") ? o.link : `https://${o.link}`}
@@ -2433,6 +2454,15 @@ function Orders({
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrder(o)}
+                      className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1.5 text-xs font-bold text-cyan-400 hover:bg-cyan-500/20 transition cursor-pointer"
+                      title="View full API dispatch and order details"
+                    >
+                      🔍 Details
+                    </button>
+
                     <select
                       value={o.status}
                       onChange={(e) => update(o.id, e.target.value)}
@@ -2499,6 +2529,210 @@ function Orders({
         </table>
         {!orders.length && <p className="p-10 text-center text-sm text-slate-500">No database orders found.</p>}
       </div>
+
+      {/* COMPREHENSIVE ORDER & TARGET API DETAILS MODAL */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[#071013] p-6 shadow-2xl text-left">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <span>📦 Order Details</span>
+                  <Badge>{selectedOrder.status}</Badge>
+                </h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">Order ID: {selectedOrder.id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm max-h-[72vh] overflow-y-auto pr-1">
+              {/* TARGET API PROVIDER CARD */}
+              <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/25 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                    <span>⚡</span> Which API Was This Order Sent To?
+                  </span>
+                  <span className="rounded-md bg-cyan-500/20 px-2.5 py-1 text-xs font-mono font-bold text-cyan-300 border border-cyan-500/30">
+                    {selectedOrder.providerName || selectedOrder.providerId || "Manual / Not Sent"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="rounded-lg bg-black/30 p-2.5 border border-white/5">
+                    <p className="text-slate-400">Target API Provider Name</p>
+                    <p className="font-bold text-white text-sm mt-0.5">
+                      {selectedOrder.providerName || selectedOrder.providerId || "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-black/30 p-2.5 border border-white/5">
+                    <p className="text-slate-400">Provider Key / Internal ID</p>
+                    <p className="font-mono font-bold text-cyan-300 mt-0.5">
+                      {selectedOrder.providerId || "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-black/30 p-2.5 border border-white/5">
+                    <p className="text-slate-400">Remote API Order ID</p>
+                    <p className="font-mono font-bold text-emerald-400 text-sm mt-0.5">
+                      {selectedOrder.providerOrderId ? `#${selectedOrder.providerOrderId}` : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-black/30 p-2.5 border border-white/5">
+                    <p className="text-slate-400">Remote Service ID</p>
+                    <p className="font-mono font-bold text-white mt-0.5">
+                      {selectedOrder.remoteServiceId ? `#${selectedOrder.remoteServiceId}` : "—"}
+                    </p>
+                  </div>
+                  <div className="sm:col-span-2 rounded-lg bg-black/30 p-2.5 border border-white/5">
+                    <p className="text-slate-400">Provider API Endpoint URL</p>
+                    <p className="font-mono text-[11px] text-slate-300 truncate mt-0.5" title={selectedOrder.providerApiUrl || "N/A"}>
+                      {selectedOrder.providerApiUrl || "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* FINANCIALS & MARGIN */}
+              <div className="grid grid-cols-3 gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs">
+                <div>
+                  <p className="text-slate-400">User Charged</p>
+                  <p className="text-base font-black text-white">{money(selectedOrder.chargePkr)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Wholesale API Cost</p>
+                  <p className="text-base font-black text-amber-400">
+                    {selectedOrder.costPkr != null ? money(selectedOrder.costPkr) : (selectedOrder.costUsd != null ? `$${selectedOrder.costUsd}` : "—")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Gross Margin</p>
+                  <p className="text-base font-black text-emerald-400">
+                    {selectedOrder.costPkr != null
+                      ? money(Math.max(0, (selectedOrder.chargePkr || 0) - (selectedOrder.costPkr || 0)))
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* SERVICE & TARGET LINK */}
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2 text-xs">
+                <div>
+                  <p className="text-slate-400">Service Ordered</p>
+                  <p className="font-bold text-white text-sm">{selectedOrder.serviceName}</p>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">Internal Service ID: {selectedOrder.serviceId}</p>
+                </div>
+                <div className="pt-2 border-t border-white/5">
+                  <p className="text-slate-400">Target URL / Link</p>
+                  {selectedOrder.link ? (
+                    <a
+                      href={selectedOrder.link.startsWith("http") ? selectedOrder.link : `https://${selectedOrder.link}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-cyan-400 hover:underline break-all block mt-0.5"
+                    >
+                      {selectedOrder.link}
+                    </a>
+                  ) : (
+                    <p className="text-slate-500 mt-0.5">—</p>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                  <div>
+                    <p className="text-slate-400">Quantity</p>
+                    <p className="font-bold text-white">{selectedOrder.quantity?.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Start Count</p>
+                    <p className="font-mono text-slate-300">{selectedOrder.startCount || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Remains</p>
+                    <p className="font-mono text-slate-300">{selectedOrder.remains || "—"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* USER DETAILS */}
+              <div className="grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs">
+                <div>
+                  <p className="text-slate-400">Customer Email</p>
+                  <p className="font-bold text-white mt-0.5">{selectedOrder.email || "Guest"}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">User ID</p>
+                  <p className="font-mono text-slate-300 mt-0.5">#{selectedOrder.userId || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Order Placed At</p>
+                  <p className="text-slate-300 mt-0.5">{selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Last Synced At</p>
+                  <p className="text-slate-300 mt-0.5">{selectedOrder.updatedAt ? new Date(selectedOrder.updatedAt).toLocaleString() : "—"}</p>
+                </div>
+              </div>
+
+              {/* FAILOVER & PROVIDER DISPATCH LOGS */}
+              {selectedOrder.failoverAttempts && selectedOrder.failoverAttempts.length > 0 && (
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs">
+                  <p className="font-bold text-slate-300 mb-2.5 flex items-center gap-1.5">
+                    <span>🔄</span> API Provider Dispatch & Failover Log
+                  </p>
+                  <div className="space-y-2">
+                    {selectedOrder.failoverAttempts.map((fa: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className={`rounded-lg p-2.5 border font-mono text-[11px] ${
+                          fa.success
+                            ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-300"
+                            : "border-red-500/30 bg-red-950/20 text-red-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold">
+                            {fa.success ? "✓ Successfully Dispatched To" : "✗ Dispatch Failed"}: {fa.providerName || fa.providerId}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {fa.timestamp ? new Date(fa.timestamp).toLocaleTimeString() : ""}
+                          </span>
+                        </div>
+                        {fa.orderId && <p className="text-slate-300 mt-0.5">Remote Order ID: #{fa.orderId}</p>}
+                        {fa.remoteServiceId && <p className="text-slate-400">Remote Service ID: #{fa.remoteServiceId}</p>}
+                        {fa.error && <p className="text-red-400 mt-1">{fa.error}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* FAILURE REASON NOTICE */}
+              {selectedOrder.failureReason && (
+                <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-3 text-xs text-red-300">
+                  <p className="font-bold flex items-center gap-1 mb-1">
+                    <span>⚠️</span> Upstream API Error:
+                  </p>
+                  <p className="font-mono text-[11px]">{selectedOrder.failureReason}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-xl bg-white/10 px-5 py-2 text-xs font-bold text-white hover:bg-white/20 transition cursor-pointer"
+              >
+                Close Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

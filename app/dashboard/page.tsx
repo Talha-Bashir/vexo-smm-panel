@@ -6,6 +6,7 @@ import { SubscriptionsPage } from "./subscriptions";
 import BonusCelebrationModal from "@/components/bonus-celebration-modal";
 import RedeemCouponModal from "@/components/redeem-coupon-modal";
 import CurrencySelectModal from "@/components/currency-select-modal";
+import { FreeTrialOnboardingModal } from "@/components/free-trial-onboarding-modal";
 import { Social3DIcon } from "@/components/social-3d-icon";
 
 type RizviService = {
@@ -538,6 +539,21 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [freeTrialClaimed, setFreeTrialClaimed] = useState(false);
+  const [showFreeTrialOnboarding, setShowFreeTrialOnboarding] = useState(false);
+
+  // Auto-prompt first-time users with Free Test Trial Onboarding Modal
+  useEffect(() => {
+    if (currentUser && !freeTrialClaimed && !loadingServices) {
+      try {
+        const dismissed = sessionStorage.getItem("vexo_dismissed_trial_modal");
+        if (!dismissed) {
+          setShowFreeTrialOnboarding(true);
+        }
+      } catch {
+        setShowFreeTrialOnboarding(true);
+      }
+    }
+  }, [currentUser, freeTrialClaimed, loadingServices]);
   const [announcements, setAnnouncements] = useState<VexoAnnouncement[]>([]);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const announcementsRef = useRef<HTMLDivElement>(null);
@@ -1787,67 +1803,67 @@ export default function Home() {
 
           {/* 1-Time Free Test Trial Banner */}
           {!freeTrialClaimed && (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#baff00]/40 bg-gradient-to-r from-[#10240d] via-[#091518] to-[#10240d] p-4 text-xs shadow-lg">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#baff00]/20 text-lg font-bold text-[#baff00]">
+            <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-[#111827] to-indigo-950/40 p-4 text-xs shadow-lg">
+              <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-lg font-bold text-indigo-400 border border-indigo-500/30">
                   🎁
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-black text-white text-sm">
-                      1-Time Free Test Trial: <span className="text-[#baff00]">TikTok &amp; Instagram Views / Likes</span>
+                      1-Time Free Test Trial: <span className="text-indigo-400">TikTok &amp; Instagram Views / Likes</span>
                     </p>
-                    <span className="rounded-full bg-[#baff00] px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black">
+                    <span className="rounded-full bg-indigo-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shrink-0">
                       100% Free
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-300 leading-snug mt-0.5">
-                    Test our instant server delivery with up to <strong>1,000 Free Views</strong> or <strong>50 Free Likes</strong> on TikTok or Instagram (powered by smoothsmm). 1 trial per user!
+                  <p className="text-xs text-slate-300 leading-relaxed mt-1">
+                    Test our instant server delivery with up to <strong className="text-white">1,000 Free Views</strong> or <strong className="text-white">50 Free Likes</strong> on TikTok or Instagram. 1 trial per user!
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const freeService = services.find((s) => s.category?.includes("Free Test Trial") || Number(s.price) === 0);
-                  if (freeService) setSelectedServiceId(String(freeService.id));
-                  setActivePage("New Order");
-                }}
-                className="rounded-xl bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition shadow-md cursor-pointer shrink-0"
-              >
-                Claim Free Trial ➔
-              </button>
+              <div className="flex items-center w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFreeTrialOnboarding(true);
+                  }}
+                  className="w-full sm:w-auto text-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 hover:from-indigo-400 hover:to-blue-500 transition cursor-pointer"
+                >
+                  Claim Free Trial ➔
+                </button>
+              </div>
             </div>
           )}
 
           {/* Low Balance Alert Nudge */}
           {walletBalancePkr < 100 && activePage !== "Add Funds" && !dismissedLowBalance && (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-base font-bold text-amber-400">
+            <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
+              <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-base font-bold text-amber-400 border border-amber-500/30">
                   ⚠️
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold text-amber-200">
-                    Low Wallet Balance: <span className="font-mono text-white">₨{walletBalancePkr.toFixed(2)}</span>
+                  <p className="font-bold text-amber-200 text-sm">
+                    Low Wallet Balance: <span className="font-mono text-white font-bold">₨{walletBalancePkr.toFixed(2)}</span>
                   </p>
-                  <p className="text-[11px] text-amber-300/80 leading-snug">
+                  <p className="text-xs text-amber-300/80 leading-relaxed mt-1">
                     Add funds via SadaPay, Easypaisa, or JazzCash to ensure your automated orders process without interruption.
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
                 <button
                   type="button"
                   onClick={() => navigate("Add Funds")}
-                  className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-sm cursor-pointer"
+                  className="flex-1 sm:flex-initial text-center justify-center rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-sm cursor-pointer"
                 >
                   + Add Funds Now →
                 </button>
                 <button
                   type="button"
                   onClick={() => setDismissedLowBalance(true)}
-                  className="rounded-lg border border-amber-500/30 bg-amber-500/20 p-2 text-amber-300 hover:text-white hover:bg-amber-500/30 transition cursor-pointer"
+                  className="rounded-xl border border-amber-500/30 bg-amber-500/20 p-2.5 text-amber-300 hover:text-white hover:bg-amber-500/30 transition cursor-pointer shrink-0"
                   title="Dismiss warning"
                   aria-label="Dismiss warning"
                 >
@@ -2110,6 +2126,23 @@ export default function Home() {
           selectedCurrency={selectedCurrency}
           onSelectCurrency={(code) => setSelectedCurrency(code)}
           rates={currencyRates}
+        />
+      )}
+
+      {/* 1-Time Free Test Trial Onboarding Modal */}
+      {showFreeTrialOnboarding && !freeTrialClaimed && (
+        <FreeTrialOnboardingModal
+          isOpen={showFreeTrialOnboarding}
+          onClose={() => setShowFreeTrialOnboarding(false)}
+          services={services}
+          userName={currentUser?.name || "Creator"}
+          onOrderCreated={(order) => {
+            handleOrderCreated(order);
+            setFreeTrialClaimed(true);
+          }}
+          onNavigateOrders={() => {
+            setActivePage("Orders");
+          }}
         />
       )}
     </main>

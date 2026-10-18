@@ -31,12 +31,18 @@ export async function GET(req: Request) {
 
     const r = await db.query(
       `SELECT o.id, o.user_id, u.name, u.email, o.provider_order_id,
+              o.provider_id,
+              COALESCE(p.name, CASE WHEN o.provider_id = 'manual_telegram' THEN 'Manual Telegram' ELSE o.provider_id END) AS provider_name,
+              p.api_url AS provider_api_url,
               o.service_id, o.service_name, o.link, o.quantity,
               COALESCE(o.rate_pkr, o.rate, 0) AS rate_pkr,
-              o.charge_pkr, o.status, o.start_count, o.remains, o.created_at, o.updated_at
+              o.charge_pkr, o.cost_pkr, o.cost_usd, o.status, o.start_count, o.remains,
+              o.failover_attempts, o.failure_reason,
+              o.created_at, o.updated_at
        FROM vexo_orders o
        LEFT JOIN vexo_users u ON u.id = o.user_id
-       WHERE ($1 = '' OR o.provider_order_id ILIKE '%' || $1 || '%' OR o.service_id ILIKE '%' || $1 || '%' OR o.service_name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%' OR o.id::text = $1)
+       LEFT JOIN vexo_providers p ON p.id = o.provider_id
+       WHERE ($1 = '' OR o.provider_order_id ILIKE '%' || $1 || '%' OR o.provider_id ILIKE '%' || $1 || '%' OR p.name ILIKE '%' || $1 || '%' OR o.service_id ILIKE '%' || $1 || '%' OR o.service_name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%' OR o.id::text = $1)
          AND ($2 = '' OR o.status ILIKE $2)
        ORDER BY o.created_at DESC
        LIMIT 500`,
@@ -45,25 +51,40 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       success: true,
-      orders: r.rows.map((x) => ({
-        id: x.id,
-        userId: x.user_id,
-        name: x.name,
-        email: x.email,
-        providerOrderId: x.provider_order_id,
-        serviceId: x.service_id,
-        serviceName: x.service_name,
-        link: x.link,
-        quantity: +x.quantity,
-        rate: x.rate_pkr == null ? null : +x.rate_pkr,
-        ratePkr: x.rate_pkr == null ? null : +x.rate_pkr,
-        chargePkr: x.charge_pkr == null ? null : +x.charge_pkr,
-        status: x.status,
-        startCount: x.start_count != null && String(x.start_count).trim() !== "" ? String(x.start_count).trim() : null,
-        remains: x.remains != null && String(x.remains).trim() !== "" ? String(x.remains).trim() : null,
-        createdAt: x.created_at,
-        updatedAt: x.updated_at,
-      })),
+      orders: r.rows.map((x) => {
+        const attempts = Array.isArray(x.failover_attempts) ? x.failover_attempts : [];
+        const successAttempt = attempts.find((a: any) => a && (a.success || a.orderId));
+        const remoteServiceId = successAttempt?.remoteServiceId || null;
+        const providerName = x.provider_name || successAttempt?.providerName || (x.provider_id ? String(x.provider_id) : "—");
+
+        return {
+          id: x.id,
+          userId: x.user_id,
+          name: x.name,
+          email: x.email,
+          providerId: x.provider_id || successAttempt?.providerId || null,
+          providerName,
+          providerApiUrl: x.provider_api_url || null,
+          providerOrderId: x.provider_order_id || successAttempt?.orderId || null,
+          remoteServiceId,
+          serviceId: x.service_id,
+          serviceName: x.service_name,
+          link: x.link,
+          quantity: +x.quantity,
+          rate: x.rate_pkr == null ? null : +x.rate_pkr,
+          ratePkr: x.rate_pkr == null ? null : +x.rate_pkr,
+          chargePkr: x.charge_pkr == null ? null : +x.charge_pkr,
+          costPkr: x.cost_pkr == null ? null : +x.cost_pkr,
+          costUsd: x.cost_usd == null ? null : +x.cost_usd,
+          failoverAttempts: attempts,
+          failureReason: x.failure_reason,
+          status: x.status,
+          startCount: x.start_count != null && String(x.start_count).trim() !== "" ? String(x.start_count).trim() : null,
+          remains: x.remains != null && String(x.remains).trim() !== "" ? String(x.remains).trim() : null,
+          createdAt: x.created_at,
+          updatedAt: x.updated_at,
+        };
+      }),
     });
   } catch (e) {
     return NextResponse.json(

@@ -47,7 +47,7 @@ export function generateVisualCaptcha(): GeneratedCaptcha {
     const y2 = crypto.randomInt(0, height);
     const cx = crypto.randomInt(20, width - 20);
     const cy = crypto.randomInt(5, height - 5);
-    const stroke = i % 2 === 0 ? "rgba(186,255,0,0.4)" : "rgba(0,240,255,0.35)";
+    const stroke = i % 2 === 0 ? "rgba(99,102,241,0.4)" : "rgba(56,189,248,0.35)";
     noiseLines += `<path d="M${x1},${y1} Q${cx},${cy} ${x2},${y2}" stroke="${stroke}" stroke-width="${crypto.randomInt(1, 3)}" fill="none" />`;
   }
 
@@ -57,12 +57,12 @@ export function generateVisualCaptcha(): GeneratedCaptcha {
     const cx = crypto.randomInt(5, width - 5);
     const cy = crypto.randomInt(5, height - 5);
     const r = (crypto.randomInt(5, 18) / 10).toFixed(1);
-    const fill = i % 3 === 0 ? "rgba(186,255,0,0.5)" : "rgba(255,255,255,0.3)";
+    const fill = i % 3 === 0 ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.3)";
     noiseDots += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" />`;
   }
 
   // Colors for characters
-  const colors = ["#baff00", "#38bdf8", "#facc15", "#4ade80", "#a78bfa", "#f43f5e"];
+  const colors = ["#818cf8", "#38bdf8", "#60a5fa", "#34d399", "#a78bfa", "#f472b6"];
 
   // Render distorted characters
   let charElements = "";
@@ -79,8 +79,8 @@ export function generateVisualCaptcha(): GeneratedCaptcha {
     charElements += `<text x="${x}" y="${y}" fill="${color}" font-family="monospace, Courier, sans-serif" font-size="${fontSize}px" font-weight="${fontWeight}" transform="rotate(${rotate} ${x} ${y})">${char}</text>`;
   }
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="background:#091214;border-radius:10px;user-select:none;">
-    <rect width="${width}" height="${height}" fill="#091214" rx="10" />
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="background:#070a12;border-radius:10px;user-select:none;">
+    <rect width="${width}" height="${height}" fill="#070a12" rx="10" />
     ${noiseDots}
     ${noiseLines}
     ${charElements}

@@ -6,7 +6,7 @@ import { RealCaptcha, CaptchaData } from "@/components/real-captcha";
 
 function Mark() {
   return (
-    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(186,255,0,0.35)] border border-[#baff00]/30 mx-auto">
+    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(99,102,241,0.25)] border border-indigo-500/30 mx-auto">
       <img src="/logo.png" alt="VEXARO SMM Member Login" className="h-full w-full object-cover" />
     </div>
   );
@@ -82,17 +82,17 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="vexo-shell min-h-screen w-full max-w-full overflow-x-hidden bg-[#070d0d] text-white">
+    <main className="vexo-shell min-h-screen w-full max-w-full overflow-x-hidden bg-[#0b0f19] text-white">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col overflow-x-hidden lg:grid lg:min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
         {/* Brand side */}
-        <section className="relative hidden overflow-hidden border-r border-white/5 px-10 py-10 lg:flex lg:flex-col lg:justify-between xl:px-16">
-          <div className="vexo-orb absolute -left-32 top-1/4 h-80 w-80 rounded-full bg-[#baff00]/7 blur-3xl" />
-          <div className="vexo-orb vexo-orb-delay absolute -right-20 bottom-10 h-72 w-72 rounded-full bg-[#baff00]/5 blur-3xl" />
+        <section className="relative hidden overflow-hidden border-r border-slate-800 px-10 py-10 lg:flex lg:flex-col lg:justify-between xl:px-16">
+          <div className="vexo-orb absolute -left-32 top-1/4 h-80 w-80 rounded-full bg-indigo-600/10 blur-3xl" />
+          <div className="vexo-orb vexo-orb-delay absolute -right-20 bottom-10 h-72 w-72 rounded-full bg-blue-600/10 blur-3xl" />
           <div className="relative vexo-fade-up">
             <div className="flex items-center gap-3"><Mark /><div><p className="text-xl font-black tracking-tight">VEXARO</p><p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">SMM Panel</p></div></div>
             <div className="mt-24 max-w-xl">
-              <p className="mb-4 inline-flex rounded-full border border-lime-300/15 bg-lime-300/5 px-3 py-1.5 text-xs font-bold text-[#baff00]">Fast &amp; Automated Social Media Growth</p>
-              <h1 className="text-5xl font-black leading-[1.04] tracking-[-0.04em] xl:text-6xl">Grow smarter.<br /><span className="text-[#baff00]">Spend less.</span></h1>
+              <p className="mb-4 inline-flex rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1.5 text-xs font-bold text-indigo-400">Fast &amp; Automated Social Media Growth</p>
+              <h1 className="text-5xl font-black leading-[1.04] tracking-[-0.04em] xl:text-6xl">Grow smarter.<br /><span className="bg-gradient-to-r from-indigo-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">Spend less.</span></h1>
               <p className="mt-6 max-w-lg text-base leading-7 text-slate-400">Pakistan&apos;s trusted platform to safely accelerate your social media presence. 100% automated delivery, zero passwords required, and verified local payments.</p>
             </div>
           </div>
@@ -103,8 +103,8 @@ export default function LoginPage() {
               ["shield", "100% Safe & Secure", "Zero passwords needed"],
               ["support", "Human WhatsApp Support", "+92 317 6437013"],
             ].map(([icon, title, text]) => (
-              <div key={title} className="vexo-card rounded-2xl border border-white/7 bg-[#0d1517]/80 p-4 backdrop-blur-sm">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#baff00]/10 text-[#baff00]"><Icon name={icon as "shield" | "bolt" | "support"} size={17} /></div>
+              <div key={title} className="vexo-card rounded-2xl border border-slate-800 bg-[#111827]/80 p-4 backdrop-blur-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-400"><Icon name={icon as "shield" | "bolt" | "support"} size={17} /></div>
                 <p className="mt-3 text-sm font-black text-white">{title}</p>
                 <p className="mt-1 text-[11px] leading-4 text-slate-400">{text}</p>
               </div>
@@ -114,19 +114,19 @@ export default function LoginPage() {
 
         {/* Login */}
         <section className="relative flex min-h-screen w-full max-w-full items-center justify-center overflow-x-hidden px-4 py-8 sm:px-8">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#baff00]/5 blur-3xl" />
+          <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-indigo-600/10 blur-3xl" />
           <div className="relative w-full max-w-[460px] min-w-0 vexo-fade-up">
             <div className="mb-6 lg:hidden"><Mark /></div>
-            <div className="vexo-login-card w-full max-w-full rounded-3xl border border-white/10 bg-[#10191b] p-5 shadow-2xl shadow-black/30 sm:p-8">
+            <div className="vexo-login-card w-full max-w-full rounded-3xl border border-slate-800 bg-[#111827] p-5 shadow-2xl shadow-black/50 sm:p-8">
               <div>
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <span className="rounded-full bg-lime-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#baff00]">
+                    <span className="rounded-full bg-indigo-500/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-400">
                       Verified SMM Panel
                     </span>
                     <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Welcome back 👋</h2>
                   </div>
-                  <div className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-[#baff00]/10 text-[#baff00] sm:flex"><Icon name="shield" size={20} /></div>
+                  <div className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-400 sm:flex"><Icon name="shield" size={20} /></div>
                 </div>
                 <p className="text-xs leading-5 text-slate-400">Sign in to manage your orders, wallet balance, and social media campaigns.</p>
               </div>
@@ -154,7 +154,7 @@ export default function LoginPage() {
                     placeholder="Enter your registered email"
                     autoComplete="username"
                     required
-                    className="w-full rounded-xl border border-white/10 bg-[#0a1214] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10"
+                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   />
                 </div>
                 <div>
@@ -162,7 +162,7 @@ export default function LoginPage() {
                     <label htmlFor="vexaro-login-password" className="text-xs font-bold uppercase tracking-wider text-slate-400 shrink-0">
                       VEXARO Panel Password
                     </label>
-                    <Link href="/forgot-password" className="text-xs font-semibold text-[#baff00] hover:underline text-right">
+                    <Link href="/forgot-password" className="text-xs font-semibold text-indigo-400 hover:underline text-right">
                       Forgot password?
                     </Link>
                   </div>
@@ -176,7 +176,7 @@ export default function LoginPage() {
                       placeholder="Enter your VEXARO account password"
                       autoComplete="current-password"
                       required
-                      className="w-full rounded-xl border border-white/10 bg-[#0a1214] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00]/60 focus:ring-2 focus:ring-[#baff00]/10"
+                      className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     />
                     <button
                       type="button"
@@ -194,7 +194,7 @@ export default function LoginPage() {
                     <p>{error}</p>
                     <div className="mt-2 flex items-center gap-1.5 border-t border-red-400/15 pt-2 text-[11px] text-slate-300">
                       <span>Forgot your login?</span>
-                      <Link href="/forgot-password" className="font-bold text-[#baff00] hover:underline">
+                      <Link href="/forgot-password" className="font-bold text-indigo-400 hover:underline">
                         Reset password here →
                       </Link>
                     </div>
@@ -207,19 +207,19 @@ export default function LoginPage() {
                   }}
                 />
 
-                <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#baff00] px-4 py-3.5 text-sm font-black text-[#07100f] transition hover:bg-[#d2ff5a] disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-3.5 text-sm font-bold text-white transition hover:from-indigo-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 shadow-lg shadow-indigo-500/25 cursor-pointer">
                   {loading ? "Signing in..." : "Sign In to Account"}<span>→</span>
                 </button>
               </form>
 
               {/* Supported Payments Guarantee */}
-              <div className="mt-5 rounded-xl border border-white/5 bg-[#0a1214] p-3 text-center">
+              <div className="mt-5 rounded-xl border border-slate-800 bg-[#0d131f] p-3 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Official Local Payment Methods</p>
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-300">
-                  <span className="rounded-lg bg-white/5 px-2.5 py-1">SadaPay</span>
-                  <span className="rounded-lg bg-white/5 px-2.5 py-1">Easypaisa</span>
-                  <span className="rounded-lg bg-white/5 px-2.5 py-1">JazzCash</span>
-                  <span className="rounded-lg bg-white/5 px-2.5 py-1">Bank</span>
+                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-300">SadaPay</span>
+                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-300">Easypaisa</span>
+                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-300">JazzCash</span>
+                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-300">Bank</span>
                 </div>
               </div>
 
@@ -229,7 +229,7 @@ export default function LoginPage() {
                   href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#25d366]/30 bg-[#25d366]/10 px-3.5 py-1 text-xs font-bold text-[#25d366] hover:bg-[#25d366]/20 transition"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition"
                 >
                   <Icon name="whatsapp" size={13} />
                   <span>Join WhatsApp Channel for Alerts &amp; Codes</span>
@@ -240,7 +240,7 @@ export default function LoginPage() {
                   href="https://wa.me/923176437013"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex flex-wrap items-center justify-center gap-1 text-xs text-slate-400 hover:text-[#25d366] transition"
+                  className="inline-flex flex-wrap items-center justify-center gap-1 text-xs text-slate-400 hover:text-emerald-400 transition"
                 >
                   <span className="inline-flex items-center gap-1">
                     <Icon name="support" size={13} /> Questions before joining?
@@ -250,7 +250,7 @@ export default function LoginPage() {
               </div>
 
               <p className="mt-6 text-center text-sm text-slate-400">
-                New to VEXARO? <Link href="/signup" className="font-black text-[#baff00] hover:underline">Create an account</Link>
+                New to VEXARO? <Link href="/signup" className="font-bold text-indigo-400 hover:underline">Create an account</Link>
               </p>
             </div>
 
