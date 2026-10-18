@@ -2321,6 +2321,7 @@ function Orders({
   api?: (url: string, init?: RequestInit) => Promise<any>;
 }) {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [syncingOrderId, setSyncingOrderId] = useState<string | null>(null);
 
   return (
     <section className={card + " overflow-hidden"}>
@@ -2385,6 +2386,11 @@ function Orders({
             )}
           </button>
         )}
+
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-2 text-xs text-emerald-400 font-medium">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Orders automatically update live from upstream API providers (Smooth SMM, Rizvi, Pak SMM)</span>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-[1300px] w-full text-left">
@@ -2447,7 +2453,19 @@ function Orders({
                 <td className="px-5 py-4 font-mono text-xs text-slate-300">
                   {o.remains != null && String(o.remains).trim() !== "" ? o.remains : "—"}
                 </td>
-                <td className="px-5 py-4"><Badge>{o.status}</Badge></td>
+                <td className="px-5 py-4">
+                  <div className="flex flex-col gap-1">
+                    <Badge>{o.status}</Badge>
+                    {o.providerOrderId ? (
+                      <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1" title="Provider API managed: Status automatically updates from service provider">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Auto-Synced
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 font-mono">Manual Order</span>
+                    )}
+                  </div>
+                </td>
                 <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-400">
                   <p className="font-semibold text-slate-300">{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</p>
                   <p className="text-[11px] text-slate-500">{o.createdAt ? new Date(o.createdAt).toLocaleTimeString() : ""}</p>
@@ -2463,10 +2481,51 @@ function Orders({
                       🔍 Details
                     </button>
 
+                    {api && o.providerOrderId && (
+                      <button
+                        type="button"
+                        disabled={syncingOrderId === o.id}
+                        onClick={async () => {
+                          setSyncingOrderId(o.id);
+                          try {
+                            const res = await api("/api/admin/orders", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ action: "sync_single", orderId: o.id }),
+                            });
+                            alert(res.message || "Order status updated from provider.");
+                            reload();
+                          } catch (err: any) {
+                            alert("Sync error: " + (err.message || "Failed to check provider"));
+                          } finally {
+                            setSyncingOrderId(null);
+                          }
+                        }}
+                        className="rounded-lg border border-[#baff00]/30 bg-[#baff00]/10 px-2.5 py-1.5 text-xs font-black text-[#cfff62] hover:bg-[#baff00] hover:text-[#07100f] disabled:opacity-50 transition cursor-pointer flex items-center gap-1"
+                        title="Fetch latest live status directly from provider API right now"
+                      >
+                        {syncingOrderId === o.id ? (
+                          <>
+                            <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-25" />
+                              <path d="M4 12a8 8 0 0 1 8-8" strokeWidth="4" className="opacity-75" />
+                            </svg>
+                            <span>Checking...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>🔄</span>
+                            <span>Sync</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
                     <select
                       value={o.status}
                       onChange={(e) => update(o.id, e.target.value)}
                       className="rounded-lg border border-white/10 bg-[#0b1418] px-2 py-1.5 text-xs text-white outline-none cursor-pointer"
+                      title="Manual Override: Status is normally updated automatically from the service provider"
                     >
                       <option>Pending</option>
                       <option>Processing</option>
@@ -2721,7 +2780,54 @@ function Orders({
               )}
             </div>
 
-            <div className="mt-5 flex justify-end">
+            <div className="mt-5 flex items-center justify-between">
+              {api && selectedOrder.providerOrderId ? (
+                <button
+                  type="button"
+                  disabled={syncingOrderId === selectedOrder.id}
+                  onClick={async () => {
+                    setSyncingOrderId(selectedOrder.id);
+                    try {
+                      const res = await api("/api/admin/orders", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "sync_single", orderId: selectedOrder.id }),
+                      });
+                      alert(res.message || "Order status refreshed from provider.");
+                      if (res.order) {
+                        setSelectedOrder((prev: any) => ({
+                          ...prev,
+                          status: res.order.status,
+                          remains: res.order.remains,
+                          startCount: res.order.start_count,
+                          updatedAt: res.order.updated_at,
+                        }));
+                      }
+                      reload();
+                    } catch (err: any) {
+                      alert("Sync error: " + (err.message || "Failed to check provider"));
+                    } finally {
+                      setSyncingOrderId(null);
+                    }
+                  }}
+                  className="rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 px-4 py-2 text-xs font-black text-[#cfff62] hover:bg-[#baff00] hover:text-[#07100f] disabled:opacity-50 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  {syncingOrderId === selectedOrder.id ? (
+                    <>
+                      <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-25" />
+                        <path d="M4 12a8 8 0 0 1 8-8" strokeWidth="4" className="opacity-75" />
+                      </svg>
+                      <span>Checking Provider...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔄</span>
+                      <span>Fetch Live Status From Provider</span>
+                    </>
+                  )}
+                </button>
+              ) : <div />}
               <button
                 type="button"
                 onClick={() => setSelectedOrder(null)}

@@ -79,8 +79,10 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
   if (provMap.has("am_smm")) provMap.set("am", provMap.get("am_smm")!);
 
   // 2. Query active orders awaiting status sync
-  let whereClause = `WHERE provider_order_id IS NOT NULL
-                     AND status IN ('Pending', 'Processing', 'In progress', 'In Progress', 'Payment Reserved')`;
+  let whereClause = `WHERE provider_order_id IS NOT NULL`;
+  if (!orderId) {
+    whereClause += ` AND status IN ('Pending', 'Processing', 'In progress', 'In Progress', 'Payment Reserved')`;
+  }
   const params: unknown[] = [];
 
   if (userId) {

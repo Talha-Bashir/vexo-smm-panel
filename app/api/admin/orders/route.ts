@@ -107,6 +107,36 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, error: "Missing orderId." }, { status: 400 });
     }
 
+    // 0. Single Order On-Demand Provider Sync
+    if (b?.action === "sync_single") {
+      const syncRes = await syncOrders({ orderId, minAgeSeconds: 0 });
+      const detail = syncRes.details[0];
+
+      const ordRes = await db.query(
+        `SELECT id, status, remains, start_count, updated_at FROM vexo_orders WHERE id = $1`,
+        [orderId]
+      );
+      const freshOrd = ordRes.rows[0];
+
+      if (detail?.action === "error") {
+        return NextResponse.json({
+          success: false,
+          error: `Provider error: ${detail.error || "Unable to retrieve status from provider"}`,
+          detail,
+          order: freshOrd,
+        }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: detail
+          ? `Provider check complete: Status is "${detail.newStatus}" (Action: ${detail.action}, Remains: ${detail.remains ?? "—"}, Start: ${detail.startCount ?? "—"})`
+          : "Provider checked. Order is up to date.",
+        detail,
+        order: freshOrd,
+      });
+    }
+
     // 1. One-click Order Refund to User Wallet
     if (b?.action === "refund") {
       await c.query("BEGIN");
