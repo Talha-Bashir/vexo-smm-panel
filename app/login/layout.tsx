@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign In to VEXARO Account | VEXARO SMM Panel",
+  title: "Sign In to Account",
   description: "Secure login for registered VEXARO SMM Panel account holders.",
   robots: {
     index: false,

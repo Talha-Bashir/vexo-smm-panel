@@ -4,7 +4,7 @@ import Link from "next/link";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "Instagram SMM Panel Pakistan – Buy Followers, Likes & Reels Views with JazzCash",
+  title: "Instagram SMM Panel – Buy Followers & Likes",
   description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Free views & likes test trial.",
   keywords: [
     "smm panel",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     canonical: "https://vexarosmm.com/instagram-services",
   },
   openGraph: {
-    title: "Instagram SMM Panel Pakistan – Buy Followers, Likes & Reels Views with JazzCash",
+    title: "Instagram SMM Panel – Buy Followers & Likes",
     description: "Buy Instagram followers, likes and reels views in Pakistan with JazzCash, Easypaisa & SadaPay. Instant delivery, 30-day auto-refill and Free views & likes test trial.",
     url: "https://vexarosmm.com/instagram-services",
     siteName: "VEXARO SMM Services",

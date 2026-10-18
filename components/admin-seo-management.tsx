@@ -93,13 +93,25 @@ export function SeoManagementView() {
   // Smart parser for Google Site Verification
   function handleGoogleVerificationChange(val: string) {
     let clean = val.trim();
-    if (clean.includes("content=\"")) {
+    if (clean.includes("content=\"") || clean.includes("content='")) {
       const match = clean.match(/content=["']([^"']+)["']/);
       if (match && match[1]) {
         clean = match[1];
       }
     }
     setGoogleVerification(clean);
+  }
+
+  // Smart parser for Bing Webmaster Verification
+  function handleBingVerificationChange(val: string) {
+    let clean = val.trim();
+    if (clean.includes("content=\"") || clean.includes("content='")) {
+      const match = clean.match(/content=["']([^"']+)["']/);
+      if (match && match[1]) {
+        clean = match[1];
+      }
+    }
+    setBingVerification(clean);
   }
 
   async function handleSave() {
@@ -566,10 +578,13 @@ export function SeoManagementView() {
             <input
               type="text"
               value={bingVerification}
-              onChange={(e) => setBingVerification(e.target.value.trim())}
-              placeholder="e.g. 78E993B01B765B... (msvalidate.01)"
+              onChange={(e) => handleBingVerificationChange(e.target.value)}
+              placeholder="e.g. 78E993B01B765B... or paste full meta tag"
               className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070d0d] px-4 py-2.5 text-xs text-white focus:border-[#baff00] outline-none font-mono"
             />
+            <p className="mt-1 text-[10px] text-slate-500">
+              Paste your raw Bing code or full &lt;meta name="msvalidate.01"&gt; tag, or import directly from Google Search Console in Bing Webmasters.
+            </p>
           </div>
         </div>
       </div>

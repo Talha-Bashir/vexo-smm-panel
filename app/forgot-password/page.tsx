@@ -235,12 +235,12 @@ export default function ForgotPasswordPage() {
                   Message VEXARO SMM Admin directly on WhatsApp to unlock or reset your account in under 2 minutes.
                 </p>
                 <a
-                  href={`https://wa.me/923176437013?text=${whatsappMessage}`}
+                  href={`https://wa.me/923088180234?text=${whatsappMessage}`}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-2.5 inline-flex flex-wrap items-center gap-1.5 rounded-lg bg-[#25d366] px-3 py-1.5 text-xs font-bold text-[#07100f] transition hover:bg-[#20bd5a]"
                 >
-                  <Icon name="whatsapp" size={13} /> Reset via WhatsApp (+92 317 6437013)
+                  <Icon name="whatsapp" size={13} /> Reset via WhatsApp (+92 308 8180234)
                 </a>
               </div>
             </div>

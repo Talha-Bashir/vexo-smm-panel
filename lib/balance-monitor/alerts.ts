@@ -53,9 +53,10 @@ export function getProviderThresholds(providerId: string): ProviderBalanceThresh
       lowEnvKey = process.env.BALANCE_ALERT_PROVIDER3 || process.env.BALANCE_ALERT_AM_SMM || "";
       critEnvKey = process.env.BALANCE_CRITICAL_PROVIDER3 || process.env.BALANCE_CRITICAL_AM_SMM || "";
       break;
+    case "smmflare":
     case "pakistan_smm":
-      lowEnvKey = process.env.BALANCE_ALERT_PROVIDER4 || process.env.BALANCE_ALERT_PAKISTAN_SMM || "";
-      critEnvKey = process.env.BALANCE_CRITICAL_PROVIDER4 || process.env.BALANCE_CRITICAL_PAKISTAN_SMM || "";
+      lowEnvKey = process.env.BALANCE_ALERT_PROVIDER4 || process.env.BALANCE_ALERT_SMMFLARE || process.env.BALANCE_ALERT_PAKISTAN_SMM || "";
+      critEnvKey = process.env.BALANCE_CRITICAL_PROVIDER4 || process.env.BALANCE_CRITICAL_SMMFLARE || process.env.BALANCE_CRITICAL_PAKISTAN_SMM || "";
       break;
     case "rizvi_smm":
       lowEnvKey = process.env.BALANCE_ALERT_PROVIDER5 || process.env.BALANCE_ALERT_RIZVI_SMM || "";

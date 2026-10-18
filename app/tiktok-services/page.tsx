@@ -4,7 +4,7 @@ import Link from "next/link";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "TikTok SMM Panel Pakistan – Buy Followers, Likes & Views with Easypaisa",
+  title: "TikTok SMM Panel – Buy Followers & Views",
   description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Free views & likes test trial.",
   keywords: [
     "smm panel",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     canonical: "https://vexarosmm.com/tiktok-services",
   },
   openGraph: {
-    title: "TikTok SMM Panel Pakistan – Buy Followers, Likes & Views with Easypaisa",
+    title: "TikTok SMM Panel – Buy Followers & Views",
     description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Free views & likes test trial.",
     url: "https://vexarosmm.com/tiktok-services",
     siteName: "VEXARO SMM Services",
@@ -183,7 +183,7 @@ export default function ServiceLandingPage() {
               </p>
             </div>
             <a
-              href="https://wa.me/923176437013?text=Hi%20Talha,%20I%20want%20to%20buy%20a%20UK%20TikTok%20Creativity%20Program%20account%20(Rs%20250)"
+              href="https://wa.me/923088180234?text=Hi%20Talha,%20I%20want%20to%20buy%20a%20UK%20TikTok%20Creativity%20Program%20account%20(Rs%20250)"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 shrink-0 rounded-2xl bg-[#25d366] px-6 py-3.5 text-xs sm:text-sm font-black text-black hover:bg-[#20ba59] transition shadow-[0_0_20px_rgba(37,211,102,0.3)]"

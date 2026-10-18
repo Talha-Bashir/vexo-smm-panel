@@ -129,6 +129,9 @@ type VexoAnnouncement = {
   id: string;
   title: string;
   message: string;
+  type?: string;
+  scheduledAt?: string | null;
+  eventLink?: string | null;
   createdAt: string;
 };
 
@@ -1663,10 +1666,19 @@ export default function Home() {
                 .map((a) => {
                   const isExpanded = expandedMobileAnnouncement === a.id;
                   const url = extractAnnouncementUrl(a.message);
+                  const isEvent = a.type === "event";
+                  const eventTime = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+                  const isLiveNow = isEvent && (!eventTime || Date.now() >= eventTime);
+                  const eventActionLink = a.eventLink || "/live-event";
+
                   return (
                     <div
                       key={a.id}
-                      className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-[#baff00]/40 bg-gradient-to-r from-[#0e241b] via-[#102220] to-[#0e241b] shadow-[0_0_25px_rgba(186,255,0,0.1)] animate-in fade-in slide-in-from-top-3 duration-300"
+                      className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border shadow-lg animate-in fade-in slide-in-from-top-3 duration-300 ${
+                        isEvent
+                          ? "border-pink-500/50 bg-gradient-to-r from-[#1b0d2d] via-[#141029] to-[#0c181f] shadow-[0_0_35px_rgba(217,70,239,0.2)]"
+                          : "border-[#baff00]/40 bg-gradient-to-r from-[#0e241b] via-[#102220] to-[#0e241b] shadow-[0_0_25px_rgba(186,255,0,0.1)]"
+                      }`}
                     >
                       {/* Mobile compact non-intrusive bar (sm:hidden) */}
                       <div className="sm:hidden p-2.5 sm:p-3">
@@ -1676,18 +1688,40 @@ export default function Home() {
                             onClick={() => setExpandedMobileAnnouncement(isExpanded ? null : a.id)}
                             className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
                           >
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#baff00] text-[#07100f] text-xs font-black">
-                              📢
+                            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-black ${
+                              isEvent
+                                ? "bg-gradient-to-br from-pink-500 to-purple-600 text-white"
+                                : "bg-[#baff00] text-[#07100f]"
+                            }`}>
+                              {isEvent ? "🎪" : "📢"}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-white truncate">
-                                {a.title}
-                              </p>
+                              <div className="flex items-center gap-1.5">
+                                {isEvent && (
+                                  <span className="rounded bg-rose-500/30 px-1 py-0.2 text-[8px] font-black uppercase text-rose-300">
+                                    {isLiveNow ? "🔴 LIVE" : "EVENT"}
+                                  </span>
+                                )}
+                                <p className="text-xs font-bold text-white truncate">
+                                  {a.title}
+                                </p>
+                              </div>
                             </div>
                           </button>
 
                           <div className="flex items-center gap-1 shrink-0">
-                            {url && (
+                            {isEvent ? (
+                              <a
+                                href={eventActionLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-lg bg-gradient-to-r from-pink-500 to-purple-600 px-2 py-1 text-[10px] font-black text-white hover:scale-105 transition flex items-center gap-0.5 shadow"
+                                title="Join Facebook Event & Claim ₨50"
+                              >
+                                <span>Claim ₨50</span>
+                                <span className="text-[11px] font-black">↗</span>
+                              </a>
+                            ) : url ? (
                               <a
                                 href={url}
                                 target="_blank"
@@ -1698,7 +1732,7 @@ export default function Home() {
                                 <span>Link</span>
                                 <span className="text-[11px] font-black">↗</span>
                               </a>
-                            )}
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => setExpandedMobileAnnouncement(isExpanded ? null : a.id)}
@@ -1722,10 +1756,33 @@ export default function Home() {
                         {/* Collapsible details on mobile */}
                         {isExpanded && (
                           <div className="mt-2.5 pt-2.5 border-t border-white/10 text-xs text-slate-200 leading-relaxed whitespace-pre-wrap animate-in fade-in duration-200">
+                            {isEvent && (
+                              <div className="mb-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-2 text-amber-200 text-[11px] font-semibold">
+                                🎁 Free ₨50 Wallet Balance for joining tonight at 9:00 PM!
+                              </div>
+                            )}
                             {renderAnnouncementMessage(a.message)}
+                            {isEvent && (
+                              <div className="mt-3 flex flex-col gap-2">
+                                <a
+                                  href="/live-event"
+                                  className="w-full text-center rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 py-2.5 text-xs font-black text-white shadow transition"
+                                >
+                                  🔥 Enter Live Event Arena & Claim ₨50 ↗
+                                </a>
+                                <a
+                                  href="https://wa.me/923088180234?text=Hello%20VEXARO%20Support,%20I%20joined%20the%20Facebook%20Event%20and%20want%20to%20claim%20my%20free%2050%20RS.%20My%20username%20is:%20"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="w-full text-center rounded-xl border border-emerald-500/40 bg-emerald-500/15 py-2 text-xs font-bold text-emerald-300 transition"
+                                >
+                                  💬 Claim on WhatsApp (+92 308 8180234)
+                                </a>
+                              </div>
+                            )}
                             <div className="mt-3 flex items-center justify-between">
                               <span className="text-[10px] text-slate-400 font-mono">
-                                {new Date(a.createdAt).toLocaleDateString()}
+                                {isEvent ? "Scheduled: Tonight 9:00 PM PKT" : new Date(a.createdAt).toLocaleDateString()}
                               </span>
                               <button
                                 type="button"
@@ -1743,19 +1800,43 @@ export default function Home() {
                       <div className="hidden sm:block p-5 sm:p-6">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3.5">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#baff00] text-[#07100f] shadow-[0_0_15px_rgba(186,255,0,0.35)]">
-                              <span className="text-xl">📢</span>
+                            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-lg ${
+                              isEvent
+                                ? "bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-[0_0_20px_rgba(217,70,239,0.4)]"
+                                : "bg-[#baff00] text-[#07100f] shadow-[0_0_15px_rgba(186,255,0,0.35)]"
+                            }`}>
+                              <span className="text-2xl">{isEvent ? "🎪" : "📢"}</span>
                             </div>
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full border border-lime-400/30 bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#baff00]">
-                                  OFFICIAL ANNOUNCEMENT
-                                </span>
-                                <span className="text-[11px] text-slate-400 font-mono">
-                                  {new Date(a.createdAt).toLocaleDateString()}
-                                </span>
+                                {isEvent ? (
+                                  <>
+                                    {isLiveNow ? (
+                                      <span className="rounded-full border border-rose-500/50 bg-rose-500/20 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-rose-300 flex items-center gap-1.5 animate-pulse">
+                                        <span className="h-2 w-2 rounded-full bg-rose-400 animate-ping" />
+                                        🔴 LIVE NOW — 9:00 PM EVENT
+                                      </span>
+                                    ) : (
+                                      <span className="rounded-full border border-purple-500/50 bg-purple-500/20 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                                        ⏳ TONIGHT AT 9:00 PM PKT
+                                      </span>
+                                    )}
+                                    <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                                      🎁 FREE ₨50 BALANCE REWARD
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="rounded-full border border-lime-400/30 bg-lime-400/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#baff00]">
+                                      OFFICIAL ANNOUNCEMENT
+                                    </span>
+                                    <span className="text-[11px] text-slate-400 font-mono">
+                                      {new Date(a.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </>
+                                )}
                               </div>
-                              <h3 className="mt-1 text-lg sm:text-xl font-black text-white">
+                              <h3 className="mt-1.5 text-lg sm:text-xl font-black text-white">
                                 {a.title}
                               </h3>
                             </div>
@@ -1775,7 +1856,32 @@ export default function Home() {
                           {renderAnnouncementMessage(a.message)}
                         </div>
 
-                        {url && (
+                        {isEvent ? (
+                          <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <a
+                              href="/live-event"
+                              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 px-6 py-3 text-xs sm:text-sm font-black text-white shadow-[0_0_25px_rgba(217,70,239,0.4)] hover:scale-105 transition"
+                            >
+                              <span>👉 {isLiveNow ? "Enter Live Event Arena & Claim ₨50" : "Enter Live Event Arena"}</span>
+                              <span>↗</span>
+                            </a>
+                            <a
+                              href="https://wa.me/923088180234?text=Hello%20VEXARO%20Support,%20I%20joined%20the%20Facebook%20Event%20and%20want%20to%20claim%20my%20free%2050%20RS.%20My%20username%20is:%20"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25 px-4 py-3 text-xs sm:text-sm font-bold text-emerald-300 transition"
+                            >
+                              <Icon name="whatsapp" size={15} />
+                              <span>Submit Proof on WhatsApp (+92 308 8180234)</span>
+                            </a>
+                            <button
+                              onClick={() => dismissAnnouncement(a.id)}
+                              className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition"
+                            >
+                              Dismiss Notice
+                            </button>
+                          </div>
+                        ) : url ? (
                           <div className="mt-4 flex flex-wrap items-center gap-3">
                             <a
                               href={url}
@@ -1793,7 +1899,7 @@ export default function Home() {
                               Dismiss Notice
                             </button>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -3255,7 +3361,7 @@ function isServiceGuaranteed(service: Service): boolean {
   return guaranteed.test(text);
 }
 
-const OWNER_CONTACT_NUMBER = "03176437013";
+const OWNER_CONTACT_NUMBER = "03088180234";
 
 function sanitizeServiceContactNumbers(text?: string | null): string {
   if (!text || typeof text !== "string") return "";
@@ -6328,7 +6434,7 @@ function AddFundsPage({
                     <div className="flex items-center gap-2">
                       <span>Deposit Amount (USD)</span>
                       <span className="rounded-full bg-[#F0B90B]/15 border border-[#F0B90B]/30 px-2 py-0.2 text-[10px] font-extrabold normal-case text-[#F0B90B]">
-                        🎁 5%–10% bonus ($2+)
+                        🎁 5%–10% bonus ($5+)
                       </span>
                     </div>
                     <span className="text-amber-400 font-normal">Min: $1.00 USD</span>
@@ -6357,11 +6463,15 @@ function AddFundsPage({
                   <div className="mt-1.5 flex items-center justify-between text-[11px] min-h-[20px]">
                     <span className="text-slate-300">
                       ≈ <strong className="text-white">₨{amount || "0.00"} PKR</strong> (1 USD = ₨{liveForexUsdRate})
-                      {Number(amount) >= 500 && (
+                      {Number(binanceAmountUsd) >= 5 ? (
                         <strong className="text-[#F0B90B] ml-1.5">
                           · +{Number(amount) >= 5000 ? "10% VIP" : "5%"} bonus (+₨{Math.round(Number(amount) * (Number(amount) >= 5000 ? 0.10 : 0.05)).toLocaleString()})
                         </strong>
-                      )}
+                      ) : Number(binanceAmountUsd) > 0 ? (
+                        <span className="text-slate-400 ml-1.5">
+                          · Deposit $5+ USD to unlock +5% to +10% bonus
+                        </span>
+                      ) : null}
                     </span>
                   </div>
                 </label>
@@ -6534,7 +6644,7 @@ function AddFundsPage({
             {/* Secondary Action: WhatsApp Support Confirmation */}
             <div className="mt-3 text-center">
               <a
-                href={`https://wa.me/923176437013?text=${encodeURIComponent(
+                href={`https://wa.me/923088180234?text=${encodeURIComponent(
                   method === "Binance Pay"
                     ? `Hello VEXARO SMM Admin, I have submitted a deposit of $${binanceAmountUsd || (Number(amount) / liveForexUsdRate).toFixed(2)} USDT (₨${amount || "..."} PKR) via Binance. TxHash / Order ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
                     : `Hello Saeed Bashir / VEXARO SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via ${method}. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
@@ -8640,13 +8750,13 @@ function SupportPage({
 
           <div className="mt-6">
             <a
-              href="https://wa.me/923176437013"
+              href="https://wa.me/923088180234"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25d366] py-3.5 text-center text-sm font-black text-[#07100f] transition hover:bg-[#20bd5a] shadow-[0_4px_20px_rgba(37,211,102,0.25)]"
             >
               <Icon name="whatsapp" size={18} />
-              <span>Chat on WhatsApp (+92 317 6437013)</span>
+              <span>Chat on WhatsApp (+92 308 8180234)</span>
             </a>
           </div>
         </div>

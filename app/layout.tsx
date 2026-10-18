@@ -37,7 +37,7 @@ import { getAllPlatformSettings, DEFAULT_PLATFORM_SETTINGS } from "@/lib/admin";
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getAllPlatformSettings().catch(() => DEFAULT_PLATFORM_SETTINGS);
   const siteUrl = settings.seo_site_url || SITE_URL;
-  const title = settings.seo_meta_title || "SMM Panel Pakistan – Buy Instagram Followers, TikTok Likes & YouTube Views";
+  const title = settings.seo_meta_title || "VEXARO SMM Panel – Cheapest SMM Services in Pakistan";
   const desc =
     settings.seo_meta_description ||
     "VEXARO SMM is an affordable SMM panel in Pakistan. Buy Instagram followers, TikTok likes, YouTube watch time & views, Facebook followers and Telegram members. Pay with JazzCash, Easypaisa, SadaPay or crypto. Instant delivery + Free TikTok/Instagram views & likes test trial.";
@@ -113,7 +113,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: {
       default: title,
-      template: "%s | VEXARO SMM Panel",
+      template: "%s | VEXARO",
     },
     description: desc,
     keywords,
@@ -223,7 +223,7 @@ const structuredData = {
       sameAs: [
         "https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q",
         "https://t.me/VexaroSMMAdmin",
-        "https://wa.me/923176437013",
+        "https://wa.me/923088180234",
         "https://vexarosmm.com",
       ],
     },
@@ -514,9 +514,35 @@ fbq('track', 'PageView');`,
 
             {/* Broadcast Announcement Banner */}
             {!isMaintenance && noticeEnabled && noticeText && (
-              <aside aria-label="Special Announcement" className="relative z-50 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 via-[#baff00] to-emerald-500 px-4 py-2 text-center text-xs font-black text-[#07100f] shadow-md">
-                <span>📢</span>
-                <span>{noticeText}</span>
+              <aside
+                aria-label="Special Announcement"
+                className={`relative z-50 flex items-center justify-center gap-2 px-4 py-2 text-center text-xs font-black shadow-md transition-all ${
+                  settings.site_notice_type === "event"
+                    ? "bg-gradient-to-r from-purple-700 via-pink-600 to-indigo-700 text-white shadow-purple-500/30"
+                    : "bg-gradient-to-r from-emerald-600 via-[#baff00] to-emerald-500 text-[#07100f]"
+                }`}
+              >
+                {settings.site_notice_type === "event" ? (
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] uppercase tracking-wider backdrop-blur-sm text-pink-200 border border-white/20">
+                      <span className="h-2 w-2 rounded-full bg-rose-400 animate-ping" />
+                      LIVE EVENT
+                    </span>
+                    <span>{noticeText}</span>
+                    <a
+                      href="/live-event"
+                      className="inline-flex items-center gap-1 rounded-md bg-white px-2.5 py-0.5 text-[11px] font-black text-purple-950 shadow hover:bg-slate-100 transition ml-1"
+                    >
+                      <span>Claim Free ₨50</span>
+                      <span>→</span>
+                    </a>
+                  </div>
+                ) : (
+                  <>
+                    <span>📢</span>
+                    <span>{noticeText}</span>
+                  </>
+                )}
               </aside>
             )}
 

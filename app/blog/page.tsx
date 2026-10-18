@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "SMM Growth Blog & Guides (2026) – Social Media Tips & Tutorials",
+  title: "SMM Growth Blog & Social Media Guides",
   description:
     "Official VEXARO SMM Blog. In-depth tutorials and growth strategies for Instagram followers, TikTok viral hacks, YouTube 4000 hours watch time, and SMM reseller business.",
   alternates: {
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     "vexaro smm blog",
   ],
   openGraph: {
-    title: "VEXARO SMM Growth Blog & Guides (2026)",
+    title: "SMM Growth Blog & Social Media Guides",
     description:
       "Actionable tutorials and wholesale strategies to grow Instagram, TikTok, YouTube, and Facebook engagement.",
     url: `${SITE_URL}/blog`,

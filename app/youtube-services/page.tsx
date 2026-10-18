@@ -4,7 +4,7 @@ import Link from "next/link";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "YouTube SMM Panel Pakistan – 4000 Watch Hours & Subscribers",
+  title: "YouTube SMM Panel – Watch Hours & Views",
   description: "Complete 4,000 watch hours and 1,000 subscribers in Pakistan. Monetization-safe YouTube views, subscribers and likes with JazzCash, Easypaisa & SadaPay.",
   keywords: [
     "smm panel",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     canonical: "https://vexarosmm.com/youtube-services",
   },
   openGraph: {
-    title: "YouTube SMM Panel Pakistan – 4000 Watch Hours & Subscribers",
+    title: "YouTube SMM Panel – Watch Hours & Views",
     description: "Complete 4,000 watch hours and 1,000 subscribers in Pakistan. Monetization-safe YouTube views, subscribers and likes with JazzCash, Easypaisa & SadaPay.",
     url: "https://vexarosmm.com/youtube-services",
     siteName: "VEXARO SMM Services",

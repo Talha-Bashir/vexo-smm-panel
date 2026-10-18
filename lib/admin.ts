@@ -80,6 +80,9 @@ export function ensureAdminSchema() {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           created_by INTEGER REFERENCES vexo_users(id) ON DELETE SET NULL
         );
+        ALTER TABLE vexo_announcements ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'announcement';
+        ALTER TABLE vexo_announcements ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
+        ALTER TABLE vexo_announcements ADD COLUMN IF NOT EXISTS event_link TEXT;
 
         CREATE TABLE IF NOT EXISTS vexo_admin_activity (
           id BIGSERIAL PRIMARY KEY,
@@ -180,11 +183,11 @@ export const DEFAULT_PLATFORM_SETTINGS: Record<string, string> = {
   support_email: "support@vexarosmm.com",
 
   // Search Engine Optimization (SEO)
-  seo_meta_title: "VEXARO SMM Panel – Affordable Social Media Marketing Services",
+  seo_meta_title: "VEXARO SMM Panel – Cheapest SMM Services in Pakistan",
   seo_meta_description: "VEXARO SMM (vexarosmm.com) is the #1 cheapest automated SMM panel in Pakistan & Worldwide. Buy Instagram followers, TikTok likes, YouTube 4000 hours watch time & views, Facebook followers, and Telegram members. Instant delivery with SadaPay, Easypaisa, JazzCash, and Binance Pay.",
   seo_meta_keywords: "vexarosmm, vexarosmm.com, vexaro smm, vexaro smm panel, smm panel pakistan, cheapest smm panel, best smm panel pakistan, smm panel easypaisa, smm panel jazzcash, smm panel sadapay, smm panel binance pay, smm panel usdt, buy instagram followers pakistan, buy tiktok likes pakistan, buy youtube watchtime 4000 hours, reseller smm panel",
   seo_site_url: "https://vexarosmm.com",
-  seo_og_title: "VEXARO SMM Panel – Affordable Social Media Marketing Services",
+  seo_og_title: "VEXARO SMM Panel – Cheapest SMM Services in Pakistan",
   seo_og_description: "Boost your social media growth instantly with VEXARO SMM (vexarosmm.com). Cheapest automated SMM panel for Instagram, TikTok, YouTube, & Facebook. Easy deposits via SadaPay, Easypaisa, JazzCash, and Binance Pay.",
   seo_og_image: "/og-image.png",
   seo_twitter_title: "VEXARO SMM Panel – Best & Cheapest SMM Panel",

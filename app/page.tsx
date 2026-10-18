@@ -316,9 +316,27 @@ export default function LandingPage() {
   const [hasSession, setHasSession] = useState(false);
 
   // System Announcements State
-  const [announcements, setAnnouncements] = useState<{ id: string; title: string; message: string; createdAt: string }[]>([]);
+  const [announcements, setAnnouncements] = useState<
+    {
+      id: string;
+      title: string;
+      message: string;
+      type?: string;
+      scheduledAt?: string | null;
+      eventLink?: string | null;
+      createdAt: string;
+    }[]
+  >([]);
   const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<{ id: string; title: string; message: string; createdAt: string } | null>(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    type?: string;
+    scheduledAt?: string | null;
+    eventLink?: string | null;
+    createdAt: string;
+  } | null>(null);
   const [topBannerDismissed, setTopBannerDismissed] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<PlatformTheme>("dark");
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -459,11 +477,24 @@ export default function LandingPage() {
 
       {/* ---------------- 0. TOP ANNOUNCEMENT BAR (WHATSAPP CHANNEL & LIVE SITE) ---------------- */}
       {!topBannerDismissed && (
-        <div className="relative z-50 w-full border-b border-indigo-500/20 bg-[#0e172a] px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-indigo-300 animate-in fade-in duration-200">
+        <div className={`relative z-50 w-full border-b px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold animate-in fade-in duration-200 ${
+          announcements[0]?.type === "event"
+            ? "border-pink-500/40 bg-gradient-to-r from-[#170e28] via-[#210c38] to-[#0e172a] text-purple-200 shadow-md shadow-pink-500/10"
+            : "border-indigo-500/20 bg-[#0e172a] text-indigo-300"
+        }`}>
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span className="flex h-2 w-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
-              <span className="font-bold text-white shrink-0 text-[11px] sm:text-xs">📢 Updates:</span>
+              {announcements[0]?.type === "event" ? (
+                <span className="flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 text-[10px] font-black text-rose-300 uppercase shrink-0">
+                  <span className="h-2 w-2 rounded-full bg-rose-400 animate-ping" />
+                  LIVE EVENT
+                </span>
+              ) : (
+                <>
+                  <span className="flex h-2 w-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
+                  <span className="font-bold text-white shrink-0 text-[11px] sm:text-xs">📢 Updates:</span>
+                </>
+              )}
               {announcements.length > 0 ? (
                 <button
                   type="button"
@@ -472,37 +503,45 @@ export default function LandingPage() {
                     setSelectedAnnouncement(announcements[0]);
                     setAnnouncementModalOpen(true);
                   }}
-                  className="font-bold text-indigo-300 hover:text-white hover:underline transition text-left cursor-pointer truncate text-[11px] sm:text-xs min-w-0"
+                  className={`font-bold transition text-left cursor-pointer truncate text-[11px] sm:text-xs min-w-0 ${
+                    announcements[0]?.type === "event"
+                      ? "text-pink-300 hover:text-white hover:underline"
+                      : "text-indigo-300 hover:text-white hover:underline"
+                  }`}
                 >
                   <span className="truncate">{announcements[0].title}</span>
-                  <span className="ml-1.5 hidden sm:inline-block rounded bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-black text-indigo-300 uppercase">VIEW NOTICE</span>
+                  <span className={`ml-1.5 hidden sm:inline-block rounded px-1.5 py-0.5 text-[9px] font-black uppercase ${
+                    announcements[0]?.type === "event"
+                      ? "bg-pink-500/20 text-pink-300 border border-pink-500/30"
+                      : "bg-indigo-500/20 text-indigo-300"
+                  }`}>
+                    {announcements[0]?.type === "event" ? "CLAIM ₨50" : "VIEW NOTICE"}
+                  </span>
                 </button>
               ) : (
                 <span className="truncate text-[11px] sm:text-xs text-slate-300">Join our WhatsApp Channel for daily discounts &amp; live platform status</span>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <a
-                href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition"
-              >
-                <Icon name="whatsapp" size={12} />
-                <span className="hidden sm:inline">Join WhatsApp Channel</span>
-                <span className="sm:hidden">WhatsApp</span>
-              </a>
-              <span className="text-slate-600 hidden md:inline">•</span>
-              <a
-                href="https://vexarosmm.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="hidden md:inline-flex items-center gap-1.5 text-slate-400 hover:text-white transition font-mono text-[11px]"
-                title="Official Website Link"
-              >
-                <Icon name="globe" size={13} />
-                <span>vexarosmm.com</span>
-              </a>
+              {announcements[0]?.type === "event" ? (
+                <Link
+                  href="/live-event"
+                  className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-3 py-1 text-[11px] sm:text-xs font-black text-white shadow hover:scale-105 transition"
+                >
+                  <span>🎉 Enter Live Arena</span>
+                </Link>
+              ) : (
+                <a
+                  href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition"
+                >
+                  <Icon name="whatsapp" size={12} />
+                  <span className="hidden sm:inline">Join WhatsApp Channel</span>
+                  <span className="sm:hidden">WhatsApp</span>
+                </a>
+              )}
               <button
                 type="button"
                 suppressHydrationWarning
@@ -1484,13 +1523,13 @@ export default function LandingPage() {
                     <span>WhatsApp Channel</span>
                   </a>
                   <a
-                    href="https://wa.me/923176437013"
+                    href="https://wa.me/923088180234"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600"
                   >
                     <Icon name="whatsapp" size={18} />
-                    <span>Chat on WhatsApp (+92 317 6437013)</span>
+                    <span>Chat on WhatsApp (+92 308 8180234)</span>
                   </a>
                   <a
                     href="https://t.me/VexaroSMMAdmin"
@@ -1533,7 +1572,7 @@ export default function LandingPage() {
                 </a>
                 <span>•</span>
                 <a
-                  href="https://wa.me/923176437013"
+                  href="https://wa.me/923088180234"
                   target="_blank"
                   rel="noreferrer"
                   className="text-emerald-400 font-bold hover:underline"
@@ -1640,12 +1679,12 @@ export default function LandingPage() {
                 <div>
                   <span className="text-slate-400">WhatsApp Admin:</span>{" "}
                   <a
-                    href="https://wa.me/923176437013"
+                    href="https://wa.me/923088180234"
                     target="_blank"
                     rel="noreferrer"
                     className="text-emerald-400 font-bold hover:underline"
                   >
-                    +92 317 6437013
+                    +92 308 8180234
                   </a>
                 </div>
                 <div>
@@ -1709,12 +1748,18 @@ export default function LandingPage() {
           <div className="relative w-full max-w-xl rounded-3xl border border-slate-800 bg-[#111827] p-6 sm:p-8 shadow-2xl shadow-black">
             <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-lg font-black text-white shadow-[0_0_15px_rgba(99,102,241,0.35)]">
-                  📢
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-black text-white shadow-lg ${
+                  selectedAnnouncement.type === "event"
+                    ? "bg-gradient-to-br from-purple-600 to-pink-600 shadow-[0_0_20px_rgba(217,70,239,0.4)]"
+                    : "bg-indigo-600 shadow-[0_0_15px_rgba(99,102,241,0.35)]"
+                }`}>
+                  {selectedAnnouncement.type === "event" ? "🎪" : "📢"}
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400">
-                    Official Announcement
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${
+                    selectedAnnouncement.type === "event" ? "text-pink-400" : "text-indigo-400"
+                  }`}>
+                    {selectedAnnouncement.type === "event" ? "Special Facebook Live Event" : "Official Announcement"}
                   </span>
                   <h3 className="text-lg sm:text-xl font-black text-white">
                     {selectedAnnouncement.title}
@@ -1731,25 +1776,47 @@ export default function LandingPage() {
               </button>
             </div>
 
+            {selectedAnnouncement.type === "event" && (
+              <div className="mt-4 flex items-center justify-between rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-2.5 text-xs text-amber-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🎁</span>
+                  <span className="font-bold">Reward: Instant FREE ₨50 Wallet Balance!</span>
+                </div>
+                <span className="rounded-full bg-amber-400/20 px-2.5 py-0.5 text-[10px] font-black uppercase text-amber-300">
+                  9:00 PM PKT
+                </span>
+              </div>
+            )}
+
             <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1 text-xs sm:text-sm text-slate-200 leading-relaxed space-y-1">
               {renderFormattedAnnouncement(selectedAnnouncement.message)}
             </div>
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-4">
               <span className="text-[11px] text-slate-500 font-mono">
-                Published: {new Date(selectedAnnouncement.createdAt).toLocaleDateString()}
+                {selectedAnnouncement.type === "event" ? "Schedule: Tonight @ 9:00 PM PKT" : `Published: ${new Date(selectedAnnouncement.createdAt).toLocaleDateString()}`}
               </span>
-              <div className="flex gap-2.5">
-                {extractFirstAnnouncementUrl(selectedAnnouncement.message) && (
-                  <a
-                    href={extractFirstAnnouncementUrl(selectedAnnouncement.message)!}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow hover:from-indigo-400 hover:to-blue-500 transition"
+              <div className="flex flex-wrap gap-2.5">
+                {selectedAnnouncement.type === "event" ? (
+                  <Link
+                    href="/live-event"
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 px-5 py-2.5 text-xs font-black text-white shadow-[0_0_20px_rgba(217,70,239,0.35)] hover:scale-105 transition"
                   >
-                    <span>Open Channel / Link</span>
+                    <span>🔥 Enter Live Arena & Claim ₨50</span>
                     <span>↗</span>
-                  </a>
+                  </Link>
+                ) : (
+                  extractFirstAnnouncementUrl(selectedAnnouncement.message) && (
+                    <a
+                      href={extractFirstAnnouncementUrl(selectedAnnouncement.message)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow hover:from-indigo-400 hover:to-blue-500 transition"
+                    >
+                      <span>Open Channel / Link</span>
+                      <span>↗</span>
+                    </a>
+                  )
                 )}
                 <button
                   type="button"

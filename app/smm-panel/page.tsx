@@ -4,7 +4,7 @@ import Link from "next/link";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "SMM Panel Pakistan – Cheapest Rates with JazzCash, Easypaisa & SadaPay",
+  title: "Cheapest SMM Panel Pakistan – Fast Delivery",
   description: "Looking for the best SMM panel? VEXARO SMM provides the cheapest and fastest automated social media marketing services with instant delivery and 24/7 support.",
   keywords: [
     "smm panel",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     canonical: "https://vexarosmm.com/smm-panel",
   },
   openGraph: {
-    title: "SMM Panel Pakistan – Cheapest Rates with JazzCash, Easypaisa & SadaPay",
+    title: "Cheapest SMM Panel Pakistan – Fast Delivery",
     description: "Looking for the best SMM panel? VEXARO SMM provides the cheapest and fastest automated social media marketing services with instant delivery and 24/7 support.",
     url: "https://vexarosmm.com/smm-panel",
     siteName: "VEXARO SMM Services",

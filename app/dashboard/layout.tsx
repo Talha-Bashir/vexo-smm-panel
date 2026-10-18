@@ -1,7 +1,7 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Dashboard | VEXARO SMM Panel",
+  title: "Dashboard",
   robots: {
     index: false,
     follow: false,

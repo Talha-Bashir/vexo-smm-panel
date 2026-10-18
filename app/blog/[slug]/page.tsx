@@ -32,8 +32,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const postUrl = `${SITE_URL}/blog/${post.slug}`;
 
+  // Ensure title never exceeds 60 characters for search engines (Bing/Google strict 70 char limit)
+  const rawTitle = (post.metaTitle || post.title || "").trim();
+  let cleanTitle = rawTitle.replace(/\s*\|\s*VEXARO.*$/i, "").trim();
+  if (cleanTitle.length > 50) {
+    cleanTitle = cleanTitle.slice(0, 47).trim() + "...";
+  }
+  const pageTitle = `${cleanTitle} | VEXARO`;
+
   return {
-    title: `${post.metaTitle}`,
+    title: { absolute: pageTitle },
     description: post.metaDescription,
     alternates: {
       canonical: postUrl,
@@ -42,7 +50,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     authors: [{ name: post.author.name, url: SITE_URL }],
     openGraph: {
       type: "article",
-      title: post.title,
+      title: pageTitle,
       description: post.summary,
       url: postUrl,
       siteName: "VEXARO SMM",

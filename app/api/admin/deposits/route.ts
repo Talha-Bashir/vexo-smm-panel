@@ -69,7 +69,7 @@ export async function PATCH(request: Request) {
     await client.query("BEGIN");
 
     const depositResult = await client.query(
-      `SELECT id, user_id, amount_pkr, status
+      `SELECT id, user_id, amount_pkr, status, method
        FROM vexo_deposits
        WHERE id = $1
        FOR UPDATE`,
@@ -101,7 +101,7 @@ export async function PATCH(request: Request) {
         bonusPkr = Math.round(Number(body.bonusAmount) * 100) / 100;
         ratePercent = depositAmountPkr > 0 ? Math.round((bonusPkr / depositAmountPkr) * 100) : 0;
       } else {
-        const calc = calculateDepositBonus(depositAmountPkr, depositBonusSetting);
+        const calc = calculateDepositBonus(depositAmountPkr, depositBonusSetting, deposit.method);
         ratePercent = calc.ratePercent;
         bonusPkr = calc.bonusPkr;
       }

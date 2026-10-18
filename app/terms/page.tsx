@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | VEXARO SMM Panel",
+  title: "Terms of Service",
   description: "Terms of service, platform usage rules, order fulfillment policies, and user responsibilities for VEXARO SMM.",
 };
 

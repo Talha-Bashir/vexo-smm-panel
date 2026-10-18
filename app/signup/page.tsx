@@ -600,7 +600,7 @@ export default function SignupPage() {
             </a>
 
             <a
-              href="https://wa.me/923176437013"
+              href="https://wa.me/923088180234"
               target="_blank"
               rel="noreferrer"
               className="inline-flex flex-wrap items-center justify-center gap-1 text-xs text-slate-400 hover:text-emerald-400 transition"
@@ -608,7 +608,7 @@ export default function SignupPage() {
               <span className="inline-flex items-center gap-1">
                 <Icon name="support" size={13} /> Need help?
               </span>
-              <span>WhatsApp Admin: <strong className="text-white font-bold underline">+92 317 6437013</strong></span>
+              <span>WhatsApp Admin: <strong className="text-white font-bold underline">+92 308 8180234</strong></span>
             </a>
           </div>
 

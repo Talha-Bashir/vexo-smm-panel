@@ -1,7 +1,7 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Reset Password | VEXARO SMM Panel",
+  title: "Reset Password",
   description: "Reset your VEXARO SMM Panel account password securely.",
   robots: {
     index: false,

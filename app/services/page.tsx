@@ -4,14 +4,14 @@ import { ServicesCatalogClient } from "./services-client";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Services & Wholesale Pricing – Best SMM Rates in Pakistan",
+  title: "SMM Services & Wholesale Pricing Catalog",
   description:
     "Browse 400+ cheapest automated SMM services for Instagram, TikTok, YouTube, Facebook, and Telegram. Wholesale rates in PKR and USD with instant delivery via SadaPay, Easypaisa, JazzCash, and Binance Pay.",
   alternates: {
     canonical: "/services",
   },
   openGraph: {
-    title: "Services & Wholesale Pricing | VEXARO SMM Panel",
+    title: "SMM Services & Wholesale Pricing Catalog",
     description:
       "Cheapest real automated social media marketing services with instant delivery. Check live rates in PKR and USD.",
     url: "/services",

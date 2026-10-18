@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | VEXARO SMM Panel",
+  title: "Privacy Policy",
   description: "Learn how VEXARO SMM collects, uses, protects, and safeguards user data and payment information.",
 };
 
@@ -103,8 +103,8 @@ export default function PrivacyPage() {
                 @VexaroSMMAdmin
               </a>{" "}
               or via WhatsApp at{" "}
-              <a href="https://wa.me/923176437013" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline">
-                +92 317 6437013
+              <a href="https://wa.me/923088180234" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline">
+                +92 308 8180234
               </a>.
               For service announcements and platform notices, you can also follow our official WhatsApp Channel at{" "}
               <a href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline font-bold">

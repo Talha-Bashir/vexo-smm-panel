@@ -4,7 +4,7 @@ import Link from "next/link";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
-  title: "Facebook SMM Panel Pakistan – Page Followers, Likes & Video Views",
+  title: "Facebook SMM Panel – Followers & Views",
   description: "Grow your Facebook page in Pakistan with our affordable SMM panel. Instant page likes, followers, post reactions and video views with Easypaisa & JazzCash.",
   keywords: [
     "smm panel",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     canonical: "https://vexarosmm.com/facebook-services",
   },
   openGraph: {
-    title: "Facebook SMM Panel Pakistan – Page Followers, Likes & Video Views",
+    title: "Facebook SMM Panel – Followers & Views",
     description: "Grow your Facebook page in Pakistan with our affordable SMM panel. Instant page likes, followers, post reactions and video views with Easypaisa & JazzCash.",
     url: "https://vexarosmm.com/facebook-services",
     siteName: "VEXARO SMM Services",

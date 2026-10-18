@@ -74,7 +74,11 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
   // Map common provider aliases
   if (provMap.has("rizvi_smm")) provMap.set("rizvi", provMap.get("rizvi_smm")!);
   if (provMap.has("pak_smm")) provMap.set("pak", provMap.get("pak_smm")!);
-  if (provMap.has("smooth_smm")) provMap.set("smooth", provMap.get("smooth_smm")!);
+  if (provMap.has("smmflare")) {
+    provMap.set("smmflare_smm", provMap.get("smmflare")!);
+    provMap.set("pakistan_smm", provMap.get("smmflare")!);
+    provMap.set("pakistan", provMap.get("smmflare")!);
+  }
   if (provMap.has("pakistan_smm")) provMap.set("pakistan", provMap.get("pakistan_smm")!);
   if (provMap.has("am_smm")) provMap.set("am", provMap.get("am_smm")!);
 

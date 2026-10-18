@@ -6,9 +6,11 @@ import { SeoManagementView } from "@/components/admin-seo-management";
 import { PlatformSettingsView } from "@/components/admin-platform-settings";
 import { BlogCmsAdmin } from "@/components/admin-blog-cms";
 import { AdminApiTogglesCard } from "@/components/admin-api-toggles";
+import { LiveEventsAdminView } from "@/components/admin-live-events";
 
 type Tab =
   | "Dashboard"
+  | "Live Events"
   | "Users"
   | "Deposits"
   | "Orders"
@@ -27,6 +29,7 @@ type Tab =
 
 const tabs: Tab[] = [
   "Dashboard",
+  "Live Events",
   "Users",
   "Deposits",
   "Orders",
@@ -197,6 +200,7 @@ export default function Admin() {
     if (p.full_access) return tabs;
     const list: Tab[] = [];
     if (p.analytics) list.push("Dashboard");
+    if (p.announcements || p.analytics) list.push("Live Events");
     if (p.users) list.push("Users");
     if (p.deposits) list.push("Deposits");
     if (p.orders) list.push("Orders");
@@ -742,6 +746,7 @@ export default function Admin() {
           />
         )}
         {tab === "Tickets" && <Tickets tickets={tickets} reload={load} updateStatus={updateTicketStatus} busy={busy} />}
+        {tab === "Live Events" && <LiveEventsAdminView />}
         {tab === "Announcements" && <Announcements ann={ann} title={title} setTitle={setTitle} message={message} setMessage={setMessage} create={createAnnouncement} del={deleteAnnouncement} busy={busy} />}
         {tab === "Activity" && <Activity rows={activity} />}
         {tab === "SEO & Meta" && <SeoManagementView />}
@@ -792,7 +797,7 @@ function ProviderBalancesWidget({
     { id: "pak_smm", name: "PAK SMM Panels", url: "paksmmpanels.com" },
     { id: "smooth_smm", name: "Smooth SMM", url: "smoothsmm.com" },
     { id: "am_smm", name: "AM SMM Panel", url: "amsmmpanel.com" },
-    { id: "pakistan_smm", name: "Pakistan SMM Panel", url: "pakistansmmpanel.pk" },
+    { id: "smmflare", name: "SMM Flare", url: "smmflare.com" },
     { id: "rizvi_smm", name: "Rizvi SMM Panels", url: "rizvismmpanels.com" },
     { id: "elevatex_bot", name: "ElevateX Partner Gateway", url: "shop.elevatexbyzaid.com" },
   ];
@@ -2106,7 +2111,9 @@ function DepositsAdmin({
               </div>
 
               {(() => {
-                const autoRate = Number(approvingDeposit.amount) >= 5000 ? 10 : 5;
+                const isBinance = String(approvingDeposit.method || "").toLowerCase().includes("binance");
+                const isEligible = isBinance ? Number(approvingDeposit.amount) >= 1390 : Number(approvingDeposit.amount) >= 500;
+                const autoRate = isEligible ? (Number(approvingDeposit.amount) >= 5000 ? 10 : 5) : 0;
                 const effectiveRate =
                   selectedBonusRate === "auto"
                     ? autoRate
@@ -2886,7 +2893,7 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
   // Determine lowest rate across all 5 quotes
   let lowestProvId: string | null = null;
   let lowestRate = Infinity;
-  for (const pId of ["pak_smm", "smooth_smm", "am_smm", "pakistan_smm", "rizvi_smm"]) {
+  for (const pId of ["pak_smm", "smooth_smm", "am_smm", "smmflare", "pakistan_smm", "rizvi_smm"]) {
     if (rates[pId] && typeof rates[pId].rateUsd === "number") {
       if (rates[pId].rateUsd < lowestRate) {
         lowestRate = rates[pId].rateUsd;
@@ -2988,7 +2995,7 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
               <option value="pak_smm">PAK SMM</option>
               <option value="smooth_smm">Smooth SMM</option>
               <option value="am_smm">AM SMM</option>
-              <option value="pakistan_smm">Pakistan SMM</option>
+              <option value="smmflare">SMM Flare</option>
               <option value="rizvi_smm">Rizvi SMM</option>
             </select>
           )}
@@ -3074,19 +3081,19 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
         )}
       </td>
 
-      {/* Pakistan SMM Rate */}
+      {/* SMM Flare Rate */}
       <td className="px-4 py-3.5 font-mono">
-        {rates.pakistan_smm ? (
+        {(rates.smmflare || rates.pakistan_smm) ? (
           <div className="flex flex-col">
-            <span className={`text-slate-200 ${s.active_provider_id === "pakistan_smm" ? "font-bold text-white" : ""}`}>
-              ${Number(rates.pakistan_smm.rateUsd).toFixed(4)}
+            <span className={`text-slate-200 ${(s.active_provider_id === "smmflare" || s.active_provider_id === "pakistan_smm") ? "font-bold text-white" : ""}`}>
+              ${Number((rates.smmflare || rates.pakistan_smm).rateUsd).toFixed(4)}
             </span>
-            {lowestProvId === "pakistan_smm" && (
+            {(lowestProvId === "smmflare" || lowestProvId === "pakistan_smm") && (
               <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
                 ★ CHEAPEST
               </span>
             )}
-            {s.active_provider_id === "pakistan_smm" && (
+            {(s.active_provider_id === "smmflare" || s.active_provider_id === "pakistan_smm") && (
               <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
                 ACTIVE
               </span>
@@ -3447,7 +3454,7 @@ function Services({
       { id: "pak_smm", name: "PAK SMM", short: "PAK SMM", color: "text-blue-400", border: "border-blue-500/30", badge: "bg-blue-500/20 text-blue-300", barBg: "bg-blue-500" },
       { id: "smooth_smm", name: "Smooth SMM", short: "Smooth", color: "text-emerald-400", border: "border-emerald-500/30", badge: "bg-emerald-500/20 text-emerald-300", barBg: "bg-emerald-500" },
       { id: "am_smm", name: "AM SMM", short: "AM SMM", color: "text-purple-400", border: "border-purple-500/30", badge: "bg-purple-500/20 text-purple-300", barBg: "bg-purple-500" },
-      { id: "pakistan_smm", name: "Pakistan SMM", short: "Pakistan", color: "text-amber-400", border: "border-amber-500/30", badge: "bg-amber-500/20 text-amber-300", barBg: "bg-amber-500" },
+      { id: "smmflare", name: "SMM Flare", short: "SMM Flare", color: "text-amber-400", border: "border-amber-500/30", badge: "bg-amber-500/20 text-amber-300", barBg: "bg-amber-500" },
       { id: "rizvi_smm", name: "Rizvi SMM", short: "Rizvi", color: "text-rose-400", border: "border-rose-500/30", badge: "bg-rose-500/20 text-rose-300", barBg: "bg-rose-500" },
     ];
 
@@ -3456,6 +3463,7 @@ function Services({
       pak_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
       smooth_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
       am_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
+      smmflare: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
       pakistan_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
       rizvi_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
     };
@@ -3803,7 +3811,7 @@ function Services({
               </span>
             </div>
             <p className="mt-1 text-xs text-slate-400">
-              Live price synchronization across PAK SMM, Smooth SMM, AM SMM, Pakistan SMM &amp; Rizvi SMM. Upstream rates are native <strong className="text-slate-200">USD ($)</strong>, dynamically converted to <strong className="text-[#baff00]">PKR (₨)</strong>.
+              Live price synchronization across PAK SMM, Smooth SMM, AM SMM, SMM Flare &amp; Rizvi SMM. Upstream rates are native <strong className="text-slate-200">USD ($)</strong>, dynamically converted to <strong className="text-[#baff00]">PKR (₨)</strong>.
             </p>
           </div>
 
@@ -4020,7 +4028,7 @@ function Services({
                 <th className="px-4 py-3.5">PAK SMM ($)</th>
                 <th className="px-4 py-3.5">Smooth SMM ($)</th>
                 <th className="px-4 py-3.5">AM SMM ($)</th>
-                <th className="px-4 py-3.5">Pakistan SMM ($)</th>
+                <th className="px-4 py-3.5">SMM Flare ($)</th>
                 <th className="px-4 py-3.5">Rizvi SMM ($)</th>
                 <th className="px-4 py-3.5">Markup Multiplier</th>
                 <th className="px-4 py-3.5">Retail Price ($ USD)</th>
@@ -4155,7 +4163,7 @@ function Services({
                     <option value="pak_smm">PAK SMM Panels (paksmmpanels.com)</option>
                     <option value="smooth_smm">Smooth SMM (smoothsmm.com)</option>
                     <option value="am_smm">AM SMM Panel (amsmmpanel.com)</option>
-                    <option value="pakistan_smm">Pakistan SMM Panel (pakistansmmpanel.pk)</option>
+                    <option value="smmflare">SMM Flare (smmflare.com)</option>
                     <option value="rizvi_smm">Rizvi SMM Panels (rizvismmpanels.com)</option>
                     <option value="manual">Manual / Direct Fulfillment</option>
                   </select>
@@ -4469,7 +4477,7 @@ function Services({
                     <option value="pak_smm">PAK SMM Panels (paksmmpanels.com)</option>
                     <option value="smooth_smm">Smooth SMM (smoothsmm.com)</option>
                     <option value="am_smm">AM SMM Panel (amsmmpanel.com)</option>
-                    <option value="pakistan_smm">Pakistan SMM Panel (pakistansmmpanel.pk)</option>
+                    <option value="smmflare">SMM Flare (smmflare.com)</option>
                     <option value="rizvi_smm">Rizvi SMM Panels (rizvismmpanels.com)</option>
                     <option value="manual">Manual / Direct Fulfillment</option>
                   </select>
@@ -4953,7 +4961,14 @@ function Announcements({ ann, title, setTitle, message, setMessage, create, del,
           <div key={a.id} className="p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="font-black">{a.title}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-black">{a.title}</h3>
+                  {a.type === "event" && (
+                    <span className="rounded bg-pink-500/20 border border-pink-500/30 px-2 py-0.5 text-[9px] font-black uppercase text-pink-300">
+                      🎪 Live Event
+                    </span>
+                  )}
+                </div>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-400">{a.message}</p>
               </div>
               <button onClick={() => del(a.id)} className="text-xs font-bold text-red-300 hover:underline">

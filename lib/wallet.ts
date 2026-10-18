@@ -444,11 +444,15 @@ export async function refundFailedOrder(orderId: string, reason: string) {
  */
 export function calculateDepositBonus(
   amountPkr: number,
-  bonusSetting: string = "tiered"
+  bonusSetting: string = "tiered",
+  method?: string
 ): { ratePercent: number; bonusPkr: number } {
   const amount = Number(amountPkr);
-  // Minimum required deposit to receive any bonus is ₨500
-  if (!Number.isFinite(amount) || amount < 500) {
+  const isBinance = String(method || "").toLowerCase().includes("binance");
+  // For Binance: minimum required deposit to receive bonus is $5+ USD (~₨1,390)
+  // For local PKR gateways (Easypaisa, JazzCash, SadaPay): minimum is ₨500
+  const minRequired = isBinance ? 1390 : 500;
+  if (!Number.isFinite(amount) || amount < minRequired) {
     return { ratePercent: 0, bonusPkr: 0 };
   }
 
