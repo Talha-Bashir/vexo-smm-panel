@@ -106,6 +106,14 @@ export async function ensureEventsSchema(): Promise<void> {
 
 export async function getActiveEvent() {
   await ensureEventsSchema();
+
+  // Auto-expire live events that have passed their ended_at
+  await db.query(`
+    UPDATE vexo_events 
+    SET status = 'ended', updated_at = NOW() 
+    WHERE status = 'live' AND ended_at IS NOT NULL AND ended_at <= NOW()
+  `);
+
   // Fetch live event first, then upcoming, then latest ended
   const res = await db.query(`
     SELECT e.*,
@@ -145,7 +153,7 @@ export async function joinEventAndClaim(eventId: string, userId: number, userNam
 
     // Check event
     const eventRes = await client.query(`
-      SELECT id, title, status, reward_amount, auto_credit_on_join, max_winners
+      SELECT id, title, status, reward_amount, auto_credit_on_join, max_winners, ended_at
       FROM vexo_events
       WHERE id = $1 FOR UPDATE
     `, [eventId]);
@@ -155,8 +163,8 @@ export async function joinEventAndClaim(eventId: string, userId: number, userNam
     }
 
     const event = eventRes.rows[0];
-    if (event.status === "ended") {
-      throw new Error("This event has ended.");
+    if (event.status === "ended" || (event.ended_at && new Date(event.ended_at).getTime() <= Date.now())) {
+      throw new Error("This event has concluded. The 12-hour claim window has expired.");
     }
 
     // Check if already joined

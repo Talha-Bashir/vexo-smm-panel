@@ -14,6 +14,8 @@ interface EventItem {
   autoCreditOnJoin: boolean;
   maxWinners: number;
   scheduledAt: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
   participantCount: number;
   winnersCount: number;
   totalAwarded: number;
@@ -160,6 +162,31 @@ export function LiveEventsAdminView() {
       }
     } catch (err) {
       setError("Error updating event status");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Set 12-hour duration
+  async function handleSet12Hours(eventId: string) {
+    try {
+      setBusy(true);
+      setError(null);
+      const endsAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+      const res = await fetch("/api/admin/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: eventId, endedAt: endsAt, status: "live" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccess("Event timer set to 12 hours from now!");
+        await loadEvents();
+      } else {
+        setError(data.error || "Failed to set 12-hour timer");
+      }
+    } catch (err) {
+      setError("Error setting 12-hour timer");
     } finally {
       setBusy(false);
     }
@@ -499,6 +526,11 @@ export function LiveEventsAdminView() {
                     <span className="text-xs font-mono text-slate-400">
                       ID: {selectedEvent.id.slice(0, 8)}...
                     </span>
+                    {selectedEvent.endedAt && (
+                      <span className="rounded-full bg-amber-400/10 border border-amber-400/30 px-2.5 py-0.5 text-[10px] font-mono text-amber-300">
+                        ⏳ Ends: {new Date(selectedEvent.endedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
                   </div>
                   <h3 className="mt-2 text-lg sm:text-xl font-black text-white">
                     {selectedEvent.title}
@@ -507,6 +539,15 @@ export function LiveEventsAdminView() {
 
                 {/* Quick Status Control Buttons */}
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handleSet12Hours(selectedEvent.id)}
+                    className="rounded-xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 px-3 py-2 text-xs font-bold text-amber-300 shadow transition"
+                    title="Set event to run for next 12 hours"
+                  >
+                    ⏳ Set 12h Limit
+                  </button>
                   {selectedEvent.status !== "live" ? (
                     <button
                       type="button"

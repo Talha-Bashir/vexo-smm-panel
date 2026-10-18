@@ -132,7 +132,7 @@ export async function PATCH(req: NextRequest) {
     if (g.error) return g.error;
 
     const body = await req.json().catch(() => ({}));
-    const { id, status, title, description, streamUrl, rewardAmount, autoCreditOnJoin, maxWinners } = body;
+    const { id, status, title, description, streamUrl, rewardAmount, autoCreditOnJoin, maxWinners, endedAt } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: "Event id is required" }, { status: 400 });
@@ -152,6 +152,11 @@ export async function PATCH(req: NextRequest) {
       } else if (status === "ended") {
         updates.push(`ended_at = NOW()`);
       }
+    }
+
+    if (endedAt !== undefined) {
+      updates.push(`ended_at = $${idx++}`);
+      values.push(endedAt ? new Date(endedAt) : null);
     }
 
     if (title !== undefined) {

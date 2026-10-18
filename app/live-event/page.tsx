@@ -50,6 +50,36 @@ export default function LiveEventArenaPage() {
   const [joinSuccessNotice, setJoinSuccessNotice] = useState<string | null>(null);
   const [currentBalance, setCurrentBalance] = useState<number | null>(null);
 
+  // Real-time Countdown Timer
+  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number; isExpired: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!event?.endedAt) {
+      setTimeLeft(null);
+      return;
+    }
+
+    function calculateTime() {
+      const target = new Date(event!.endedAt!).getTime();
+      const diff = target - Date.now();
+
+      if (diff <= 0) {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isExpired: true });
+        return;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeLeft({ hours, minutes, seconds, isExpired: false });
+    }
+
+    calculateTime();
+    const timer = setInterval(calculateTime, 1000);
+    return () => clearInterval(timer);
+  }, [event?.endedAt]);
+
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   // Load event details & initial messages
@@ -334,6 +364,59 @@ export default function LiveEventArenaPage() {
                   </div>
                 </div>
 
+                {/* 12-Hour Countdown Timer Banner */}
+                {timeLeft && (
+                  <div className={`mt-5 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border ${
+                    timeLeft.isExpired 
+                      ? "border-rose-500/40 bg-rose-500/10 text-rose-300" 
+                      : "border-amber-400/30 bg-black/50 text-amber-200"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/20 text-xl text-amber-300">
+                        ⏳
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-black uppercase tracking-wider text-amber-300">
+                            {timeLeft.isExpired ? "Flash Giveaway Concluded" : "Strictly Next 12 Hours Only"}
+                          </p>
+                          {!timeLeft.isExpired && (
+                            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-300">
+                          {timeLeft.isExpired 
+                            ? "The 12-hour claim window has officially closed." 
+                            : "Claim your Free ₨50 wallet balance before this countdown hits zero!"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {!timeLeft.isExpired ? (
+                      <div className="flex items-center gap-2 font-mono">
+                        <div className="rounded-xl border border-amber-400/30 bg-black/60 px-3 py-1.5 text-center shadow-inner">
+                          <span className="block text-base sm:text-lg font-black text-white">{String(timeLeft.hours).padStart(2, '0')}</span>
+                          <span className="block text-[8px] uppercase tracking-wider text-amber-300/80 font-bold">Hours</span>
+                        </div>
+                        <span className="text-amber-400 font-bold text-lg animate-pulse">:</span>
+                        <div className="rounded-xl border border-amber-400/30 bg-black/60 px-3 py-1.5 text-center shadow-inner">
+                          <span className="block text-base sm:text-lg font-black text-white">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                          <span className="block text-[8px] uppercase tracking-wider text-amber-300/80 font-bold">Mins</span>
+                        </div>
+                        <span className="text-amber-400 font-bold text-lg animate-pulse">:</span>
+                        <div className="rounded-xl border border-amber-400/30 bg-black/60 px-3 py-1.5 text-center shadow-inner">
+                          <span className="block text-base sm:text-lg font-black text-amber-300">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                          <span className="block text-[8px] uppercase tracking-wider text-amber-300/80 font-bold">Secs</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="rounded-xl bg-rose-500/20 border border-rose-500/40 px-3.5 py-1.5 text-xs font-black uppercase text-rose-300">
+                        Offer Expired
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Feedback notices */}
                 {joinSuccessNotice && (
                   <div className="mt-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/15 p-4 text-xs sm:text-sm font-bold text-emerald-200 flex items-center gap-2 animate-in fade-in duration-300">
@@ -389,10 +472,14 @@ export default function LiveEventArenaPage() {
                       <button
                         type="button"
                         onClick={handleJoinEvent}
-                        disabled={joining || event.status === "ended"}
+                        disabled={joining || event.status === "ended" || timeLeft?.isExpired}
                         className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-amber-400 via-pink-500 to-purple-600 px-7 py-3.5 text-sm font-black text-white shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:scale-105 active:scale-95 transition disabled:opacity-50 cursor-pointer"
                       >
-                        {joining ? "Claiming ₨50 Balance..." : `🎉 JOIN EVENT & CLAIM FREE ₨${event.rewardAmount} NOW ↗`}
+                        {timeLeft?.isExpired 
+                          ? "⚠️ 12-Hour Claim Window Expired" 
+                          : joining 
+                          ? "Claiming ₨50 Balance..." 
+                          : `🎉 JOIN EVENT & CLAIM FREE ₨${event.rewardAmount} NOW ↗`}
                       </button>
                     </div>
                   )}
