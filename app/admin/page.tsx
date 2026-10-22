@@ -625,6 +625,40 @@ export default function Admin() {
           </div>
         )}
 
+        {/* Mobile Quick Tab Dropdown (Screens < 768px) */}
+        <div className="md:hidden mb-3">
+          <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
+            Admin Section:
+          </label>
+          <select
+            value={tab}
+            onChange={(e) => setTab(e.target.value as any)}
+            className="w-full h-11 rounded-xl border border-[#baff00]/40 bg-[#0e171b] px-3.5 text-xs font-bold text-white shadow-lg outline-none focus:border-[#baff00]"
+          >
+            {visibleTabs.map((t) => (
+              <option key={t} value={t}>
+                {t === "Services" ? "🛠️ Services & Rates Matrix" :
+                 t === "Orders" ? "📦 Orders Management" :
+                 t === "Users" ? "👥 Users & Wallets" :
+                 t === "Deposits" ? "💳 Manual Deposits" :
+                 t === "Dashboard" ? "📊 Overview Dashboard" :
+                 t === "Live Events" ? "🎪 Live Events & Giveaways" :
+                 t === "Subscriptions" ? "⚡ Subscriptions & Tools" :
+                 t === "Coupons" ? "🎟️ Coupons" :
+                 t === "Withdrawals" ? "💸 Affiliate Withdrawals" :
+                 t === "Tickets" ? "💬 Support Tickets" :
+                 t === "Announcements" ? "📢 Announcements" :
+                 t === "SEO & Meta" ? "🚀 SEO & Meta" :
+                 t === "Blog CMS" ? "✍️ Blog CMS" :
+                 t === "Settings" ? "⚙️ Settings" :
+                 t === "Appearance" ? "🎨 Appearance" :
+                 t === "Activity" ? "📋 Activity Logs" :
+                 t === "Sub-Admins" ? "🛡️ Sub-Admins" : t}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <nav className="mb-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {visibleTabs.map((t) => (
             <button
@@ -3309,7 +3343,7 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
       </td>
 
       {/* Actions Column - STICKY RIGHT */}
-      <td className="px-4 py-3.5 text-center sticky right-0 bg-[#07100f] z-10 shadow-[-6px_0_12px_rgba(0,0,0,0.6)]">
+      <td className="px-4 py-3.5 text-center md:sticky md:right-0 bg-[#07100f] z-10 md:shadow-[-6px_0_12px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-center gap-1.5">
           <button
             type="button"
@@ -3348,6 +3382,290 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
         </div>
       </td>
     </tr>
+  );
+});
+
+
+const MobileServiceCard = memo(function MobileServiceCard({
+  s,
+  usdToPkr,
+  savingRowId,
+  savedRowId,
+  onInlineSave,
+  onEditFullService,
+  onDeleteService,
+}: ServiceMatrixRowProps) {
+  const rates = s.provider_rates || {};
+  const [expanded, setExpanded] = useState(false);
+
+  const [localMult, setLocalMult] = useState(s.rate_multiplier ?? 1.07);
+  const [localRetailUsd, setLocalRetailUsd] = useState(s.rate_usd != null ? s.rate_usd : "");
+  const [localRetailPkr, setLocalRetailPkr] = useState(s.rate_pkr != null ? s.rate_pkr : "");
+
+  useEffect(() => {
+    setLocalMult(s.rate_multiplier ?? 1.07);
+  }, [s.rate_multiplier]);
+
+  useEffect(() => {
+    if (s.rate_usd != null) setLocalRetailUsd(s.rate_usd);
+    if (s.rate_pkr != null) setLocalRetailPkr(s.rate_pkr);
+  }, [s.rate_usd, s.rate_pkr]);
+
+  let lowestProvId: string | null = null;
+  let lowestRate = Infinity;
+  for (const pId of ["pak_smm", "smooth_smm", "am_smm", "smmflare", "pakistan_smm", "rizvi_smm"]) {
+    if (rates[pId] && typeof rates[pId].rateUsd === "number") {
+      if (rates[pId].rateUsd < lowestRate) {
+        lowestRate = rates[pId].rateUsd;
+        lowestProvId = pId;
+      }
+    }
+  }
+
+  const baseUsd = Number(s.base_rate_usd || 0);
+  const mult = Number(localMult || s.rate_multiplier || 1.07);
+  const marginPercent = Math.round((mult - 1) * 100);
+  const retailPkr = s.rate_pkr != null ? Number(s.rate_pkr) : Math.round(baseUsd * mult * (usdToPkr || 278) * 100) / 100;
+  const retailUsd = s.rate_usd != null ? Number(s.rate_usd) : Math.round(baseUsd * mult * 10000) / 10000;
+
+  const sId = String(s.service || s.id);
+  const isSaving = savingRowId === sId;
+  const isSaved = savedRowId === sId;
+
+  const providerNames: Record<string, string> = {
+    pak_smm: "PAK SMM",
+    smooth_smm: "Smooth SMM",
+    am_smm: "AM SMM",
+    smmflare: "SMM Flare",
+    pakistan_smm: "SMM Flare",
+    rizvi_smm: "Rizvi SMM",
+  };
+
+  const handlePkrSave = () => {
+    const valPkr = Number(localRetailPkr !== "" ? localRetailPkr : retailPkr);
+    const curBase = Number(s.base_rate_usd || 0);
+    const effectiveRate = usdToPkr || 285;
+    const minCostPkr = curBase * effectiveRate;
+    const minProfitablePkr = Math.round(minCostPkr * 1.05 * 100) / 100;
+    const finalPkr = valPkr < minProfitablePkr && valPkr > 0 ? minProfitablePkr : valPkr;
+    const valUsd = Math.round((finalPkr / effectiveRate) * 10000) / 10000;
+    const newMult = curBase > 0 ? Math.round((valUsd / curBase) * 10000) / 10000 : 1.07;
+    const updated = {
+      ...s,
+      rate_pkr: finalPkr,
+      custom_rate_pkr: finalPkr,
+      rate_usd: valUsd,
+      rate_multiplier: newMult,
+    };
+    setLocalRetailPkr(String(finalPkr));
+    setLocalRetailUsd(String(valUsd));
+    onInlineSave(updated);
+  };
+
+  return (
+    <div className={`p-4 transition-colors border-b border-white/5 ${s.enabled === false ? "bg-rose-950/15 opacity-80" : "bg-[#0b1418]/40 hover:bg-[#0b1418]"}`}>
+      {/* Top row: Platform, ID, Badges, Status Switch */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="rounded bg-[#baff00]/15 border border-[#baff00]/30 px-2 py-0.5 text-[10px] font-black text-[#cfff62]">
+            {s.platform || "SMM"}
+          </span>
+          <span className="text-[10px] font-mono text-slate-400 font-bold">
+            #{s.service || s.id}
+          </span>
+          {s.is_guaranteed && (
+            <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-emerald-400">
+              ♻ Refill
+            </span>
+          )}
+          {Boolean(s.popular) && (
+            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-300">
+              ⭐ Hot
+            </span>
+          )}
+        </div>
+
+        {/* Quick Active / Off toggle */}
+        <button
+          type="button"
+          onClick={() => onInlineSave({ ...s, enabled: s.enabled === false ? true : false })}
+          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer ${
+            s.enabled !== false
+              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+              : "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${s.enabled !== false ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
+          {s.enabled !== false ? "Active" : "Disabled"}
+        </button>
+      </div>
+
+      {/* Service Name */}
+      <h4 className="text-xs font-bold text-white leading-snug line-clamp-2">
+        {s.name}
+      </h4>
+
+      {/* Category & Limits Subtitle */}
+      <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+        <span className="truncate max-w-[200px]" title={s.category}>{s.category}</span>
+        <span className="font-mono shrink-0">Min: {Number(s.min).toLocaleString()} · Max: {Number(s.max).toLocaleString()}</span>
+      </div>
+
+      {/* Price & Multiplier Editing Block */}
+      <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-[#07100f] p-3">
+        {/* Retail PKR Price */}
+        <div>
+          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            Retail Price (PKR)
+          </label>
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-black text-[#baff00]">₨</span>
+            <input
+              type="number"
+              step="0.01"
+              value={localRetailPkr !== "" ? localRetailPkr : (s.rate_pkr != null ? Number(s.rate_pkr).toFixed(2) : Number(retailPkr).toFixed(2))}
+              onChange={(e) => setLocalRetailPkr(e.target.value)}
+              onBlur={handlePkrSave}
+              className="w-full h-8 rounded-lg border border-[#baff00]/30 bg-[#0b1418] px-2 font-mono text-xs font-black text-[#baff00] outline-none focus:border-[#baff00]"
+            />
+          </div>
+          <span className="text-[8px] text-slate-500">per 1k · ~$ {localRetailUsd || retailUsd}</span>
+        </div>
+
+        {/* Markup Multiplier */}
+        <div>
+          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            Multiplier / Profit
+          </label>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              step="0.01"
+              min="0.1"
+              max="20"
+              value={localMult}
+              onChange={(e) => setLocalMult(e.target.value)}
+              onBlur={() => {
+                const multVal = Number(localMult) || 1.07;
+                const curBase = Number(s.base_rate_usd || 0);
+                const updated = {
+                  ...s,
+                  rate_multiplier: multVal,
+                  rate_usd: Math.round(curBase * multVal * 10000) / 10000,
+                  rate_pkr: Math.round(curBase * multVal * (usdToPkr || 278) * 100) / 100,
+                };
+                onInlineSave(updated);
+              }}
+              className="w-full h-8 rounded-lg border border-white/10 bg-[#0b1418] px-2 font-mono text-xs font-bold text-white outline-none focus:border-[#baff00]"
+            />
+            <span className="text-xs text-slate-400 font-bold">×</span>
+          </div>
+          <span className={`text-[8px] font-bold ${marginPercent >= 0 ? "text-emerald-400" : "text-amber-400"}`}>
+            {marginPercent >= 0 ? `+${marginPercent}% profit` : `${marginPercent}%`}
+          </span>
+        </div>
+      </div>
+
+      {/* Active Provider & Routing mode badge */}
+      <div className="mt-2.5 flex items-center justify-between text-[10px]">
+        <div className="flex items-center gap-1.5">
+          <span className="text-slate-400">Provider:</span>
+          <span className="font-bold text-cyan-300">
+            ⚡ {providerNames[s.active_provider_id] || s.active_provider_id || "Auto"}
+          </span>
+          <span className="text-slate-500 font-mono">(${baseUsd.toFixed(4)})</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onInlineSave({ ...s, auto_route: !s.auto_route })}
+          className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase cursor-pointer ${
+            s.auto_route
+              ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+              : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+          }`}
+        >
+          {s.auto_route ? "🤖 Auto-Route" : "🛠️ Manual"}
+        </button>
+      </div>
+
+      {/* Expand/Collapse Provider Quotes Button */}
+      <div className="mt-2.5">
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="w-full text-left flex items-center justify-between py-1 text-[10px] text-slate-400 hover:text-white transition"
+        >
+          <span>Quotes from 5 upstream APIs:</span>
+          <span className="text-[#baff00] font-bold">{expanded ? "Hide ▲" : "View Quotes ▼"}</span>
+        </button>
+
+        {expanded && (
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5 rounded-lg border border-white/5 bg-[#07100f] p-2 text-[10px] animate-in fade-in duration-200">
+            {["pak_smm", "smooth_smm", "am_smm", "smmflare", "rizvi_smm"].map((pId) => {
+              const q = rates[pId] || (pId === "smmflare" ? rates["pakistan_smm"] : null);
+              const isLowest = (lowestProvId === pId || (pId === "smmflare" && lowestProvId === "pakistan_smm"));
+              const isActive = (s.active_provider_id === pId || (pId === "smmflare" && s.active_provider_id === "pakistan_smm"));
+
+              return (
+                <div
+                  key={pId}
+                  className={`p-1.5 rounded border flex flex-col justify-between ${
+                    isActive
+                      ? "border-cyan-500/40 bg-cyan-950/20"
+                      : isLowest
+                      ? "border-emerald-500/30 bg-emerald-950/20"
+                      : "border-white/5 bg-white/[0.02]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] text-slate-400">{providerNames[pId]}</span>
+                    {isLowest && <span className="text-[8px] font-black text-emerald-400">BEST</span>}
+                    {isActive && <span className="text-[8px] font-black text-cyan-400">ACTIVE</span>}
+                  </div>
+                  <span className="font-mono font-bold text-white mt-0.5">
+                    {q && typeof q.rateUsd === "number" ? `${Number(q.rateUsd).toFixed(4)}` : "—"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Action Buttons */}
+      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => onEditFullService(s)}
+          className="flex-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 py-2 text-xs font-black text-emerald-300 transition text-center cursor-pointer"
+        >
+          ✏️ Edit Details
+        </button>
+
+        <button
+          type="button"
+          disabled={isSaving}
+          onClick={handlePkrSave}
+          className={`flex-1 rounded-xl py-2 text-xs font-black transition text-center cursor-pointer flex items-center justify-center gap-1 ${
+            isSaved
+              ? "bg-emerald-400 text-[#07100f]"
+              : "bg-[#baff00] text-[#07100f] hover:bg-[#d2ff5a]"
+          }`}
+        >
+          {isSaving ? "Saving..." : isSaved ? "✓ Saved" : "💾 Save Price"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onDeleteService(s)}
+          className="rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 p-2 text-xs font-bold text-rose-400 transition cursor-pointer"
+          title="Delete service"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
   );
 });
 
@@ -3393,6 +3711,7 @@ function Services({
   const [autoRouteFilter, setAutoRouteFilter] = useState("All");
   const [providerFilter, setProviderFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [bulkMult, setBulkMult] = useState("1.07");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkStatusLoading, setBulkStatusLoading] = useState(false);
@@ -3971,113 +4290,162 @@ function Services({
         )}
 
         {/* Filters */}
-        <div className="flex flex-col gap-3 border-b border-white/10 bg-[#0b1418]/60 p-4 md:flex-row md:items-center">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter by service name, platform, ID..."
-            className="h-10 flex-1 rounded-xl border border-white/10 bg-[#0b1418] px-4 text-xs text-white outline-none focus:border-[#baff00]/50"
-          />
-
-          <select
-            value={selectedPlatform}
-            onChange={(e) => setSelectedPlatform(e.target.value)}
-            className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none"
-          >
-            {platforms.map((p: string) => (
-              <option key={p} value={p}>
-                {p === "All" ? "All Platforms" : p}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={autoRouteFilter}
-            onChange={(e) => setAutoRouteFilter(e.target.value)}
-            className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
-          >
-            <option value="All">All Routing Modes</option>
-            <option value="Auto">Auto-Route Only</option>
-            <option value="Manual">Manual Override Only</option>
-          </select>
-
-          <select
-            value={providerFilter}
-            onChange={(e) => setProviderFilter(e.target.value)}
-            className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
-          >
-            <option value="All">All Upstream APIs ({services.length} services)</option>
-            {providerStats.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.activeCount} active · {p.percent}%)
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3 text-xs text-white outline-none focus:border-[#baff00]/50"
-          >
-            <option value="All">All Statuses</option>
-            <option value="Enabled">🟢 Enabled Only</option>
-            <option value="Disabled">🔴 Disabled Only</option>
-          </select>
-        </div>
-
-        {/* 3. Rates Matrix Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-[1550px] w-full text-left">
-            <thead className="bg-[#0b1418] text-[11px] font-black uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-4 py-3.5">Service &amp; Platform</th>
-                <th className="px-4 py-3.5">Routing Mode</th>
-                <th className="px-4 py-3.5">Active Base ($ USD)</th>
-                <th className="px-4 py-3.5">PAK SMM ($)</th>
-                <th className="px-4 py-3.5">Smooth SMM ($)</th>
-                <th className="px-4 py-3.5">AM SMM ($)</th>
-                <th className="px-4 py-3.5">SMM Flare ($)</th>
-                <th className="px-4 py-3.5">Rizvi SMM ($)</th>
-                <th className="px-4 py-3.5">Markup Multiplier</th>
-                <th className="px-4 py-3.5">Retail Price ($ USD)</th>
-                <th className="px-4 py-3.5">Retail Price (₨ PKR)</th>
-                <th className="px-4 py-3.5 text-center">Status</th>
-                <th className="px-4 py-3.5 text-center sticky right-0 bg-[#0b1418] z-20 shadow-[-6px_0_12px_rgba(0,0,0,0.6)]">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5 text-xs">
-              {filtered.slice(0, displayCount).map((s: any) => (
-                <ServiceMatrixRow
-                  key={s.service || s.id}
-                  s={s}
-                  usdToPkr={usdToPkr}
-                  savingRowId={savingRowId}
-                  savedRowId={savedRowId}
-                  onInlineSave={handleInlineSave}
-                  onEditFullService={handleEditFullService}
-                  onDeleteService={handleDeleteService}
-                />
-              ))}
-            </tbody>
-          </table>
-          {!filtered.length && (
-            <p className="p-10 text-center text-sm text-slate-500">No matching services found in routing matrix.</p>
-          )}
-          {filtered.length > displayCount && (
-            <div className="flex items-center justify-between border-t border-white/5 bg-[#0b1418]/60 p-4">
-              <span className="text-xs text-slate-400">
-                Showing <strong className="text-white">{displayCount}</strong> of <strong className="text-white">{filtered.length}</strong> matching services
-              </span>
-              <button
-                type="button"
-                onClick={() => setDisplayCount((prev) => prev + 50)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/10 hover:border-[#baff00]/40 cursor-pointer"
-              >
-                Load More Services (+50)
-              </button>
+        <div className="border-b border-white/10 bg-[#0b1418]/60 p-3 sm:p-4">
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center">
+            <div className="relative flex-1">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Filter by service name, platform, ID..."
+                className="h-10 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-xs text-white outline-none focus:border-[#baff00]/50"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
             </div>
-          )}
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:flex md:items-center">
+              <select
+                value={selectedPlatform}
+                onChange={(e) => setSelectedPlatform(e.target.value)}
+                className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-2.5 text-xs text-white outline-none"
+              >
+                {platforms.map((p: string) => (
+                  <option key={p} value={p}>
+                    {p === "All" ? "All Platforms" : p}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-2.5 text-xs text-white outline-none focus:border-[#baff00]/50"
+              >
+                <option value="All">All Statuses</option>
+                <option value="Enabled">🟢 Enabled Only</option>
+                <option value="Disabled">🔴 Disabled Only</option>
+              </select>
+
+              <select
+                value={autoRouteFilter}
+                onChange={(e) => setAutoRouteFilter(e.target.value)}
+                className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-2.5 text-xs text-white outline-none focus:border-[#baff00]/50"
+              >
+                <option value="All">All Routing Modes</option>
+                <option value="Auto">Auto-Route Only</option>
+                <option value="Manual">Manual Override Only</option>
+              </select>
+
+              <select
+                value={providerFilter}
+                onChange={(e) => setProviderFilter(e.target.value)}
+                className="h-10 rounded-xl border border-white/10 bg-[#0b1418] px-2.5 text-xs text-white outline-none focus:border-[#baff00]/50"
+              >
+                <option value="All">All Providers ({services.length})</option>
+                {providerStats.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
+
+        {/* 3. Rates Matrix: Mobile Touch Cards or Full Desktop Table */}
+        {viewMode === "cards" ? (
+          <div className="divide-y divide-white/5">
+            {filtered.slice(0, displayCount).map((s: any) => (
+              <MobileServiceCard
+                key={s.service || s.id}
+                s={s}
+                usdToPkr={usdToPkr}
+                savingRowId={savingRowId}
+                savedRowId={savedRowId}
+                onInlineSave={handleInlineSave}
+                onEditFullService={handleEditFullService}
+                onDeleteService={handleDeleteService}
+              />
+            ))}
+            {!filtered.length && (
+              <p className="p-10 text-center text-sm text-slate-500">No matching services found in routing matrix.</p>
+            )}
+            {filtered.length > displayCount && (
+              <div className="flex items-center justify-between border-t border-white/5 bg-[#0b1418]/60 p-4">
+                <span className="text-xs text-slate-400">
+                  Showing <strong className="text-white">{displayCount}</strong> of <strong className="text-white">{filtered.length}</strong> matching services
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDisplayCount((prev) => prev + 50)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/10 hover:border-[#baff00]/40 cursor-pointer"
+                >
+                  Load More Services (+50)
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-[1550px] w-full text-left">
+              <thead className="bg-[#0b1418] text-[11px] font-black uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-3.5">Service &amp; Platform</th>
+                  <th className="px-4 py-3.5">Routing Mode</th>
+                  <th className="px-4 py-3.5">Active Base ($ USD)</th>
+                  <th className="px-4 py-3.5">PAK SMM ($)</th>
+                  <th className="px-4 py-3.5">Smooth SMM ($)</th>
+                  <th className="px-4 py-3.5">AM SMM ($)</th>
+                  <th className="px-4 py-3.5">SMM Flare ($)</th>
+                  <th className="px-4 py-3.5">Rizvi SMM ($)</th>
+                  <th className="px-4 py-3.5">Markup Multiplier</th>
+                  <th className="px-4 py-3.5">Retail Price ($ USD)</th>
+                  <th className="px-4 py-3.5">Retail Price (₨ PKR)</th>
+                  <th className="px-4 py-3.5 text-center">Status</th>
+                  <th className="px-4 py-3.5 text-center md:sticky md:right-0 bg-[#0b1418] z-20 md:shadow-[-6px_0_12px_rgba(0,0,0,0.6)]">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-xs">
+                {filtered.slice(0, displayCount).map((s: any) => (
+                  <ServiceMatrixRow
+                    key={s.service || s.id}
+                    s={s}
+                    usdToPkr={usdToPkr}
+                    savingRowId={savingRowId}
+                    savedRowId={savedRowId}
+                    onInlineSave={handleInlineSave}
+                    onEditFullService={handleEditFullService}
+                    onDeleteService={handleDeleteService}
+                  />
+                ))}
+              </tbody>
+            </table>
+            {!filtered.length && (
+              <p className="p-10 text-center text-sm text-slate-500">No matching services found in routing matrix.</p>
+            )}
+            {filtered.length > displayCount && (
+              <div className="flex items-center justify-between border-t border-white/5 bg-[#0b1418]/60 p-4">
+                <span className="text-xs text-slate-400">
+                  Showing <strong className="text-white">{displayCount}</strong> of <strong className="text-white">{filtered.length}</strong> matching services
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDisplayCount((prev) => prev + 50)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/10 hover:border-[#baff00]/40 cursor-pointer"
+                >
+                  Load More Services (+50)
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       {/* 4. Comprehensive Add New Service Modal */}
