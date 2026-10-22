@@ -37,10 +37,10 @@ function getSmmV2Providers(): SmmV2ProviderDefinition[] {
       apiKey: process.env.PROVIDER_3_KEY || "",
     },
     {
-      id: process.env.PROVIDER_4_ID || "smmflare",
-      name: process.env.PROVIDER_4_NAME || "SMM Flare",
-      apiUrl: process.env.PROVIDER_4_URL || "https://smmflare.com/api/v2",
-      apiKey: process.env.PROVIDER_4_KEY || "1206e0791f26d2b6d0807feeb1a11f9a",
+      id: (process.env.PROVIDER_4_ID && process.env.PROVIDER_4_ID !== "pakistan_smm") ? process.env.PROVIDER_4_ID : "smmflare",
+      name: (process.env.PROVIDER_4_NAME && !process.env.PROVIDER_4_NAME.includes("Pakistan")) ? process.env.PROVIDER_4_NAME : "SMM Flare",
+      apiUrl: (process.env.PROVIDER_4_URL && !process.env.PROVIDER_4_URL.includes("pakistansmmpanel")) ? process.env.PROVIDER_4_URL : "https://smmflare.com/api/v2",
+      apiKey: (process.env.PROVIDER_4_KEY && !process.env.PROVIDER_4_URL?.includes("pakistansmmpanel") && process.env.PROVIDER_4_KEY.length > 10) ? process.env.PROVIDER_4_KEY : "1206e0791f26d2b6d0807feeb1a11f9a",
     },
     {
       id: process.env.PROVIDER_5_ID || "rizvi_smm",

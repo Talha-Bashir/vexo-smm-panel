@@ -804,7 +804,15 @@ function ProviderBalancesWidget({
 
   const balanceMap = useMemo(() => {
     const map = new Map<string, any>();
-    balances.forEach((b) => map.set(b.id, b));
+    balances.forEach((b) => {
+      map.set(b.id, b);
+      if (b.id === "pakistan_smm" && !map.has("smmflare")) {
+        map.set("smmflare", { ...b, id: "smmflare", name: "SMM Flare" });
+      }
+      if (b.id === "smmflare" && !map.has("pakistan_smm")) {
+        map.set("pakistan_smm", b);
+      }
+    });
     return map;
   }, [balances]);
 
