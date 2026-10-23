@@ -92,7 +92,7 @@ export function AdminApiTogglesCard() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0c1618] p-6 sm:p-7 space-y-6">
+    <div className="rounded-2xl border border-white/10 bg-[#0c1618] p-4 sm:p-6 space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div className="space-y-1">

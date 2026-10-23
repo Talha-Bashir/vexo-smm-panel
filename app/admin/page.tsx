@@ -1503,14 +1503,19 @@ function Users({
       </div>
 
       {/* Mobile Touch-Friendly User Cards (Screens < 768px) */}
-      <div className="md:hidden divide-y divide-white/5">
-        {users.map((u) => (
-          <div key={u.id} className="p-4 space-y-3 bg-white/[0.01]">
+      <div className="md:hidden space-y-4 p-2 sm:p-4 bg-transparent">
+        {users.map((u, idx) => (
+          <div key={u.id} className="rounded-2xl border border-white/15 bg-gradient-to-b from-[#0f1b22] to-[#0a1217] p-4 space-y-3.5 shadow-xl relative overflow-hidden">
             {/* Header: User info & Role */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-white text-sm break-words">{u.name}</p>
-                <p className="text-[11px] text-slate-400 font-mono truncate">ID #{u.id} • {u.email}</p>
+            <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#baff00] text-[11px] font-black text-[#07100f] shrink-0">
+                  #{idx + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-white text-sm truncate">{u.name}</p>
+                  <p className="text-[10px] text-slate-400 font-mono truncate">ID #{u.id} • {u.email}</p>
+                </div>
               </div>
               <div className="shrink-0 text-right">
                 <select
@@ -2144,19 +2149,28 @@ function DepositsAdmin({
 
 
       {/* Mobile Touch-Friendly Deposit Cards (Screens < 768px) */}
-      <div className="md:hidden divide-y divide-white/5">
-        {filtered.map((d) => {
+      <div className="md:hidden space-y-4 p-2 sm:p-4 bg-transparent">
+        {filtered.map((d, idx) => {
           const isPending = d.status === "Pending";
           const isApproved = d.status === "Approved";
           const isRejected = d.status === "Rejected";
 
           return (
-            <div key={d.id} className="p-4 space-y-3 bg-white/[0.01]">
+            <div key={d.id} className={`rounded-2xl border p-4 space-y-3.5 shadow-xl relative overflow-hidden ${
+              isPending
+                ? "border-amber-400/40 bg-gradient-to-b from-[#181912] to-[#0a1217]"
+                : "border-white/15 bg-gradient-to-b from-[#0f1b22] to-[#0a1217]"
+            }`}>
               {/* Header: User & Status */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-white text-sm break-words">{d.name}</p>
-                  <p className="text-[11px] text-slate-400 font-mono truncate">{d.email}</p>
+              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-400 text-[11px] font-black text-[#07100f] shrink-0">
+                    #{idx + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-white text-sm truncate">{d.name}</p>
+                    <p className="text-[10px] text-slate-400 font-mono truncate">{d.email}</p>
+                  </div>
                 </div>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase shrink-0 ${
@@ -2164,7 +2178,7 @@ function DepositsAdmin({
                       ? "bg-emerald-400/15 text-emerald-300 border border-emerald-400/30"
                       : isRejected
                       ? "bg-red-400/15 text-red-300 border border-red-400/30"
-                      : "bg-amber-400/15 text-amber-300 border border-amber-400/30 animate-pulse"
+                      : "bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse font-black"
                   }`}
                 >
                   {d.status}
@@ -2735,30 +2749,24 @@ function Orders({
       </div>
 
       {/* Mobile Touch-Friendly Order Cards (Screens < 768px) */}
-      <div className="md:hidden divide-y divide-white/5">
-        {orders.map((o) => (
-          <div key={o.id} className="p-4 space-y-3 bg-white/[0.01]">
+      <div className="md:hidden space-y-4 p-2 sm:p-4 bg-transparent">
+        {orders.map((o, idx) => (
+          <div key={o.id} className="rounded-2xl border border-white/15 bg-gradient-to-b from-[#0f1b22] to-[#0a1217] p-4 space-y-3.5 shadow-xl relative overflow-hidden">
             {/* Header: Order ID & Status */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-mono text-xs font-bold text-[#baff00]">ID #{o.id}</span>
-                  {o.providerOrderId && (
-                    <span className="rounded bg-white/5 border border-white/10 px-1.5 py-0.2 text-[9px] font-mono text-slate-400">
-                      API #{o.providerOrderId}
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-400 mt-0.5 truncate">{o.email || "Guest"}</p>
-              </div>
-              <div className="shrink-0 flex flex-col items-end gap-1">
-                <Badge>{o.status}</Badge>
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#baff00] text-[11px] font-black text-[#07100f] shrink-0">
+                  #{idx + 1}
+                </span>
+                <span className="font-mono text-xs font-bold text-[#baff00]">ID #{o.id}</span>
                 {o.providerOrderId && (
-                  <span className="text-[9px] text-emerald-400 font-mono flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Auto-Synced
+                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-mono text-slate-300">
+                    API #{o.providerOrderId}
                   </span>
                 )}
+              </div>
+              <div className="shrink-0 flex items-center gap-1.5">
+                <Badge>{o.status}</Badge>
               </div>
             </div>
 
@@ -3863,9 +3871,13 @@ const MobileServiceCard = memo(function MobileServiceCard({
   };
 
   return (
-    <div className={`p-4 transition-colors border-b border-white/5 ${s.enabled === false ? "bg-rose-950/15 opacity-80" : "bg-[#0b1418]/40 hover:bg-[#0b1418]"}`}>
+    <div className={`rounded-2xl border transition-all p-4 space-y-3 shadow-xl ${
+      s.enabled === false
+        ? "border-rose-500/30 bg-gradient-to-b from-rose-950/25 to-[#091216] opacity-85"
+        : "border-white/15 bg-gradient-to-b from-[#0f1b22] to-[#091217]"
+    }`}>
       {/* Top row: Platform, ID, Badges, Status Switch */}
-      <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="rounded bg-[#baff00]/15 border border-[#baff00]/30 px-2 py-0.5 text-[10px] font-black text-[#cfff62]">
             {s.platform || "SMM"}
@@ -4761,7 +4773,7 @@ function Services({
 
         {/* 3. Rates Matrix: Mobile Touch Cards or Full Desktop Table */}
         {viewMode === "cards" ? (
-          <div className="divide-y divide-white/5">
+          <div className="space-y-4 p-2 sm:p-4 bg-transparent">
             {filtered.slice(0, displayCount).map((s: any) => (
               <MobileServiceCard
                 key={s.service || s.id}
