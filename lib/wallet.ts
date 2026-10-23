@@ -448,10 +448,8 @@ export function calculateDepositBonus(
   method?: string
 ): { ratePercent: number; bonusPkr: number } {
   const amount = Number(amountPkr);
-  const isBinance = String(method || "").toLowerCase().includes("binance");
-  // For Binance: minimum required deposit to receive bonus is $5+ USD (~₨1,390)
-  // For local PKR gateways (Easypaisa, JazzCash, SadaPay): minimum is ₨500
-  const minRequired = isBinance ? 1390 : 500;
+  // Minimum required deposit to receive bonus is ₨5,000+ across all methods
+  const minRequired = 5000;
   if (!Number.isFinite(amount) || amount < minRequired) {
     return { ratePercent: 0, bonusPkr: 0 };
   }
@@ -460,14 +458,14 @@ export function calculateDepositBonus(
   const clean = (bonusSetting || "tiered").trim().toLowerCase();
 
   if (clean === "tiered" || clean === "5-10" || clean === "5-10%" || clean === "auto") {
-    // 5% bonus for ₨500–₨4,999, 10% VIP bonus for ₨5,000+
-    ratePercent = amount >= 5000 ? 10 : 5;
+    // 5% bonus on ₨5,000–₨9,999, 10% VIP bonus for ₨10,000+
+    ratePercent = amount >= 10000 ? 10 : 5;
   } else {
     const parsed = parseFloat(clean);
     if (Number.isFinite(parsed) && parsed > 0 && parsed <= 50) {
       ratePercent = parsed;
     } else {
-      ratePercent = amount >= 5000 ? 10 : 5;
+      ratePercent = amount >= 10000 ? 10 : 5;
     }
   }
 

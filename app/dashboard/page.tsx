@@ -6530,13 +6530,13 @@ function AddFundsPage({
                   <div className="mt-1.5 flex items-center justify-between text-[11px] min-h-[20px]">
                     <span className="text-slate-300">
                       ≈ <strong className="text-white">₨{amount || "0.00"} PKR</strong> (1 USD = ₨{liveForexUsdRate})
-                      {Number(binanceAmountUsd) >= 5 ? (
+                      {Number(amount) >= 5000 ? (
                         <strong className="text-[#F0B90B] ml-1.5">
-                          · +{Number(amount) >= 5000 ? "10% VIP" : "5%"} bonus (+₨{Math.round(Number(amount) * (Number(amount) >= 5000 ? 0.10 : 0.05)).toLocaleString()})
+                          · +{Number(amount) >= 10000 ? "10% VIP" : "5%"} bonus (+₨{Math.round(Number(amount) * (Number(amount) >= 10000 ? 0.10 : 0.05)).toLocaleString()})
                         </strong>
                       ) : Number(binanceAmountUsd) > 0 ? (
                         <span className="text-slate-400 ml-1.5">
-                          · Deposit $5+ USD to unlock +5% to +10% bonus
+                          · Deposit ₨5,000+ (~${Math.ceil(5000 / liveForexUsdRate)} USD) to unlock +5% bonus
                         </span>
                       ) : null}
                     </span>
@@ -6567,7 +6567,7 @@ function AddFundsPage({
                     <div className="flex items-center gap-2">
                       <span>Amount (PKR)</span>
                       <span className="rounded-full bg-[#baff00]/15 border border-[#baff00]/30 px-2 py-0.2 text-[10px] font-extrabold normal-case text-[#baff00]">
-                        🎁 +5%–10% bonus (₨500+)
+                        🎁 +5% bonus on ₨5,000+
                       </span>
                     </div>
                     <span className="text-slate-400 font-normal">Min: ₨100</span>
@@ -6586,20 +6586,20 @@ function AddFundsPage({
                     />
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-[11px] min-h-[20px]">
-                    {Number(amount) >= 500 ? (
+                    {Number(amount) >= 5000 ? (
                       <span className="text-[#baff00] font-semibold flex items-center gap-1">
                         <span>🎁</span>
                         <span>
-                          +{Number(amount) >= 5000 ? "10% VIP" : "5%"} bonus (+₨{Math.round(Number(amount) * (Number(amount) >= 5000 ? 0.10 : 0.05)).toLocaleString()}) auto-applied!
+                          +{Number(amount) >= 10000 ? "10% VIP" : "5%"} bonus (+₨{Math.round(Number(amount) * (Number(amount) >= 10000 ? 0.10 : 0.05)).toLocaleString()}) auto-applied on approval!
                         </span>
                       </span>
                     ) : Number(amount) > 0 ? (
                       <span className="text-slate-400">
-                        Deposit ₨500+ to unlock +5% to +10% bonus
+                        Deposit ₨5,000+ to unlock promotional deposit bonus
                       </span>
                     ) : (
                       <span className="text-slate-400">
-                        Eligible for +5% to +10% bonus on ₨500+
+                        Eligible for +5% bonus on deposits of ₨5,000 or more
                       </span>
                     )}
                   </div>
@@ -7062,7 +7062,7 @@ function AddFundsPage({
                           )}
                           {dep.status === "Pending" && dep.amount >= 500 && (
                             <span className="rounded-full bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-                              🎁 +₨{Math.round(dep.amount * (dep.amount >= 5000 ? 0.10 : 0.05)).toLocaleString()} bonus on approval
+                              {dep.amount >= 5000 ? `🎁 +₨${Math.round(dep.amount * (dep.amount >= 10000 ? 0.10 : 0.05)).toLocaleString()} bonus on approval` : "No bonus (< ₨5,000)"}
                             </span>
                           )}
                         </div>

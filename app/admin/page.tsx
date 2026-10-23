@@ -2199,7 +2199,7 @@ function DepositsAdmin({
                   )}
                   {isPending && (
                     <span className="block text-[10px] text-[#baff00] font-bold">
-                      Eligible bonus: ₨{Math.round(Number(d.amount) >= 5000 ? Number(d.amount) * 0.10 : Number(d.amount) * 0.05).toLocaleString()}
+                      {Number(d.amount) >= 5000 ? `Eligible bonus: ₨${Math.round(Number(d.amount) * (Number(d.amount) >= 10000 ? 0.10 : 0.05)).toLocaleString()} (${Number(d.amount) >= 10000 ? "10%" : "5%"})` : "No bonus (< ₨5,000)"}
                     </span>
                   )}
                 </div>
@@ -2325,7 +2325,7 @@ function DepositsAdmin({
                     )
                   ) : d.status === "Pending" ? (
                     <span className="mt-1 inline-flex items-center gap-1 rounded bg-[#baff00]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#baff00] border border-[#baff00]/20">
-                      🎁 +₨{Math.round(Number(d.amount) >= 5000 ? Number(d.amount) * 0.10 : Number(d.amount) * 0.05).toLocaleString()} ({Number(d.amount) >= 5000 ? "10%" : "5%"} bonus)
+                      {Number(d.amount) >= 5000 ? `🎁 +₨${Math.round(Number(d.amount) * (Number(d.amount) >= 10000 ? 0.10 : 0.05)).toLocaleString()} (${Number(d.amount) >= 10000 ? "10%" : "5%"} bonus)` : "No bonus (< ₨5,000)"}
                     </span>
                   ) : null}
                 </td>
@@ -2459,9 +2459,8 @@ function DepositsAdmin({
               </div>
 
               {(() => {
-                const isBinance = String(approvingDeposit.method || "").toLowerCase().includes("binance");
-                const isEligible = isBinance ? Number(approvingDeposit.amount) >= 1390 : Number(approvingDeposit.amount) >= 500;
-                const autoRate = isEligible ? (Number(approvingDeposit.amount) >= 5000 ? 10 : 5) : 0;
+                const isEligible = Number(approvingDeposit.amount) >= 5000;
+                const autoRate = isEligible ? (Number(approvingDeposit.amount) >= 10000 ? 10 : 5) : 0;
                 const effectiveRate =
                   selectedBonusRate === "auto"
                     ? autoRate
