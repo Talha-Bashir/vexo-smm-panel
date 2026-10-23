@@ -1242,7 +1242,7 @@ export default function Home() {
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 text-xs font-bold truncate text-white group-hover:text-[#baff00] transition-colors">
+                            <p className="mt-1 text-xs font-bold break-words leading-snug text-white group-hover:text-[#baff00] transition-colors">
                               {cleanServiceName(s.name, s.platform)}
                             </p>
                           </div>
@@ -1443,7 +1443,7 @@ export default function Home() {
                                     </div>
                                     <StatusPill status={ord.status} />
                                   </div>
-                                  <p className="mt-1.5 text-xs text-slate-300 truncate">
+                                  <p className="mt-1.5 text-xs text-slate-300 break-words leading-snug">
                                     {ord.service} · {ord.quantity.toLocaleString()} units
                                   </p>
                                   <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
@@ -2652,7 +2652,7 @@ function Dashboard({
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#baff00]/10 text-[#baff00]">
                             <Icon name="layers" size={13} />
                           </span>
-                          <span className="truncate font-bold text-white group-hover:text-[#baff00] transition-colors">
+                          <span className="font-bold text-white break-words leading-snug group-hover:text-[#baff00] transition-colors">
                             {order.service}
                           </span>
                         </div>
@@ -3286,25 +3286,12 @@ function ServicesPage({
 
 /* ---------------- NEW ORDER (EASY, CLEAN & INTUITIVE) ---------------- */
 
-function cleanServiceName(name: string, platform: string) {
-  let clean = name
-    .replace(/\|\s*Max\s*[\d,]+K?\s*/gi, "")
-    .replace(/\[\s*Max\s*[\d,]+K?\s*\]/gi, "")
-    .replace(/\|\s*Instant Start\s*/gi, "")
-    .replace(/\|\s*Complete In .*?Minute[s]?\s*/gi, "")
-    .replace(/\|\s*Random Mix\s*/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-
+function cleanServiceName(name: string, platform?: string) {
+  if (!name) return "";
+  let clean = name.replace(/\s{2,}/g, " ").trim();
   if (platform === "WhatsApp") {
-    clean = clean
-      .replace(/Whatsapp/gi, "WhatsApp")
-      .replace(
-        /WhatsApp Channel Post Emoji Reactions/gi,
-        "WhatsApp Post Reaction"
-      );
+    clean = clean.replace(/Whatsapp/gi, "WhatsApp");
   }
-
   return clean;
 }
 
@@ -4304,7 +4291,7 @@ function NewOrder({
                       <span className="text-xs font-mono font-bold text-[#baff00]">ID #{exactIdMatch.id}</span>
                       <span className="text-xs font-semibold text-slate-300">({exactIdMatch.platform})</span>
                     </div>
-                    <p className="mt-1 font-bold text-white text-xs sm:text-sm truncate group-hover:text-[#baff00] transition-colors">
+                    <p className="mt-1 font-bold text-white text-xs sm:text-sm break-words leading-snug group-hover:text-[#baff00] transition-colors">
                       {cleanServiceName(exactIdMatch.name, exactIdMatch.platform)}
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
@@ -4333,7 +4320,7 @@ function NewOrder({
                       role="button"
                       tabIndex={0}
                       onClick={() => handleSelectComboboxService(s)}
-                      className={`w-full text-left rounded-xl p-2.5 transition flex items-center justify-between gap-3 border cursor-pointer ${
+                      className={`w-full text-left rounded-xl p-2.5 transition flex items-start justify-between gap-3 border cursor-pointer ${
                         isSel
                           ? "border-[#baff00] bg-[#baff00]/10 text-white"
                           : "border-white/5 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.07] text-slate-200"
@@ -4351,7 +4338,7 @@ function NewOrder({
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-xs font-bold truncate text-white">
+                        <p className="mt-1 text-xs font-bold break-words leading-snug text-white">
                           {cleanServiceName(s.name, s.platform)}
                         </p>
                         <p className="text-[10px] text-slate-400 mt-0.5">
@@ -4563,17 +4550,17 @@ function NewOrder({
               }`}
             >
               {service ? (
-                <div className="flex items-center justify-between gap-3 min-w-0 w-full">
+                <div className="flex items-start justify-between gap-3 min-w-0 w-full">
                   <div className="min-w-0 flex-1 pr-2">
-                    <p className="font-bold text-white text-sm sm:text-base truncate group-hover:text-[#baff00] transition-colors">
+                    <p className="font-bold text-white text-sm sm:text-base break-words leading-snug group-hover:text-[#baff00] transition-colors">
                       {cleanServiceName(service.name, service.platform)}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1 truncate">
+                    <p className="text-xs text-slate-400 mt-1 break-words leading-normal">
                       {service.platform} • ID #{service.id} • Min: {isPackage ? "1" : Number(service.min).toLocaleString()} • Max: {isPackage ? "1" : Number(service.max).toLocaleString()} • {isServiceGuaranteed(service) ? "30-Day Refill" : isServiceDropOrNoRefill(service) ? "No Refill" : "Standard"}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-start gap-3 shrink-0 pt-0.5">
                     <div className="text-right whitespace-nowrap">
                       <div className="text-sm sm:text-base font-extrabold text-[#baff00]">
                         ₨{Number(service.price).toFixed(2)}
@@ -4637,17 +4624,17 @@ function NewOrder({
                               handleSelectComboboxService(s);
                             }
                           }}
-                          className={`w-full text-left rounded-lg p-2.5 transition flex items-center justify-between gap-3 border cursor-pointer ${
+                          className={`w-full text-left rounded-lg p-2.5 transition flex items-start justify-between gap-3 border cursor-pointer ${
                             isSelected
                               ? "bg-[#baff00]/15 border-[#baff00]/40 text-white"
                               : "bg-white/[0.02] border-white/5 text-slate-300 hover:bg-white/[0.06] hover:border-white/10"
                           }`}
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                            <p className="text-xs sm:text-sm font-semibold text-white break-words leading-snug">
                               {cleanServiceName(s.name, s.platform)}
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                            <p className="text-[11px] text-slate-400 mt-0.5 break-words leading-normal">
                               #{s.id} • {s.platform} • Min: {isPkg ? "1" : Number(s.min).toLocaleString()} • Max: {isPkg ? "1" : Number(s.max).toLocaleString()}
                             </p>
                           </div>
@@ -5441,7 +5428,7 @@ function OrdersPage({
                     </div>
 
                     {/* Right Action Area: Buy Again + Refill / Refund */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-start gap-2 shrink-0 pt-0.5">
                       <button
                         type="button"
                         onClick={() => onBuyAgain(order)}
