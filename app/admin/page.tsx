@@ -659,7 +659,7 @@ export default function Admin() {
           </select>
         </div>
 
-        <nav className="mb-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="hidden md:flex mb-5 gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {visibleTabs.map((t) => (
             <button
               key={t}
@@ -1501,7 +1501,136 @@ function Users({
           <span>Export CSV</span>
         </button>
       </div>
-      <div className="overflow-x-auto">
+
+      {/* Mobile Touch-Friendly User Cards (Screens < 768px) */}
+      <div className="md:hidden divide-y divide-white/5">
+        {users.map((u) => (
+          <div key={u.id} className="p-4 space-y-3 bg-white/[0.01]">
+            {/* Header: User info & Role */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-white text-sm break-words">{u.name}</p>
+                <p className="text-[11px] text-slate-400 font-mono truncate">ID #{u.id} • {u.email}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <select
+                  value={u.role || "user"}
+                  onChange={(e) => handleChangeRole(u.id, e.target.value, u.email)}
+                  disabled={actionBusyUserId === u.id}
+                  className="rounded-lg border border-white/10 bg-[#0b1418] px-2 py-1 text-[11px] font-bold text-white focus:border-[#baff00] outline-none cursor-pointer"
+                >
+                  <option value="user">User</option>
+                  <option value="sub_admin">Sub-Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Status toggles & VIP badges */}
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+              <button
+                type="button"
+                onClick={() => handleToggleActive(u.id, u.isActive !== false, u.email)}
+                disabled={actionBusyUserId === u.id}
+                className={`rounded-md px-2 py-0.5 font-bold cursor-pointer transition ${
+                  u.isActive !== false
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                }`}
+              >
+                {u.isActive !== false ? "🟢 Active" : "🔴 Suspended"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleEmailVerify(u.id, Boolean(u.emailVerified), u.email)}
+                disabled={actionBusyUserId === u.id}
+                className={`rounded-md px-2 py-0.5 font-bold cursor-pointer transition ${
+                  u.emailVerified
+                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                }`}
+              >
+                {u.emailVerified ? "✓ Verified" : "⚠️ Unverified"}
+              </button>
+              {Number(u.customDiscountPercent || 0) > 0 && (
+                <span className="rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 font-bold text-purple-300">
+                  ⭐ VIP: -{u.customDiscountPercent}%
+                </span>
+              )}
+            </div>
+
+            {/* Balances & Orders Summary Box */}
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/5 bg-[#0b1418] p-2.5 text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Real Balance</span>
+                <span className="text-base font-black text-white font-mono">{money(u.balancePkr)}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Bonus Credit</span>
+                <span className="text-xs font-bold text-[#baff00] font-mono">
+                  {Number(u.bonusBalancePkr || 0) > 0 ? money(Number(u.bonusBalancePkr)) : "₨0.00"}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-400 pt-1 border-t border-white/5">
+                Orders: <strong className="text-white font-mono">{u.orderCount || 0}</strong>
+              </div>
+              <div className="text-[11px] text-slate-400 pt-1 border-t border-white/5">
+                Deposits: <strong className="text-white font-mono">{u.depositCount || 0}</strong>
+              </div>
+            </div>
+
+            {/* Mobile Actions Grid */}
+            <div className="grid grid-cols-3 gap-1.5 pt-1 text-xs">
+              <button
+                disabled={busy || actionBusyUserId === u.id}
+                onClick={() => wallet(u.id, "add")}
+                className="rounded-lg bg-[#baff00] hover:bg-[#d2ff5a] py-2 font-black text-[#07100f] transition cursor-pointer text-center"
+              >
+                ➕ Add Cash
+              </button>
+              <button
+                disabled={busy || actionBusyUserId === u.id}
+                onClick={() => wallet(u.id, "deduct")}
+                className="rounded-lg border border-red-400/20 bg-red-400/10 hover:bg-red-400/20 py-2 font-bold text-red-300 transition cursor-pointer text-center"
+              >
+                ➖ Deduct
+              </button>
+              <button
+                disabled={busy || actionBusyUserId === u.id}
+                onClick={() => grantBonus(u.id, u.name || u.email, Number(u.bonusBalancePkr || 0))}
+                className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 hover:bg-emerald-400/20 py-2 font-bold text-emerald-300 transition cursor-pointer text-center"
+              >
+                🎁 Bonus
+              </button>
+              <button
+                disabled={busy || actionBusyUserId === u.id}
+                onClick={() => resetPass(u.id, u.email)}
+                className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 py-1.5 font-bold text-slate-300 transition cursor-pointer text-center text-[11px]"
+              >
+                🔑 Reset Pass
+              </button>
+              <button
+                disabled={busy || actionBusyUserId === u.id}
+                onClick={() => handleImpersonate(u.id, u.email)}
+                className="rounded-lg bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 py-1.5 font-bold text-blue-300 transition cursor-pointer text-center text-[11px]"
+              >
+                👤 Login As
+              </button>
+              <button
+                disabled={busy || actionBusyUserId === u.id}
+                onClick={() => openWholesale(u)}
+                className="rounded-lg border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 py-1.5 font-bold text-purple-300 transition cursor-pointer text-center text-[11px]"
+              >
+                🏷️ VIP Rates
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Wide Table (Screens >= 768px) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-[1000px] w-full text-left">
           <thead className="bg-[#0b1418] text-xs uppercase text-slate-500">
             <tr>
@@ -2013,8 +2142,136 @@ function DepositsAdmin({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+
+      {/* Mobile Touch-Friendly Deposit Cards (Screens < 768px) */}
+      <div className="md:hidden divide-y divide-white/5">
+        {filtered.map((d) => {
+          const isPending = d.status === "Pending";
+          const isApproved = d.status === "Approved";
+          const isRejected = d.status === "Rejected";
+
+          return (
+            <div key={d.id} className="p-4 space-y-3 bg-white/[0.01]">
+              {/* Header: User & Status */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-white text-sm break-words">{d.name}</p>
+                  <p className="text-[11px] text-slate-400 font-mono truncate">{d.email}</p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase shrink-0 ${
+                    isApproved
+                      ? "bg-emerald-400/15 text-emerald-300 border border-emerald-400/30"
+                      : isRejected
+                      ? "bg-red-400/15 text-red-300 border border-red-400/30"
+                      : "bg-amber-400/15 text-amber-300 border border-amber-400/30 animate-pulse"
+                  }`}
+                >
+                  {d.status}
+                </span>
+              </div>
+
+              {/* Amount & Method Row */}
+              <div className="flex items-center justify-between rounded-xl border border-white/5 bg-[#0b1418] p-2.5">
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Amount</span>
+                  <span className="text-base font-black text-white font-mono">
+                    ₨{Number(d.amount).toLocaleString()}
+                  </span>
+                  {isApproved && Number(d.bonusPkr || 0) > 0 && (
+                    <span className="block text-[10px] text-emerald-400 font-bold">
+                      +₨{Number(d.bonusPkr).toLocaleString()} bonus
+                    </span>
+                  )}
+                  {isPending && (
+                    <span className="block text-[10px] text-[#baff00] font-bold">
+                      Eligible bonus: ₨{Math.round(Number(d.amount) >= 5000 ? Number(d.amount) * 0.10 : Number(d.amount) * 0.05).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Method</span>
+                  <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-0.5 text-xs font-bold text-slate-200 mt-0.5">
+                    💳 {d.method}
+                  </span>
+                </div>
+              </div>
+
+              {/* Transaction ID & Receipt */}
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] text-slate-400 block font-bold">Transaction ID / Ref</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="font-mono text-xs text-[#baff00] select-all break-all">{d.transactionId}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(d.transactionId);
+                        alert("Transaction ID copied: " + d.transactionId);
+                      }}
+                      className="p-1 text-slate-400 hover:text-white cursor-pointer"
+                      title="Copy TID"
+                    >
+                      📋
+                    </button>
+                  </div>
+                </div>
+
+                {d.screenshot && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewScreenshot(d.screenshot)}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-[#baff00]/30 bg-[#baff00]/10 px-2.5 py-1.5 text-xs font-bold text-[#baff00] hover:bg-[#baff00] hover:text-[#07100f] transition cursor-pointer"
+                  >
+                    <span>🖼️</span>
+                    <span>Proof</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Date & Rejection Reason */}
+              <div className="text-[10px] text-slate-500 flex items-center justify-between">
+                <span>📅 {new Date(d.createdAt).toLocaleString()}</span>
+                {d.rejectionReason && (
+                  <span className="text-red-400 font-bold" title={d.rejectionReason}>
+                    Reason: {d.rejectionReason}
+                  </span>
+                )}
+              </div>
+
+              {/* Big Touch-Friendly Action Buttons on Mobile */}
+              {isPending && (
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
+                  <button
+                    disabled={!!busyId}
+                    onClick={() => {
+                      setApprovingDeposit(d);
+                      setSelectedBonusRate("auto");
+                      setCustomBonusRate("");
+                    }}
+                    className="h-10 rounded-xl bg-[#baff00] hover:bg-[#d2ff5a] text-xs font-black text-[#07100f] shadow-md transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>✓</span>
+                    <span>Approve Deposit</span>
+                  </button>
+                  <button
+                    disabled={busyId === d.id}
+                    onClick={() => updateDeposit(d.id, "reject")}
+                    className="h-10 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-xs font-bold text-red-300 transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>✕</span>
+                    <span>Reject</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop Wide Table (Screens >= 768px) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-[1050px] w-full text-left">
           <thead className="bg-[#0b1418] text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10">
             <tr>
@@ -2476,7 +2733,115 @@ function Orders({
           <span>Orders automatically update live from upstream API providers (Smooth SMM, Rizvi, Pak SMM)</span>
         </div>
       </div>
-      <div className="overflow-x-auto">
+
+      {/* Mobile Touch-Friendly Order Cards (Screens < 768px) */}
+      <div className="md:hidden divide-y divide-white/5">
+        {orders.map((o) => (
+          <div key={o.id} className="p-4 space-y-3 bg-white/[0.01]">
+            {/* Header: Order ID & Status */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-mono text-xs font-bold text-[#baff00]">ID #{o.id}</span>
+                  {o.providerOrderId && (
+                    <span className="rounded bg-white/5 border border-white/10 px-1.5 py-0.2 text-[9px] font-mono text-slate-400">
+                      API #{o.providerOrderId}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate">{o.email || "Guest"}</p>
+              </div>
+              <div className="shrink-0 flex flex-col items-end gap-1">
+                <Badge>{o.status}</Badge>
+                {o.providerOrderId && (
+                  <span className="text-[9px] text-emerald-400 font-mono flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Auto-Synced
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Service & Platform */}
+            <div>
+              <span className="inline-flex items-center w-fit rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-1">
+                ⚡ {o.providerName || o.providerId || "Manual Provider"}
+              </span>
+              <p className="text-xs font-bold text-white break-words leading-snug">{o.serviceName}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Service ID #{o.serviceId}</p>
+            </div>
+
+            {/* Link Target */}
+            {o.link && (
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-[#0b1418] p-2 text-xs">
+                <a
+                  href={o.link.startsWith("http") ? o.link : `https://${o.link}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate font-mono text-[11px] text-[#baff00] hover:underline flex-1"
+                >
+                  🔗 {o.link}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(o.link);
+                    alert("Link copied!");
+                  }}
+                  className="p-1 text-slate-400 hover:text-white cursor-pointer shrink-0"
+                  title="Copy Link"
+                >
+                  📋
+                </button>
+              </div>
+            )}
+
+            {/* Quantity, Charge, Start, Remains Grid */}
+            <div className="grid grid-cols-4 gap-1.5 text-center text-xs rounded-xl border border-white/5 bg-white/[0.02] p-2">
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">Qty</span>
+                <span className="font-bold text-white font-mono">{Number(o.quantity || 0).toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">Charge</span>
+                <span className="font-bold text-[#baff00] font-mono">{money(o.chargePkr)}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">Start</span>
+                <span className="font-mono text-slate-300 text-[11px]">{o.startCount ?? "—"}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">Remains</span>
+                <span className="font-mono text-slate-300 text-[11px]">{o.remains ?? "—"}</span>
+              </div>
+            </div>
+
+            {/* Action row: Status Selector & Sync button */}
+            <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+              <select
+                value={o.status}
+                onChange={(e) => update(o.id, e.target.value)}
+                className="flex-1 h-9 rounded-lg border border-white/10 bg-[#0b1418] px-2.5 text-xs font-bold text-white outline-none focus:border-[#baff00]"
+              >
+                {["Pending", "Processing", "In progress", "Completed", "Partial", "Canceled", "Refunded"].map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(o)}
+                className="h-9 px-3 rounded-lg bg-white/5 border border-white/10 hover:border-[#baff00]/30 text-xs font-bold text-[#baff00] transition cursor-pointer shrink-0"
+              >
+                🔍 Details
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Wide Table (Screens >= 768px) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-[1300px] w-full text-left">
           <thead className="bg-[#0b1418] text-xs uppercase text-slate-500">
             <tr>

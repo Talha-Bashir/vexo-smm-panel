@@ -8,10 +8,18 @@ export async function GET() {
   try {
     await ensureAdminSchema();
     const r = await db.query(
-      `SELECT id, title, message, type, scheduled_at, event_link, created_at
-       FROM vexo_announcements
-       WHERE enabled = true
-       ORDER BY CASE WHEN type = 'event' THEN 0 ELSE 1 END, created_at DESC
+      `SELECT a.id, a.title, a.message, a.type, a.scheduled_at, a.event_link, a.created_at
+       FROM vexo_announcements a
+       WHERE a.enabled = true
+         AND (
+           a.type != 'event'
+           OR EXISTS (
+             SELECT 1 FROM vexo_events e 
+             WHERE e.status = 'live' 
+               AND (e.ended_at IS NULL OR e.ended_at > NOW())
+           )
+         )
+       ORDER BY CASE WHEN a.type = 'event' THEN 0 ELSE 1 END, a.created_at DESC
        LIMIT 10`
     );
     return NextResponse.json({
