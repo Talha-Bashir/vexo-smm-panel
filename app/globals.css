@@ -526,3 +526,37 @@ div[data-nextjs-dialog-overlay] {
 }
 
 
+
+/* ============================================================= */
+/* MOBILE ACCELERATION & ZERO-LAG 60FPS OPTIMIZATIONS            */
+/* ============================================================= */
+@media (max-width: 768px) {
+  /* 1. Turn off expensive blur blobs on mobile viewports */
+  .blur-\[120px\],
+  .blur-\[130px\],
+  .blur-\[140px\],
+  .blur-3xl,
+  .hero-ambient-glow,
+  .vexo-orb {
+    display: none !important;
+  }
+
+  /* 2. Replace costly backdrop-filter GPU recalculations with solid clean backgrounds */
+  [class*="backdrop-blur-"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* 3. Hardware accelerated smooth touch scrolling */
+  body, html {
+    -webkit-overflow-scrolling: touch;
+    transform: translateZ(0);
+  }
+
+  /* 4. Tame heavy box shadows on cards on mobile */
+  .antigravity-card,
+  [class*="shadow-2xl"],
+  [class*="shadow-xl"] {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  }
+}

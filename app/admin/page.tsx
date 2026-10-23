@@ -1029,137 +1029,148 @@ function Dashboard({
     }
   };
 
-  if (!stats) return <div className={card + " p-12 text-center text-slate-500"}>Loading dashboard...</div>;
-  const cards = [
-    ["Users", stats.users, "👥"],
-    ["Wallet liability", money(stats.walletLiabilityPkr), "💳"],
-    ["Pending deposits", stats.pendingDeposits, "⏳"],
-    ["Orders", stats.orders, "📦"],
-    ["Completed", stats.completedOrders, "✅"],
-    ["Today's sales", money(stats.salesTodayPkr), "💰"],
-    ["Today's orders", stats.ordersToday, "📈"],
-    ["Approved deposits", money(stats.approvedDepositsPkr), "🏦"],
-  ];
+  if (!stats) return <div className={card + " p-12 text-center text-slate-500 font-bold"}>Loading dashboard...</div>;
+
+  const pendingCount = Number(stats.pendingDeposits || 0);
+
   return (
-    <>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map(([a, b, c]) => (
-          <div key={String(a)} className={card + " p-5"}>
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{a}</p>
-              <span>{c}</span>
-            </div>
-            <p className="mt-3 text-2xl font-black">{b}</p>
+    <div className="space-y-6">
+      {/* 1. Header Welcome Bar */}
+      <div className={card + " p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"}>
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl sm:text-2xl font-black text-white">Admin Dashboard</h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-bold text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Live Online
+            </span>
           </div>
-        ))}
+          <p className="mt-1 text-xs text-slate-400">
+            Real-time business performance, order dispatching &amp; payment reviews.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {pendingCount > 0 && (
+            <button
+              onClick={() => setTab("Deposits")}
+              className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#07100f] font-black text-xs px-3.5 py-2 shadow-md transition flex items-center gap-1.5 cursor-pointer animate-pulse"
+            >
+              <span>⚠️</span>
+              <span>{pendingCount} Pending Deposit{pendingCount > 1 ? "s" : ""}</span>
+            </button>
+          )}
+          <button
+            onClick={() => setTab("Orders")}
+            className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-bold px-3.5 py-2 transition cursor-pointer"
+          >
+            📦 Orders
+          </button>
+          <button
+            onClick={() => setTab("Services")}
+            className="rounded-xl bg-[#baff00] hover:bg-[#d2ff5a] text-[#07100f] text-xs font-black px-3.5 py-2 shadow transition cursor-pointer"
+          >
+            ⚙️ Services &amp; Rates
+          </button>
+        </div>
       </div>
 
-      {/* 💰 Live Profit & Margins Intelligence */}
-      <div className={card + " mt-5 p-6"}>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">💰</span>
-              <h2 className="text-lg font-black text-white">Live Profit &amp; Margins Intelligence</h2>
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">Live Upstream Delta</span>
+      {/* 2. Top 4 Primary Metric Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Users */}
+        <div className={card + " p-5 flex flex-col justify-between"}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Users</span>
+            <span className="text-xl">👥</span>
+          </div>
+          <div className="mt-3">
+            <p className="text-3xl font-black text-white">{Number(stats.users || 0).toLocaleString()}</p>
+            <p className="mt-1 text-[11px] text-slate-400">Registered member accounts</p>
+          </div>
+        </div>
+
+        {/* Total Orders */}
+        <div className={card + " p-5 flex flex-col justify-between"}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Orders</span>
+            <span className="text-xl">📦</span>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-black text-white">{Number(stats.orders || 0).toLocaleString()}</p>
+              <span className="text-xs font-bold text-emerald-400 font-mono">
+                {Number(stats.completedOrders || 0).toLocaleString()} completed
+              </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Real-time spread calculation: Customer charges minus upstream wholesale provider cost across automated and manual orders.
+            <p className="mt-1 text-[11px] text-slate-400">Across 5 automated APIs</p>
+          </div>
+        </div>
+
+        {/* Today's Net Profit */}
+        <div className={card + " p-5 flex flex-col justify-between border-[#baff00]/20 bg-gradient-to-br from-[#0b1418] to-[#0c1f18]"}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Today's Profit</span>
+            <span className="rounded-full bg-[#baff00]/20 border border-[#baff00]/40 px-2 py-0.5 text-[10px] font-black text-[#cfff62]">
+              {stats.marginTodayPercent ?? 0}% Margin
+            </span>
+          </div>
+          <div className="mt-3">
+            <p className="text-3xl font-black text-[#baff00]">{money(stats.profitTodayPkr ?? 0)}</p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Sales: <strong className="text-white">{money(stats.salesTodayPkr ?? 0)}</strong>
             </p>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          {/* Today's Profit */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase">Today's Net Profit</span>
-              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black text-emerald-400">
-                {stats.marginTodayPercent ?? 0}% Margin
-              </span>
-            </div>
-            <p className="mt-2 text-2xl font-black text-[#baff00]">{money(stats.profitTodayPkr ?? 0)}</p>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-              <span>Wholesale Cost:</span>
-              <span className="font-mono text-slate-300">{money(stats.costTodayPkr ?? 0)}</span>
-            </div>
+        {/* Pending Deposits */}
+        <div className={`${card} p-5 flex flex-col justify-between ${pendingCount > 0 ? "border-amber-500/40 bg-amber-950/20" : ""}`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pending Deposits</span>
+            <span className="text-xl">{pendingCount > 0 ? "⏳" : "✅"}</span>
           </div>
-
-          {/* Month Profit */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+          <div className="mt-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase">This Month Profit</span>
-              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black text-emerald-400">
-                {stats.marginMonthPercent ?? 0}% Margin
-              </span>
+              <p className={`text-3xl font-black ${pendingCount > 0 ? "text-amber-300" : "text-white"}`}>
+                {pendingCount}
+              </p>
+              {pendingCount > 0 && (
+                <button
+                  onClick={() => setTab("Deposits")}
+                  className="rounded-lg bg-amber-400 hover:bg-amber-300 text-[#07100f] px-2.5 py-1 text-xs font-black transition cursor-pointer"
+                >
+                  Review →
+                </button>
+              )}
             </div>
-            <p className="mt-2 text-2xl font-black text-cyan-400">{money(stats.profitMonthPkr ?? 0)}</p>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-              <span>Total Revenue:</span>
-              <span className="font-mono text-slate-300">{money(stats.revenueMonthPkr ?? 0)}</span>
-            </div>
-          </div>
-
-          {/* All-Time Profit */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase">All-Time Net Profit</span>
-              <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-black text-purple-400">
-                {stats.marginAllTimePercent ?? 0}% Margin
-              </span>
-            </div>
-            <p className="mt-2 text-2xl font-black text-white">{money(stats.profitAllTimePkr ?? 0)}</p>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-              <span>Lifetime Revenue:</span>
-              <span className="font-mono text-slate-300">{money(stats.revenueAllTimePkr ?? 0)}</span>
-            </div>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {pendingCount > 0 ? "Manual deposit requests awaiting approval" : "All payments are up to date"}
+            </p>
           </div>
         </div>
-
-        {/* Platform Profitability Breakdown */}
-        {Array.isArray(stats.platformProfits) && stats.platformProfits.length > 0 && (
-          <div className="mt-6 border-t border-white/10 pt-5">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">
-              📊 Top Platform Margins &amp; Volume Breakdown
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/5 text-[10px] uppercase text-slate-500">
-                    <th className="pb-2">Platform</th>
-                    <th className="pb-2">Orders</th>
-                    <th className="pb-2">Revenue (PKR)</th>
-                    <th className="pb-2">Net Profit (PKR)</th>
-                    <th className="pb-2 text-right">Gross Margin</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 font-mono">
-                  {stats.platformProfits.map((p: any) => (
-                    <tr key={p.platform} className="hover:bg-white/[0.02]">
-                      <td className="py-2.5 font-sans font-bold text-white">
-                        <span className="rounded bg-white/10 px-2 py-0.5 text-[10px]">{p.platform}</span>
-                      </td>
-                      <td className="py-2.5 text-slate-300 font-sans">{p.count}</td>
-                      <td className="py-2.5 text-slate-200">{money(p.revenuePkr)}</td>
-                      <td className="py-2.5 text-[#baff00] font-bold">{money(p.profitPkr)}</td>
-                      <td className="py-2.5 text-right font-sans">
-                        <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-bold ${
-                          p.marginPercent >= 15 ? "bg-emerald-500/10 text-emerald-400" :
-                          p.marginPercent >= 7 ? "bg-[#baff00]/10 text-[#cfff62]" : "bg-amber-500/10 text-amber-400"
-                        }`}>
-                          {p.marginPercent}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
 
-      <div className="mt-5">
+      {/* 3. Daily & Lifetime Highlights Pill Row */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 text-xs">
+        <div className="rounded-xl border border-white/5 bg-[#0b1418] p-3.5">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">Today's Orders</span>
+          <span className="font-mono text-base font-bold text-white mt-0.5 block">{stats.ordersToday || 0} orders</span>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-[#0b1418] p-3.5">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">This Month Profit</span>
+          <span className="font-mono text-base font-bold text-cyan-400 mt-0.5 block">{money(stats.profitMonthPkr || 0)}</span>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-[#0b1418] p-3.5">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">Approved Deposits</span>
+          <span className="font-mono text-base font-bold text-white mt-0.5 block">{money(stats.approvedDepositsPkr || 0)}</span>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-[#0b1418] p-3.5">
+          <span className="text-[10px] font-bold uppercase text-slate-400 block">All-Time Net Profit</span>
+          <span className="font-mono text-base font-bold text-[#baff00] mt-0.5 block">{money(stats.profitAllTimePkr || 0)}</span>
+        </div>
+      </div>
+
+      {/* 4. Upstream Provider Balances */}
+      <div>
         <ProviderBalancesWidget
           balances={balances}
           loading={balancesLoading}
@@ -1169,78 +1180,102 @@ function Dashboard({
         />
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <div className={card + " p-6"}>
-          <h2 className="font-black text-lg">Quick Admin Links</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-300">
-            <button onClick={() => setTab("Users")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">👥 Manage Users</button>
-            <button onClick={() => setTab("Deposits")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">💳 Review Deposits</button>
-            <button onClick={() => setTab("Orders")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">📦 Update Orders</button>
-            <button onClick={() => setTab("Withdrawals")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">💸 Referral Payouts</button>
-            <button onClick={() => setTab("Tickets")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">🎫 Support Tickets</button>
-            <button onClick={() => setTab("Services")} className="rounded-xl bg-white/5 p-3 text-left hover:bg-white/10">⚙ Price Multipliers</button>
-          </div>
+      {/* 5. Fast Action Shortcuts Grid */}
+      <div className={card + " p-6"}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-black text-base text-white">⚡ Fast Management Shortcuts</h3>
+          <span className="text-xs text-slate-400">1-click jump to any admin module</span>
         </div>
 
-        <div className={card + " p-6"}>
-          <div className="flex items-center justify-between">
-            <h2 className="font-black text-lg">🧹 System Maintenance & Optimizer</h2>
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">Automated</span>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Automatic background trash cleaner prunes expired user sessions, removes old audit logs (&gt;90d), deletes stale rejected payment slips (&gt;60d), and optimizes PostgreSQL database indexes.
-          </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <button
+            onClick={() => setTab("Services")}
+            className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-[#baff00]/30 transition cursor-pointer text-center group"
+          >
+            <span className="text-2xl mb-1 group-hover:scale-110 transition">⚙️</span>
+            <span className="text-xs font-bold text-white">Services &amp; Rates</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">Edit Prices</span>
+          </button>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              onClick={handleCleanup}
-              disabled={cleaning}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#baff00] px-4 py-2 text-xs font-black text-[#07100f] hover:bg-[#a6e600] disabled:opacity-50 transition"
-            >
-              {cleaning ? "Purging..." : "⚡ Run Trash Cleaner Now"}
-            </button>
-            <button
-              onClick={handleSyncOrders}
-              disabled={syncing}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20 disabled:opacity-50 transition"
-            >
-              {syncing ? "Syncing..." : "🔄 Sync Live Order Statuses"}
-            </button>
-          </div>
+          <button
+            onClick={() => setTab("Deposits")}
+            className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-[#baff00]/30 transition cursor-pointer text-center group"
+          >
+            <span className="text-2xl mb-1 group-hover:scale-110 transition">💳</span>
+            <span className="text-xs font-bold text-white">Deposits</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">Approve Cash</span>
+          </button>
 
-          {cleanError && (
-            <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-300">
-              {cleanError}
-            </div>
-          )}
+          <button
+            onClick={() => setTab("Orders")}
+            className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-[#baff00]/30 transition cursor-pointer text-center group"
+          >
+            <span className="text-2xl mb-1 group-hover:scale-110 transition">📦</span>
+            <span className="text-xs font-bold text-white">Orders</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">Track &amp; Sync</span>
+          </button>
 
-          {cleanReport && (
-            <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
-              <p className="font-bold">✓ Database Optimized & Cleaned!</p>
-              <ul className="mt-1 space-y-0.5 text-[11px] text-emerald-200/80">
-                <li>• Expired sessions purged: {cleanReport.purged?.expiredSessions ?? 0}</li>
-                <li>• Stale audit logs pruned: {cleanReport.purged?.oldActivityLogs ?? 0}</li>
-                <li>• Stale rejected slips cleaned: {cleanReport.purged?.staleRejectedDeposits ?? 0}</li>
-                <li>• Database table statistics analyzed: {cleanReport.databaseOptimized ? "Yes" : "Skipped"}</li>
-              </ul>
-            </div>
-          )}
+          <button
+            onClick={() => setTab("Users")}
+            className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-[#baff00]/30 transition cursor-pointer text-center group"
+          >
+            <span className="text-2xl mb-1 group-hover:scale-110 transition">👥</span>
+            <span className="text-xs font-bold text-white">Users</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">Wallets &amp; Pass</span>
+          </button>
 
-          {syncReport && (
-            <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs text-cyan-300">
-              <p className="font-bold">✓ Order Status Sync Completed!</p>
-              <p className="text-[11px] text-cyan-200/80">
-                Checked {syncReport.totalChecked} orders • {syncReport.updatedCount} updated • {syncReport.partialRefundsCount} partial refunds.
-              </p>
-            </div>
-          )}
+          <button
+            onClick={() => setTab("Live Events")}
+            className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-pink-500/30 transition cursor-pointer text-center group"
+          >
+            <span className="text-2xl mb-1 group-hover:scale-110 transition">🎪</span>
+            <span className="text-xs font-bold text-white">Live Events</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">Giveaways</span>
+          </button>
 
-          <div className="mt-4 border-t border-white/5 pt-3 text-[11px] text-slate-500">
-            Scheduled automatic cron runs daily at 00:00 UTC. Financial ledgers and active customer balances are 100% immutable and protected.
-          </div>
+          <button
+            onClick={() => setTab("Tickets")}
+            className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-[#baff00]/30 transition cursor-pointer text-center group"
+          >
+            <span className="text-2xl mb-1 group-hover:scale-110 transition">💬</span>
+            <span className="text-xs font-bold text-white">Support</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">Reply Tickets</span>
+          </button>
         </div>
       </div>
-    </>
+
+      {/* 6. System Maintenance Utilities */}
+      <div className={card + " p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"}>
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-lg">
+            🧹
+          </span>
+          <div>
+            <p className="text-xs font-bold text-white">Database &amp; Order Sync Utilities</p>
+            <p className="text-[11px] text-slate-400">
+              Clean old temporary logs, optimize indexes, or force a live sync with upstream providers.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCleanup}
+            disabled={cleaning}
+            className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold px-3 py-2 text-slate-200 transition cursor-pointer disabled:opacity-50"
+          >
+            {cleaning ? "Purging..." : "⚡ Clean Cache & Logs"}
+          </button>
+          <button
+            onClick={handleSyncOrders}
+            disabled={syncing}
+            className="rounded-xl bg-[#baff00] hover:bg-[#d2ff5a] text-xs font-black px-3.5 py-2 text-[#07100f] shadow transition cursor-pointer disabled:opacity-50"
+          >
+            {syncing ? "Syncing..." : "🔄 Sync Live Orders"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

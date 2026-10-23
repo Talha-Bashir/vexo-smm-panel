@@ -4166,6 +4166,47 @@ function NewOrder({
         )}
       </div>
 
+      {/* Prominent Balance Tab / Card in New Order */}
+      <div className="w-full max-w-3xl mx-auto rounded-2xl border border-white/10 bg-gradient-to-r from-[#0d1f18] via-[#0b161a] to-[#121d20] p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#baff00]/15 border border-[#baff00]/30 text-2xl text-[#baff00] shadow-[0_0_15px_rgba(186,255,0,0.15)]">
+            💳
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Your Available Balance
+              </span>
+              {bonusBalancePkr > 0 && (
+                <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300">
+                  +₨{bonusBalancePkr.toFixed(2)} Bonus
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
+                ₨{Number(walletBalancePkr || 0).toFixed(2)}
+              </span>
+              <span className="text-xs text-slate-400 font-mono">
+                (~$${((walletBalancePkr || 0) / (currencyRates?.USD ? 1 / currencyRates.USD : 278)).toFixed(2)} USD)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => navigate("Add Funds")}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#baff00] hover:bg-[#d2ff5a] px-4 py-2.5 text-xs font-black text-[#07100f] shadow transition cursor-pointer"
+          >
+            <span>➕</span>
+            <span>Add Funds / Deposit</span>
+          </button>
+        </div>
+      </div>
+
+
       {/* Subtle, Dismissible Promotional Bonus Notice */}
       {bonusBalancePkr > 0 && !dismissedOrderBonusBanner && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-emerald-300 animate-in fade-in duration-200">
@@ -5958,6 +5999,45 @@ function AddFundsPage({
           </button>
         </div>
       </div>
+
+      {/* Prominent Current Balance Card in Add Funds */}
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-[#0b1915] via-[#091518] to-[#111923] p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-2xl text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+            💰
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Current Wallet Balance
+              </span>
+              <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300">
+                Instant Top-Up
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
+                ₨{Number(walletBalancePkr || 0).toFixed(2)}
+              </span>
+              <span className="text-xs text-slate-400 font-mono">
+                (~$${((walletBalancePkr || 0) / (rates?.USD ? 1 / rates.USD : 278)).toFixed(2)} USD)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs">
+          <div className="rounded-xl border border-white/5 bg-white/[0.03] px-3.5 py-2">
+            <span className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold">Real Cash</span>
+            <span className="font-mono font-bold text-white">₨{Number(walletBalancePkr || 0).toFixed(2)}</span>
+          </div>
+          <div className="rounded-xl border border-white/5 bg-white/[0.03] px-3.5 py-2">
+            <span className="block text-[9px] uppercase tracking-wider text-emerald-400 font-bold">Bonus Credit</span>
+            <span className="font-mono font-bold text-emerald-300">₨{Number(bonusBalancePkr || 0).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
 
       {/* Consolidated Compact Wallet Summary Card */}
       <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-slate-900/90 via-[#0d1816] to-slate-900/90 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-lg">
