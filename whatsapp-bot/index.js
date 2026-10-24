@@ -19,6 +19,7 @@ import {
   detectLanguageSwitch,
   convertPkrToCurrency,
   getCheapestServices,
+  getFreeTrialServices,
   searchServices,
   lookupOrder,
   processOrderSpeedUp,
@@ -251,6 +252,9 @@ async function startBot() {
       await new Promise((r) => setTimeout(r, 2200));
 
       const cleanText = text.toLowerCase();
+
+      // Fetch customer profile from DB / memory
+      let customer = await getCustomer(senderPhone);
 
       // Check if user requested an explicit language switch
       const langSwitch = detectLanguageSwitch(text);
@@ -602,6 +606,7 @@ Main aapki kya madad kar sakta hoon?
 *3* 🎁 - Special Bonus Offers
 *4* 🌐 - Website Services & Rates (${customer.currency || 'PKR'})
 *5* 👤 - Admin / Human Support se Baat Karein
+*6* ✨ - Free Test Trial Services (1,000 Views / 50 Likes Free)
 
 _Aap apna koi bhi sawal apni zuban me seedha pooch sakte hain!_`;
 
@@ -710,7 +715,40 @@ Aap apna masla (Order ID ya screenshot) yahan likh kar chhor dein, admin jald se
       }
 
       // ========================================================
-      // 8. INTELLIGENT AI "THINKING" (LOCAL CURRENCY RATES)
+      // 8. OPTION 6: FREE TEST TRIAL SERVICES (SEPARATE FROM CHEAP SERVICES)
+      // ========================================================
+      if (
+        cleanText === '6' ||
+        cleanText.includes('trial') ||
+        cleanText.includes('free test') ||
+        cleanText.includes('free service') ||
+        cleanText.includes('muft')
+      ) {
+        const trials = await getFreeTrialServices(customer?.currency);
+        const trialList = trials.map((t) => `✨ *${t.name}* (100% Free)`).join('\n');
+
+        const trialMsg =
+`🎁 *${PANEL_NAME} 100% Free Test Trial Services:*
+
+Hum naye customers ko speed test karne ke liye FREE services dete hain bina kisi payment ke:
+
+${trialList || '• TikTok Views [Free Test Trial - Max 1,000 Views]\n• Instagram Views [Free Test Trial - Max 1,000 Views]\n• Instagram Likes [Free Test Trial - Max 50 Likes]'}
+
+━━━━━━━━━━━━━━━━━━
+📝 *Free Trial Lagane Ka Tareeqa:*
+1. Website par visit karein: ${PANEL_URL}
+2. Login ya Sign Up karein.
+3. *New Order* page par jayein -> Category: *Free Test Trial* select karein.
+4. Apna post ya video link enter karein aur submit karein.
+_Order automatically 1-5 minutes me start ho jayega!_`;
+
+        await sock.sendMessage(remoteJid, { text: trialMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // ========================================================
+      // 9. INTELLIGENT AI "THINKING" (LOCAL CURRENCY RATES)
       // ========================================================
       let liveContext = '';
 

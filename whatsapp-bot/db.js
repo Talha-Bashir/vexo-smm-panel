@@ -357,7 +357,7 @@ export function sanitizeText(text) {
 }
 
 /**
- * Fetch top cheapest enabled services with converted currency
+ * Fetch top cheapest paid services (excluding free test trials)
  */
 export async function getCheapestServices(platform = null, limit = 5, targetCurrency = 'PKR') {
   try {
@@ -367,6 +367,10 @@ export async function getCheapestServices(platform = null, limit = 5, targetCurr
       SELECT id, name, platform, category, COALESCE(custom_rate_pkr, rate_pkr) as rate, min, max
       FROM vexo_routed_services
       WHERE enabled = true
+        AND COALESCE(custom_rate_pkr, rate_pkr) > 0.05
+        AND LOWER(name) NOT LIKE '%trial%'
+        AND LOWER(name) NOT LIKE '%free test%'
+        AND LOWER(category) NOT LIKE '%trial%'
     `;
     const params = [];
 
@@ -395,6 +399,38 @@ export async function getCheapestServices(platform = null, limit = 5, targetCurr
     });
   } catch (err) {
     console.error('[DB] getCheapestServices error:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Fetch 100% Free Test Trial services
+ */
+export async function getFreeTrialServices(targetCurrency = 'PKR') {
+  try {
+    const res = await pool.query(
+      `SELECT id, name, platform, category, COALESCE(custom_rate_pkr, rate_pkr) as rate, min, max
+       FROM vexo_routed_services
+       WHERE enabled = true AND (
+         COALESCE(custom_rate_pkr, rate_pkr) <= 0.05 OR
+         LOWER(name) LIKE '%trial%' OR
+         LOWER(name) LIKE '%free test%'
+       )
+       ORDER BY COALESCE(custom_rate_pkr, rate_pkr) ASC
+       LIMIT 4`
+    );
+
+    return res.rows.map(r => ({
+      id: r.id,
+      name: sanitizeText(r.name),
+      platform: r.platform,
+      category: r.category,
+      rateConverted: '0.00 (100% Free)',
+      min: r.min,
+      max: r.max,
+    }));
+  } catch (err) {
+    console.error('[DB] getFreeTrialServices error:', err.message);
     return [];
   }
 }
