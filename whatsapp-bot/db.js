@@ -1,6 +1,7 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -16,6 +17,288 @@ export const pool = new pg.Pool({
   idleTimeoutMillis: 30000,
 });
 
+// Ensure customer schema on startup
+let schemaInitialized = false;
+export async function ensureCustomerSchema() {
+  if (schemaInitialized) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS vexo_whatsapp_customers (
+        phone VARCHAR(40) PRIMARY KEY,
+        name VARCHAR(120),
+        country VARCHAR(60),
+        currency VARCHAR(10) DEFAULT 'PKR',
+        interest VARCHAR(120),
+        stage VARCHAR(30) DEFAULT 'ask_name',
+        vcard_sent BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS vexo_wa_cust_stage_idx ON vexo_whatsapp_customers(stage);
+    `);
+    schemaInitialized = true;
+  } catch (err) {
+    console.warn('[DB] Customer schema init warning:', err.message);
+  }
+}
+
+/**
+ * Live Global Forex Rates with sensible fallbacks
+ */
+const FOREX_RATES = {
+  USD: 1.0,
+  PKR: 277.0,
+  BDT: 123.5,
+  INR: 85.0,
+  AED: 3.67,
+  SAR: 3.75,
+  GBP: 0.78,
+  EUR: 0.92,
+  lastUpdated: 0,
+};
+
+export async function refreshForexRates() {
+  const now = Date.now();
+  if (now - FOREX_RATES.lastUpdated < 60 * 60 * 1000) return FOREX_RATES; // 1 hour cache
+
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD', {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.rates) {
+        FOREX_RATES.PKR = Number(data.rates.PKR) || FOREX_RATES.PKR;
+        FOREX_RATES.BDT = Number(data.rates.BDT) || FOREX_RATES.BDT;
+        FOREX_RATES.INR = Number(data.rates.INR) || FOREX_RATES.INR;
+        FOREX_RATES.AED = Number(data.rates.AED) || FOREX_RATES.AED;
+        FOREX_RATES.SAR = Number(data.rates.SAR) || FOREX_RATES.SAR;
+        FOREX_RATES.GBP = Number(data.rates.GBP) || FOREX_RATES.GBP;
+        FOREX_RATES.EUR = Number(data.rates.EUR) || FOREX_RATES.EUR;
+        FOREX_RATES.lastUpdated = now;
+      }
+    }
+  } catch (err) {
+    console.warn('[Forex] Update failed, using fallback cache:', err.message);
+  }
+  return FOREX_RATES;
+}
+
+/**
+ * Convert PKR to customer's local currency
+ */
+export function convertPkrToCurrency(pkrAmount, targetCurrency = 'PKR') {
+  const pkr = Number(pkrAmount || 0);
+  const curr = String(targetCurrency || 'PKR').toUpperCase();
+
+  if (curr === 'PKR') {
+    return {
+      amount: pkr,
+      currency: 'PKR',
+      formatted: `Rs ${pkr.toFixed(2)}`
+    };
+  }
+
+  // Convert PKR -> USD -> Target
+  const usdRate = pkr / FOREX_RATES.PKR;
+  const targetMultiplier = FOREX_RATES[curr] || 1.0;
+  const converted = usdRate * targetMultiplier;
+
+  let formatted = '';
+  switch (curr) {
+    case 'BDT':
+      formatted = `৳${converted.toFixed(2)} BDT`;
+      break;
+    case 'USD':
+      formatted = `$${converted.toFixed(4)}`;
+      break;
+    case 'INR':
+      formatted = `₹${converted.toFixed(2)} INR`;
+      break;
+    case 'AED':
+      formatted = `AED ${converted.toFixed(3)}`;
+      break;
+    case 'SAR':
+      formatted = `SAR ${converted.toFixed(3)}`;
+      break;
+    case 'GBP':
+      formatted = `£${converted.toFixed(4)}`;
+      break;
+    case 'EUR':
+      formatted = `€${converted.toFixed(4)}`;
+      break;
+    default:
+      formatted = `$${usdRate.toFixed(4)} USD`;
+  }
+
+  return {
+    amount: converted,
+    currency: curr,
+    formatted
+  };
+}
+
+/**
+ * Detect Country and default Currency from phone number prefix
+ */
+export function detectCountryFromPhone(phone) {
+  const clean = String(phone || '').replace(/\D/g, '');
+  if (clean.startsWith('92')) {
+    return { country: 'Pakistan', currency: 'PKR', symbol: 'Rs' };
+  }
+  if (clean.startsWith('880')) {
+    return { country: 'Bangladesh', currency: 'BDT', symbol: '৳' };
+  }
+  if (clean.startsWith('1')) {
+    return { country: 'United States', currency: 'USD', symbol: '$' };
+  }
+  if (clean.startsWith('971')) {
+    return { country: 'United Arab Emirates', currency: 'AED', symbol: 'AED' };
+  }
+  if (clean.startsWith('966')) {
+    return { country: 'Saudi Arabia', currency: 'SAR', symbol: 'SAR' };
+  }
+  if (clean.startsWith('91')) {
+    return { country: 'India', currency: 'INR', symbol: '₹' };
+  }
+  if (clean.startsWith('44')) {
+    return { country: 'United Kingdom', currency: 'GBP', symbol: '£' };
+  }
+  return { country: 'International', currency: 'USD', symbol: '$' };
+}
+
+/**
+ * Parse Country string given by user (e.g. "pakistan", "bangladesh", "us", etc.)
+ */
+export function parseCountryText(text) {
+  const lower = String(text || '').toLowerCase().trim();
+  if (lower.includes('pak') || lower.includes('pk')) {
+    return { country: 'Pakistan', currency: 'PKR', symbol: 'Rs' };
+  }
+  if (lower.includes('bangla') || lower.includes('bd') || lower.includes('dhaka')) {
+    return { country: 'Bangladesh', currency: 'BDT', symbol: '৳' };
+  }
+  if (lower.includes('us') || lower.includes('america') || lower.includes('united states') || lower.includes('canada')) {
+    return { country: 'United States', currency: 'USD', symbol: '$' };
+  }
+  if (lower.includes('uae') || lower.includes('dubai') || lower.includes('emirates')) {
+    return { country: 'United Arab Emirates', currency: 'AED', symbol: 'AED' };
+  }
+  if (lower.includes('saudi') || lower.includes('ksa') || lower.includes('riyadh')) {
+    return { country: 'Saudi Arabia', currency: 'SAR', symbol: 'SAR' };
+  }
+  if (lower.includes('india') || lower.includes('inr') || lower.includes('hindustan')) {
+    return { country: 'India', currency: 'INR', symbol: '₹' };
+  }
+  if (lower.includes('uk') || lower.includes('england') || lower.includes('britain') || lower.includes('london')) {
+    return { country: 'United Kingdom', currency: 'GBP', symbol: '£' };
+  }
+  return null;
+}
+
+/**
+ * Customer Management in Database
+ */
+export async function getCustomer(phone) {
+  await ensureCustomerSchema();
+  try {
+    const res = await pool.query(
+      `SELECT phone, name, country, currency, interest, stage, vcard_sent
+       FROM vexo_whatsapp_customers
+       WHERE phone = $1 LIMIT 1`,
+      [phone]
+    );
+    if (res.rows.length === 0) return null;
+    return res.rows[0];
+  } catch (err) {
+    console.error('[DB] getCustomer error:', err.message);
+    return null;
+  }
+}
+
+export async function upsertCustomer(phone, data) {
+  await ensureCustomerSchema();
+  try {
+    const fields = [];
+    const values = [phone];
+    let idx = 2;
+
+    if (data.name !== undefined) {
+      fields.push(`name = $${idx++}`);
+      values.push(data.name);
+    }
+    if (data.country !== undefined) {
+      fields.push(`country = $${idx++}`);
+      values.push(data.country);
+    }
+    if (data.currency !== undefined) {
+      fields.push(`currency = $${idx++}`);
+      values.push(data.currency);
+    }
+    if (data.interest !== undefined) {
+      fields.push(`interest = $${idx++}`);
+      values.push(data.interest);
+    }
+    if (data.stage !== undefined) {
+      fields.push(`stage = $${idx++}`);
+      values.push(data.stage);
+    }
+    if (data.vcard_sent !== undefined) {
+      fields.push(`vcard_sent = $${idx++}`);
+      values.push(data.vcard_sent);
+    }
+
+    fields.push(`updated_at = NOW()`);
+
+    const query = `
+      INSERT INTO vexo_whatsapp_customers (phone, name, country, currency, interest, stage, vcard_sent)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (phone) DO UPDATE SET
+        ${fields.join(', ')}
+      RETURNING *
+    `;
+
+    const res = await pool.query(query, [
+      phone,
+      data.name || null,
+      data.country || null,
+      data.currency || 'PKR',
+      data.interest || null,
+      data.stage || 'ask_name',
+      data.vcard_sent || false,
+    ]);
+
+    return res.rows[0];
+  } catch (err) {
+    console.error('[DB] upsertCustomer error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Save Customer to Phone Contacts VCF File (Anti-Ban & Lead Export)
+ */
+export function saveContactToVcf(phone, name, country) {
+  try {
+    const vcfPath = path.join(__dirname, 'VEXARO_Contacts.vcf');
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const cleanName = String(name || 'Customer').trim();
+    const cleanCountry = String(country || 'Global').trim();
+
+    const entry = 
+`BEGIN:VCARD
+VERSION:3.0
+FN:${cleanName} (VEXARO - ${cleanCountry})
+TEL;TYPE=CELL:+${cleanPhone}
+NOTE:VEXARO SMM Panel Customer (${cleanCountry})
+END:VCARD\n`;
+
+    fs.appendFileSync(vcfPath, entry, 'utf8');
+  } catch (err) {
+    console.warn('[VCF] Failed to append contact:', err.message);
+  }
+}
+
 /**
  * Scrub sensitive provider names, domains, or internal keys
  */
@@ -30,10 +313,12 @@ export function sanitizeText(text) {
 }
 
 /**
- * Fetch top cheapest enabled services
+ * Fetch top cheapest enabled services with converted currency
  */
-export async function getCheapestServices(platform = null, limit = 5) {
+export async function getCheapestServices(platform = null, limit = 5, targetCurrency = 'PKR') {
   try {
+    await refreshForexRates();
+
     let query = `
       SELECT id, name, platform, category, COALESCE(custom_rate_pkr, rate_pkr) as rate, min, max
       FROM vexo_routed_services
@@ -49,15 +334,21 @@ export async function getCheapestServices(platform = null, limit = 5) {
     query += ` ORDER BY COALESCE(custom_rate_pkr, rate_pkr) ASC LIMIT ${limit}`;
 
     const res = await pool.query(query, params);
-    return res.rows.map(r => ({
-      id: r.id,
-      name: sanitizeText(r.name),
-      platform: r.platform,
-      category: r.category,
-      ratePkr: Number(r.rate || 0).toFixed(2),
-      min: r.min,
-      max: r.max,
-    }));
+    return res.rows.map(r => {
+      const pkrRate = Number(r.rate || 0);
+      const converted = convertPkrToCurrency(pkrRate, targetCurrency);
+      return {
+        id: r.id,
+        name: sanitizeText(r.name),
+        platform: r.platform,
+        category: r.category,
+        ratePkr: pkrRate.toFixed(2),
+        rateConverted: converted.formatted,
+        currency: targetCurrency,
+        min: r.min,
+        max: r.max,
+      };
+    });
   } catch (err) {
     console.error('[DB] getCheapestServices error:', err.message);
     return [];
@@ -65,10 +356,12 @@ export async function getCheapestServices(platform = null, limit = 5) {
 }
 
 /**
- * Search services by keyword (e.g. tiktok views, instagram followers)
+ * Search services by keyword with converted currency
  */
-export async function searchServices(keyword, limit = 5) {
+export async function searchServices(keyword, limit = 5, targetCurrency = 'PKR') {
   try {
+    await refreshForexRates();
+
     const res = await pool.query(
       `SELECT id, name, platform, category, COALESCE(custom_rate_pkr, rate_pkr) as rate, min, max
        FROM vexo_routed_services
@@ -80,15 +373,21 @@ export async function searchServices(keyword, limit = 5) {
       [`%${keyword.toLowerCase()}%`]
     );
 
-    return res.rows.map(r => ({
-      id: r.id,
-      name: sanitizeText(r.name),
-      platform: r.platform,
-      category: r.category,
-      ratePkr: Number(r.rate || 0).toFixed(2),
-      min: r.min,
-      max: r.max,
-    }));
+    return res.rows.map(r => {
+      const pkrRate = Number(r.rate || 0);
+      const converted = convertPkrToCurrency(pkrRate, targetCurrency);
+      return {
+        id: r.id,
+        name: sanitizeText(r.name),
+        platform: r.platform,
+        category: r.category,
+        ratePkr: pkrRate.toFixed(2),
+        rateConverted: converted.formatted,
+        currency: targetCurrency,
+        min: r.min,
+        max: r.max,
+      };
+    });
   } catch (err) {
     console.error('[DB] searchServices error:', err.message);
     return [];
@@ -148,7 +447,6 @@ export async function processOrderSpeedUp(orderQuery, senderPhone = '') {
     };
   }
 
-  // If already completed or canceled
   const stLower = (order.status || '').toLowerCase();
   if (stLower.includes('complet')) {
     return {
@@ -182,7 +480,7 @@ export async function processOrderSpeedUp(orderQuery, senderPhone = '') {
     console.warn('[DB] Failed to insert vexo_support_tickets:', tErr.message);
   }
 
-  // 2. Dispatch speed-up/ticket to upstream provider (behind the scenes, zero provider leaks!)
+  // 2. Dispatch speed-up/ticket to upstream provider (zero provider leaks!)
   let providerPinged = false;
   if (order.providerId && order.providerOrderId) {
     try {
@@ -193,7 +491,6 @@ export async function processOrderSpeedUp(orderQuery, senderPhone = '') {
       if (provRes.rows.length > 0) {
         const { api_url, api_key } = provRes.rows[0];
 
-        // Attempt 1: Add ticket on provider panel
         try {
           await fetch(api_url, {
             method: 'POST',
@@ -208,7 +505,6 @@ export async function processOrderSpeedUp(orderQuery, senderPhone = '') {
           });
           providerPinged = true;
         } catch {
-          // Attempt 2: Try refill/push action if add_ticket isn't supported
           try {
             await fetch(api_url, {
               method: 'POST',

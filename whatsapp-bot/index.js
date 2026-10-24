@@ -9,6 +9,13 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
+  ensureCustomerSchema,
+  getCustomer,
+  upsertCustomer,
+  saveContactToVcf,
+  detectCountryFromPhone,
+  parseCountryText,
+  convertPkrToCurrency,
   getCheapestServices,
   searchServices,
   lookupOrder,
@@ -29,34 +36,44 @@ const EASYPAISA_NO = process.env.EASYPAISA_NO || '03197008275';
 const EASYPAISA_NAME = process.env.EASYPAISA_NAME || 'Saeed Bashir';
 const MIN_BONUS_DEPOSIT = process.env.MIN_BONUS_DEPOSIT || '5000';
 
-// Simple debounce to prevent responding twice to duplicate webhook deliveries
+const cleanAdminPhone = SADAPAY_NO.replace(/\D/g, '');
+
+// Deduplication cache
 const recentMessages = new Set();
 
 /**
- * Intelligent AI Assistant with Live Website Awareness & Strict Security Guardrails
+ * Intelligent AI Assistant with Live Context & Strict Security Guardrails
  */
-async function askIntelligentGemini(userMessage, contextData = '') {
+async function askIntelligentGemini(userMessage, contextData = '', customer = null) {
   if (!GEMINI_API_KEY) {
     return `Assalam-o-Alaikum! Welcome to ${PANEL_NAME}. Mazeed maloomat ke liye *menu* likh kar reply karein.`;
   }
 
-  const systemPrompt = `You are the intelligent, polite official WhatsApp assistant for ${PANEL_NAME} (website: ${PANEL_URL}).
+  const userCurrency = customer?.currency || 'PKR';
+  const userName = customer?.name || 'Customer';
+  const userCountry = customer?.country || 'Pakistan';
+
+  const systemPrompt = `You are the friendly, intelligent official WhatsApp assistant for ${PANEL_NAME} (website: ${PANEL_URL}).
+
+CUSTOMER PROFILE:
+- Name: ${userName}
+- Country: ${userCountry}
+- Preferred Currency: ${userCurrency}
 
 CRITICAL SECURITY & CONFIDENTIALITY RULES (STRICT ENFORCEMENT):
 1. You represent ONLY ${PANEL_NAME}.
 2. You must NEVER, under any circumstance, reveal or mention:
    - Any upstream provider or third-party panel names (e.g. SMM Flare, PAK SMM, Smooth SMM, Rizvi SMM, AM SMM, etc.).
-   - Any supplier websites, URLs, API keys, database credentials, server connection strings, or profit margins.
+   - Any supplier websites, URLs, API keys, database credentials, or server connection strings.
    - Always refer to backend servers as "VEXARO Automated High-Speed Server" or "VEXARO Direct Server".
-3. Reply in natural, friendly, polite Roman Urdu (or English if the user asked in English).
-4. Use the live website data provided in the context to answer questions about services, prices, and rates accurately.
-5. If someone asks how to add funds or pay, inform them they can pay via SadaPay or Easypaisa to ${SADAPAY_NO} (${SADAPAY_NAME}) and upload the receipt in the Add Funds tab.
-6. Bonus rule: 5% bonus on Rs 5,000+ deposits, 10% bonus on Rs 10,000+ deposits. Under Rs 5,000 has 0 bonus.
-7. Keep replies concise, helpful, and transparent (maximum 3-4 sentences).`;
+3. Always quote prices and rates in the customer's preferred currency (${userCurrency}).
+4. Reply in natural, friendly, polite Roman Urdu (or English if the user asked in English). Address them respectfully by their name (${userName}).
+5. Use the live website data provided in the context to answer questions about services and prices accurately.
+6. Keep replies concise, helpful, and transparent (maximum 3-4 sentences).`;
 
   try {
     const inputContent = contextData
-      ? `[LIVE WEBSITE CONTEXT FROM DATABASE]:\n${contextData}\n\n[USER QUESTION]:\n${userMessage}`
+      ? `[LIVE WEBSITE DATA IN ${userCurrency}]:\n${contextData}\n\n[USER QUESTION FROM ${userName}]:\n${userMessage}`
       : userMessage;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/interactions?key=${GEMINI_API_KEY}`, {
@@ -80,22 +97,19 @@ CRITICAL SECURITY & CONFIDENTIALITY RULES (STRICT ENFORCEMENT):
     console.error('[Gemini API Error]:', err.message);
   }
 
-  return `Assalam-o-Alaikum! Aapka sawal mil gaya hai. Live services aur rates website par check karein: ${PANEL_URL}/services ya support ke liye *5* bhejien.`;
+  return `Assalam-o-Alaikum ${userName} bhai! Aapka sawal mil gaya hai. Live services aur rates website par check karein: ${PANEL_URL}/services ya human support ke liye *5* bhejien.`;
 }
 
 /**
  * Extract potential Order ID from message
  */
 function extractOrderId(text) {
-  // Check UUID format (e.g. 26684bd1-ebe1-4d3c-aabd-6ddac4b39c32 or prefix 26684bd1)
   const uuidMatch = text.match(/[a-f0-9]{8}(?:-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})?/i);
   if (uuidMatch) return uuidMatch[0];
 
-  // Check "#12345" or "order 12345"
   const orderNumMatch = text.match(/(?:order|id|#)\s*[:#]?\s*([0-9]{3,10})/i);
   if (orderNumMatch) return orderNumMatch[1];
 
-  // Check standalone digits if 4 to 8 digits
   const standaloneDigits = text.match(/\b\d{4,8}\b/);
   if (standaloneDigits) return standaloneDigits[0];
 
@@ -103,16 +117,39 @@ function extractOrderId(text) {
 }
 
 /**
+ * Send VEXARO Official Contact Card (vCard)
+ */
+async function sendOfficialVCard(sock, remoteJid) {
+  const vcard =
+    'BEGIN:VCARD\n' +
+    'VERSION:3.0\n' +
+    'FN:VEXARO SMM Support\n' +
+    'ORG:VEXARO SMM Panel;\n' +
+    `TEL;type=CELL;type=VOICE;waid=${cleanAdminPhone}:+${cleanAdminPhone}\n` +
+    `URL:${PANEL_URL}\n` +
+    'NOTE:Official 24/7 Support for VEXARO SMM Panel\n' +
+    'END:VCARD';
+
+  await sock.sendMessage(remoteJid, {
+    contacts: {
+      displayName: 'VEXARO SMM Support',
+      contacts: [{ vcard }]
+    }
+  });
+}
+
+/**
  * Main WhatsApp Connection Handler
  */
 async function startBot() {
+  await ensureCustomerSchema();
   const { state, saveCreds } = await useMultiFileAuthState('./auth_session');
   const { version } = await fetchLatestBaileysVersion();
 
   console.log(`\n======================================================`);
   console.log(`🚀 Starting ${PANEL_NAME} Intelligent WhatsApp Assistant`);
   console.log(`Using Baileys v${version.join('.')}`);
-  console.log(`Live Database Connected & Real-time Speed-Up Active`);
+  console.log(`Multi-Country Currency & Automated Contact Sync Active`);
   console.log(`======================================================\n`);
 
   const sock = makeWASocket({
@@ -154,7 +191,7 @@ async function startBot() {
     } else if (connection === 'open') {
       console.log('\n======================================================');
       console.log(`✅ [${PANEL_NAME}] WHATSAPP BOT CONNECTED SUCCESSFULLY!`);
-      console.log('Bot is now LIVE and listening for customer messages.');
+      console.log('Bot is now LIVE with Onboarding & Currency Detection.');
       console.log('======================================================\n');
     }
   });
@@ -186,18 +223,150 @@ async function startBot() {
       recentMessages.add(msgId);
       setTimeout(() => recentMessages.delete(msgId), 15000);
 
-      const senderNumber = remoteJid.split('@')[0];
-      console.log(`📩 [New Message] From: +${senderNumber} -> "${text}"`);
+      const senderPhone = remoteJid.split('@')[0];
+      console.log(`📩 [New Message] From: +${senderPhone} -> "${text}"`);
 
-      // Human delay + typing indicator
+      // Human delay & typing status
       await sock.sendPresenceUpdate('composing', remoteJid);
       await new Promise((r) => setTimeout(r, 2200));
 
       const cleanText = text.toLowerCase();
 
-      // ==========================================
-      // 1. SPEED UP REQUEST (Automatic Provider Ticket & Push)
-      // ==========================================
+      // ========================================================
+      // 1. ONBOARDING & CONTACT SAVE FLOW FOR FIRST-TIME USERS
+      // ========================================================
+      let customer = await getCustomer(senderPhone);
+
+      // --- STEP 1: First time message from new phone ---
+      if (!customer) {
+        const defaultGeo = detectCountryFromPhone(senderPhone);
+        await sendOfficialVCard(sock, remoteJid);
+
+        customer = await upsertCustomer(senderPhone, {
+          stage: 'ask_name',
+          country: defaultGeo.country,
+          currency: defaultGeo.currency,
+          vcard_sent: true,
+        });
+
+        const welcomeAskName =
+`👋 *Assalam-o-Alaikum! Welcome to ${PANEL_NAME}.*
+
+Main VEXARO ka automated assistant hoon. Hamare panel par Pakistan, Bangladesh, US aur Worldwide sab se cheapest aur fast social media services milti hain.
+
+Aapko aapke mulk ke mutabiq best rates aur VIP discount dene ke liye:
+👤 *1. Barah-e-karam apna Pyara Naam batayein?*
+
+━━━━━━━━━━━━━━━━━━
+📌 *Zaroori Anti-Ban Request:*
+Upar bheje gaye contact card par click karke hamara number *"VEXARO Official"* ke naam se apne phone me **SAVE** kar lein taake aapka account aur tamam updates safe rahein!`;
+
+        await sock.sendMessage(remoteJid, { text: welcomeAskName });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // --- STEP 2: Customer responds with their Name ---
+      if (customer.stage === 'ask_name') {
+        const customerName = text.replace(/^(my name is|mera naam|naam|name)\s*/i, '').trim();
+        customer = await upsertCustomer(senderPhone, {
+          name: customerName,
+          stage: 'ask_country',
+        });
+
+        // Save contact to phone VCF file
+        saveContactToVcf(senderPhone, customerName, customer.country || 'Global');
+
+        const askCountryMsg =
+`Boht shukriya, *${customerName}* bhai! 😊
+
+🌍 *2. Aap kis Mulk / Country se hain?*
+(Maslan: *Pakistan*, *Bangladesh*, *USA*, *UAE*, *Saudi Arabia*, etc.)
+
+_Yeh is liye zaroori hai taake hum aapko aapki local currency me rates aur local payment methods dikha sakein!_`;
+
+        await sock.sendMessage(remoteJid, { text: askCountryMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // --- STEP 3: Customer responds with Country ---
+      if (customer.stage === 'ask_country') {
+        const parsedGeo = parseCountryText(text) || detectCountryFromPhone(senderPhone);
+        customer = await upsertCustomer(senderPhone, {
+          country: parsedGeo.country,
+          currency: parsedGeo.currency,
+          stage: 'ask_interest',
+        });
+
+        // Update VCF file with customer name and country
+        saveContactToVcf(senderPhone, customer.name, parsedGeo.country);
+
+        const askInterestMsg =
+`Zabardast! Aapka Mulk *${parsedGeo.country}* aur Currency *${parsedGeo.currency} (${parsedGeo.symbol})* set ho gayi hai. ✅
+
+🎯 *3. Aapko kis platform ki services chahiye?*
+*A* - Instagram (Followers, Likes, Views)
+*B* - TikTok (Views, Followers, Likes)
+*C* - YouTube (Watch Time, Subscribers)
+*D* - All Services & Reseller Panel
+
+_Aap letter (A, B, C, D) ya platform ka naam likh kar reply karein!_`;
+
+        await sock.sendMessage(remoteJid, { text: askInterestMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // --- STEP 4: Customer selects Platform / Interest -> Onboarding Complete! ---
+      if (customer.stage === 'ask_interest') {
+        let chosen = text.trim();
+        if (cleanText === 'a') chosen = 'Instagram Services';
+        else if (cleanText === 'b') chosen = 'TikTok Services';
+        else if (cleanText === 'c') chosen = 'YouTube Services';
+        else if (cleanText === 'd') chosen = 'All Services & Reseller';
+
+        customer = await upsertCustomer(senderPhone, {
+          interest: chosen,
+          stage: 'completed',
+        });
+
+        // Fetch cheapest services in customer's local currency
+        const cheapInCurr = await getCheapestServices(null, 4, customer.currency);
+        const cheapText = cheapInCurr
+          .map((s) => `• *${s.name}*: ${s.rateConverted} per 1,000`)
+          .join('\n');
+
+        const completedMsg =
+`🎉 *Welcome to ${PANEL_NAME}, ${customer.name} bhai!*
+
+Aapka profile successfully set ho gaya hai!
+🌍 Country: *${customer.country}*
+💰 Currency: *${customer.currency}*
+🎯 Category: *${chosen}*
+
+━━━━━━━━━━━━━━━━━━
+🔥 *Live Cheapest Rates in ${customer.currency}:*
+${cheapText}
+━━━━━━━━━━━━━━━━━━
+
+*Ab aap jo bhi sawal poochenge, aapko aapki currency (${customer.currency}) me live rates milenge!*
+
+*Quick Menu:*
+*1* 💳 - Payment Methods (${customer.currency})
+*2* 📦 - Order Status & Speed Up
+*3* 🎁 - Deposit Bonus Offers
+*4* 🌐 - Website Services & Rates
+*5* 👤 - Human Support`;
+
+        await sock.sendMessage(remoteJid, { text: completedMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // ========================================================
+      // 2. SPEED UP REQUEST (Automated Upstream Ticket & Push)
+      // ========================================================
       const isSpeedUpRequest =
         cleanText.includes('speed up') ||
         cleanText.includes('speedup') ||
@@ -212,7 +381,7 @@ async function startBot() {
       if (isSpeedUpRequest) {
         const orderId = extractOrderId(text);
         if (orderId) {
-          const speedUpResult = await processOrderSpeedUp(orderId, senderNumber);
+          const speedUpResult = await processOrderSpeedUp(orderId, senderPhone);
           await sock.sendMessage(remoteJid, { text: speedUpResult.message });
           await sock.sendPresenceUpdate('paused', remoteJid);
           continue;
@@ -220,7 +389,7 @@ async function startBot() {
           const promptMsg =
 `⚡ *VEXARO Automated Speed-Up Service*
 
-Order ko priority speed par push karne ke liye barah-e-karam apna *Order ID* likhein:
+${customer.name ? `${customer.name} bhai, ` : ''}Order ko priority speed par push karne ke liye apna *Order ID* likhein:
 👉 Maslan: *speed up order 125* ya *speed up #26684bd1*
 
 Jaise hi aap Order ID bhejenge, hamara bot foran upstream server ko *Priority Speed-Up Ticket* bhej kar order ko fast karwa dega!`;
@@ -231,9 +400,9 @@ Jaise hi aap Order ID bhejenge, hamara bot foran upstream server ko *Priority Sp
         }
       }
 
-      // ==========================================
-      // 2. DIRECT ORDER STATUS CHECK
-      // ==========================================
+      // ========================================================
+      // 3. DIRECT ORDER STATUS CHECK
+      // ========================================================
       const isOrderQuery =
         cleanText.startsWith('order') ||
         cleanText.startsWith('#') ||
@@ -245,6 +414,7 @@ Jaise hi aap Order ID bhejenge, hamara bot foran upstream server ko *Priority Sp
       if (isOrderQuery && extractedId) {
         const order = await lookupOrder(extractedId);
         if (order) {
+          const convertedCharge = convertPkrToCurrency(order.chargePkr, customer.currency);
           const statusMsg =
 `📦 *VEXARO Live Order Details:*
 
@@ -252,11 +422,11 @@ Jaise hi aap Order ID bhejenge, hamara bot foran upstream server ko *Priority Sp
 🚀 *Service:* ${order.serviceName}
 👥 *Quantity:* ${order.quantity}
 📊 *Current Status:* *${order.status}*
-💳 *Charge:* Rs ${order.chargePkr}
+💳 *Charge:* ${convertedCharge.formatted}
 ${order.remains ? `⏳ *Remains:* ${order.remains}` : ''}
 
 ━━━━━━━━━━━━━━━━━━
-⚡ *Tip:* Agar aapko lagta hai order slow hai, toh *speed up order ${order.shortId}* likh kar reply karein! Hamara bot foran server ko priority speed-up ticket send kar dega.`;
+⚡ *Tip:* Agar aapka order slow hai, toh *speed up order ${order.shortId}* likh kar reply karein! Hamara bot foran server ko priority speed-up ticket send kar dega.`;
 
           await sock.sendMessage(remoteJid, { text: statusMsg });
           await sock.sendPresenceUpdate('paused', remoteJid);
@@ -264,35 +434,35 @@ ${order.remains ? `⏳ *Remains:* ${order.remains}` : ''}
         }
       }
 
-      // ==========================================
-      // 3. MENU & GREETINGS
-      // ==========================================
+      // ========================================================
+      // 4. MENU & GREETINGS
+      // ========================================================
       const greetings = ['hi', 'hello', 'salam', 'aoa', 'assalam', 'hey', 'start', 'menu', 'help', 'info', 'hy', 'bot'];
       const isGreeting = greetings.some((g) => cleanText === g || cleanText.startsWith(g + ' '));
 
       if (isGreeting) {
         const menuMsg =
-`👋 *Assalam-o-Alaikum! Welcome to ${PANEL_NAME}.*
+`👋 *Assalam-o-Alaikum ${customer.name || ''}! Welcome to ${PANEL_NAME}.*
 
-Main VEXARO ka automated WhatsApp assistant hoon. Main aapki kya madad kar sakta hoon?
+Main aapki kya madad kar sakta hoon?
 
 *Reply karein number ke sath:*
-*1* 💳 - SadaPay / Easypaisa Payment Details
+*1* 💳 - Payment Methods (${customer.currency || 'PKR'})
 *2* 📦 - Order Status & Speed Up
-*3* 🎁 - Special Bonus Offers (Rs ${MIN_BONUS_DEPOSIT}+)
-*4* 🌐 - Website Services & Live Rates
+*3* 🎁 - Special Bonus Offers
+*4* 🌐 - Website Services & Rates (${customer.currency || 'PKR'})
 *5* 👤 - Admin / Human Support se Baat Karein
 
-_Aap koi bhi sawal (maslan: "Aap ki cheap services kya hain?" ya "Speed up order 125") seedha pooch sakte hain!_`;
+_Aap apna koi bhi sawal apni zuban me seedha pooch sakte hain!_`;
 
         await sock.sendMessage(remoteJid, { text: menuMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);
         continue;
       }
 
-      // ==========================================
-      // 4. OPTION 1: PAYMENT DETAILS (SadaPay & Easypaisa)
-      // ==========================================
+      // ========================================================
+      // 5. OPTION 1: PAYMENT DETAILS (LOCALIZED BY COUNTRY)
+      // ========================================================
       if (
         cleanText === '1' ||
         cleanText.includes('payment') ||
@@ -300,10 +470,14 @@ _Aap koi bhi sawal (maslan: "Aap ki cheap services kya hain?" ya "Speed up order
         cleanText.includes('easypaisa') ||
         cleanText.includes('jazzcash') ||
         cleanText.includes('paisa kaise') ||
-        cleanText.includes('deposit')
+        cleanText.includes('deposit') ||
+        cleanText.includes('add funds')
       ) {
-        const paymentMsg =
-`💳 *${PANEL_NAME} - Official Payment Accounts*
+        let paymentMsg = '';
+
+        if (customer.currency === 'PKR' || customer.country === 'Pakistan') {
+          paymentMsg =
+`💳 *${PANEL_NAME} - Official Payment Accounts (Pakistan)*
 
 *SadaPay:*
 📱 Number: *${SADAPAY_NO}*
@@ -315,33 +489,50 @@ _Aap koi bhi sawal (maslan: "Aap ki cheap services kya hain?" ya "Speed up order
 
 ━━━━━━━━━━━━━━━━━━
 📝 *Paisa Add Karne Ka Tareeqa:*
-1. Upar diye gaye number par SadaPay ya Easypaisa se amount send karein.
-2. Payment ka screenshot le lein.
+1. SadaPay ya Easypaisa se amount send karein.
+2. Screenshot le lein.
 3. Website par login karke *Add Funds* page par jayein:
 👉 ${PANEL_URL}/dashboard?tab=add-funds
-4. Amount, TID (Transaction ID), aur screenshot submit kar dein.
-5. 5 se 10 minute me wallet balance auto approve ho jayega!
+4. TID aur screenshot submit kar dein, 5 se 10 minute me balance add ho jayega!
 
-_Note: Rs 5,000 ya us se zyada par free extra bonus milta hai!_`;
+_Note: Rs 5,000 ya us se zyada deposit par free extra bonus milta hai!_`;
+        } else {
+          // Bangladesh, USA, UAE, International
+          paymentMsg =
+`💳 *${PANEL_NAME} - International Payment Methods*
+
+For *${customer.country}* & Worldwide users:
+
+1. 🟡 *Binance Pay (Zero Fee - Instant):*
+   • Pay with USDT / BUSD directly on website.
+2. 💳 *Credit / Debit Card (Visa & Mastercard):*
+   • Instant wallet deposit on website.
+3. 🌐 *Crypto / Payeer / Perfect Money:*
+   • Available in the Add Funds section.
+4. 📱 *Local Bank / Mobile Wallet:*
+   • Contact our Admin by replying *5* for direct manual deposit options for ${customer.country}.
+
+👉 Website Deposit Page: ${PANEL_URL}/dashboard?tab=add-funds`;
+        }
 
         await sock.sendMessage(remoteJid, { text: paymentMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);
         continue;
       }
 
-      // ==========================================
-      // 5. OPTION 3: DEPOSIT BONUS
-      // ==========================================
+      // ========================================================
+      // 6. OPTION 3: DEPOSIT BONUS
+      // ========================================================
       if (cleanText === '3' || cleanText.includes('bonus') || cleanText.includes('offer')) {
         const bonusMsg =
 `🎁 *${PANEL_NAME} Deposit Bonus Rewards:*
 
-Agar aap Rs 5,000 ya us se zyada add karte hain toh aapko extra free bonus balance milta hai:
+Agar aap Rs 5,000 (ya equivalent in ${customer.currency}) add karte hain toh aapko extra free bonus balance milta hai:
 
-✨ *Rs 5,000+ Deposit:* 5% Extra Bonus Balance!
-👑 *Rs 10,000+ Deposit:* 10% VIP Bonus Balance!
+✨ *Tier 1:* 5% Extra Bonus Balance!
+👑 *Tier 2:* 10% VIP Bonus Balance!
 
-_Note: Rs 5,000 se kam deposit par bonus nahi milta._
+_Note: Minimum deposit bonus starts at Rs 5,000+._
 Abhi login karein aur extra balance hasil karein:
 👉 ${PANEL_URL}/dashboard?tab=add-funds`;
 
@@ -350,40 +541,39 @@ Abhi login karein aur extra balance hasil karein:
         continue;
       }
 
-      // ==========================================
-      // 6. OPTION 5: HUMAN ADMIN SUPPORT
-      // ==========================================
+      // ========================================================
+      // 7. OPTION 5: HUMAN ADMIN SUPPORT
+      // ========================================================
       if (cleanText === '5' || cleanText === 'admin' || cleanText.includes('human') || cleanText.includes('agent')) {
         const adminMsg =
 `👤 *Human Admin Support:*
 
-Aapka message support team ko notify kar diya gaya hai.
-Aap apna masla (Order ID ya screenshot) yahan chhor dein, admin jald se jald aapko reply karenge. Shukriya!`;
+${customer.name ? `${customer.name} bhai, ` : ''}Aapka message hamare support admin ko forward kar diya gaya hai.
+Aap apna masla (Order ID ya screenshot) yahan likh kar chhor dein, admin jald se jald aapko reply karenge!`;
 
         await sock.sendMessage(remoteJid, { text: adminMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);
         continue;
       }
 
-      // ==========================================
-      // 7. INTELLIGENT AI "THINKING" (LOOKS UP REAL WEBSITE DATA)
-      // ==========================================
+      // ========================================================
+      // 8. INTELLIGENT AI "THINKING" (LOCAL CURRENCY RATES)
+      // ========================================================
       let liveContext = '';
 
-      // Check if user is asking about cheap/sasti services
       if (
         cleanText.includes('cheap') ||
         cleanText.includes('sasti') ||
         cleanText.includes('kam rate') ||
-        cleanText.includes('sab se kam') ||
-        cleanText.includes('low price')
+        cleanText.includes('dam') ||
+        cleanText.includes('koto') ||
+        cleanText.includes('price') ||
+        cleanText.includes('low')
       ) {
-        const cheapServices = await getCheapestServices(null, 6);
-        liveContext = 'Live Cheapest Services from VEXARO website database:\n' +
-          cheapServices.map((s) => `- ${s.name} (Platform: ${s.platform}): Rs ${s.ratePkr} per 1,000 (Min: ${s.min}, Max: ${s.max})`).join('\n');
-      }
-      // Check if user mentions specific platforms (TikTok, Instagram, YouTube, Facebook, Telegram)
-      else if (
+        const cheapServices = await getCheapestServices(null, 6, customer.currency);
+        liveContext = `Live Cheapest Services in ${customer.currency} from VEXARO database:\n` +
+          cheapServices.map((s) => `- ${s.name}: ${s.rateConverted} per 1,000 (Min: ${s.min}, Max: ${s.max})`).join('\n');
+      } else if (
         cleanText.includes('tiktok') ||
         cleanText.includes('instagram') ||
         cleanText.includes('youtube') ||
@@ -396,7 +586,6 @@ Aap apna masla (Order ID ya screenshot) yahan chhor dein, admin jald se jald aap
         cleanText.includes('rate') ||
         cleanText.includes('service')
       ) {
-        // Extract main platform or keyword
         let searchKey = 'instagram';
         if (cleanText.includes('tiktok')) searchKey = 'tiktok';
         else if (cleanText.includes('youtube')) searchKey = 'youtube';
@@ -405,14 +594,14 @@ Aap apna masla (Order ID ya screenshot) yahan chhor dein, admin jald se jald aap
         else if (cleanText.includes('followers')) searchKey = 'followers';
         else if (cleanText.includes('views')) searchKey = 'views';
 
-        const searched = await searchServices(searchKey, 6);
+        const searched = await searchServices(searchKey, 6, customer.currency);
         if (searched.length > 0) {
-          liveContext = `Live ${searchKey.toUpperCase()} Services from VEXARO website database:\n` +
-            searched.map((s) => `- ${s.name}: Rs ${s.ratePkr} per 1,000 (Min: ${s.min})`).join('\n');
+          liveContext = `Live ${searchKey.toUpperCase()} Services in ${customer.currency} from VEXARO database:\n` +
+            searched.map((s) => `- ${s.name}: ${s.rateConverted} per 1,000 (Min: ${s.min})`).join('\n');
         }
       }
 
-      const aiReply = await askIntelligentGemini(text, liveContext);
+      const aiReply = await askIntelligentGemini(text, liveContext, customer);
       await sock.sendMessage(remoteJid, { text: aiReply });
       await sock.sendPresenceUpdate('paused', remoteJid);
     }
