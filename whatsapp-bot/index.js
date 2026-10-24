@@ -14,6 +14,7 @@ import {
   ensureNotificationAndControlTables,
   isPhoneIgnoredOrPaused,
   setPhoneControl,
+  getPhoneControlsList,
   fetchPendingNotifications,
   markNotificationSent,
   markNotificationFailed,
@@ -276,9 +277,8 @@ async function startBot() {
     if (type !== 'notify') return;
 
     for (const m of messages) {
-      if (m.key.fromMe) continue;
-
-      const remoteJid = m.key.remoteJid;
+      const isFromMe = Boolean(m.key?.fromMe);
+      const remoteJid = m.key?.remoteJid;
       if (!remoteJid) continue;
 
       if (remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) {
@@ -294,63 +294,159 @@ async function startBot() {
       const text = rawText.trim();
       if (!text) continue;
 
+      const cleanText = text.toLowerCase();
+
+      // If message is from bot host phone itself, ONLY process slash commands (e.g. /pause, /status).
+      // Otherwise skip, so bot doesn't reply when you manually chat with customers!
+      if (isFromMe && !cleanText.startsWith('/')) {
+        continue;
+      }
+
       const msgId = m.key.id;
       if (recentMessages.has(msgId)) continue;
       recentMessages.add(msgId);
       setTimeout(() => recentMessages.delete(msgId), 15000);
 
       const senderPhone = remoteJid.replace(/:\d+@/, '@').split('@')[0].replace(/\D/g, '');
-      console.log(`📩 [New Message] From: +${senderPhone} -> "${text}"`);
-
-      // Human delay & typing status
-      await sock.sendPresenceUpdate('composing', remoteJid);
-      await new Promise((r) => setTimeout(r, 2200));
-
-      const cleanText = text.toLowerCase();
+      console.log(`📩 [${isFromMe ? 'Admin (fromMe)' : 'Incoming'}] Chat: +${senderPhone} -> "${text}"`);
 
       // ========================================================
-      // 0. ADMIN LIVE COMMANDS (/pause, /unpause, /ignore, /unignore, /status)
+      // 0. ADMIN LIVE COMMANDS (/pause, /unpause, /ignore, /unignore, /status, /list, /help)
+      // Works from:
+      // A) The Bot's own phone (in any customer chat or "Message yourself")
+      // B) The Admin's registered WhatsApp phone number
       // ========================================================
-      const isAdminSender = senderPhone === cleanSupportPhone || senderPhone === '923088180234' || senderPhone.endsWith('3088180234');
+      const isAdminSender = isFromMe || senderPhone === cleanSupportPhone || senderPhone === '923088180234' || senderPhone.endsWith('3088180234');
+
       if (cleanText.startsWith('/')) {
-        const parts = cleanText.split(/\s+/);
-        const cmd = parts[0];
-        const targetRaw = parts[1] ? parts[1].replace(/\D/g, '').replace(/^0/, '92') : senderPhone;
+        if (!isAdminSender) {
+          console.log(`[Security] Unauthorized slash command attempt from +${senderPhone}: "${text}"`);
+          await sock.sendMessage(remoteJid, {
+            text: `⚠️ Yeh command sirf VEXARO Admin ke liye makhsoos hai.\n\nAap website ya services ke liye *menu* likh kar reply karein.`
+          });
+          continue;
+        }
+
+        const parts = text.split(/\s+/);
+        const cmd = parts[0].toLowerCase();
+        
+        // Target phone: If typed with a number (e.g. /pause 03001234567), use that number.
+        // If typed in a customer's chat without a number, target that customer!
+        let targetRaw = parts[1] ? parts[1].replace(/\D/g, '').replace(/^0/, '92') : senderPhone;
 
         if (cmd === '/pause') {
+          // If typed without a number in self-chat
+          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234')) {
+            await sock.sendMessage(remoteJid, { text: `❌ Barah-e-meherbani number likhein, jaise: */pause 03001234567*` });
+            continue;
+          }
           await setPhoneControl(targetRaw, { isPaused: true, pauseHours: 24, reason: 'Admin manual pause' });
-          await sock.sendMessage(remoteJid, { text: `⏸️ Bot has been PAUSED for *+${targetRaw}* for 24 hours (Human Takeover Mode).` });
+          await sock.sendMessage(remoteJid, {
+            text: `⏸️ *Bot Paused Successfully!*\n\n• Target: *+${targetRaw}*\n• Duration: *24 Hours*\n• Mode: Human Takeover (Bot will NOT reply to this number).\n\n_Dobara bot active karne ke liye */resume ${targetRaw}* likhein._`
+          });
           continue;
         }
 
         if (cmd === '/unpause' || cmd === '/resume') {
+          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234')) {
+            await sock.sendMessage(remoteJid, { text: `❌ Barah-e-meherbani number likhein, jaise: */resume 03001234567*` });
+            continue;
+          }
           await setPhoneControl(targetRaw, { isPaused: false, reason: 'Admin resumed' });
-          await sock.sendMessage(remoteJid, { text: `▶️ Bot RESUMED for *+${targetRaw}* successfully!` });
+          await sock.sendMessage(remoteJid, {
+            text: `▶️ *Bot Resumed!*\n\n• Target: *+${targetRaw}*\n• Mode: AI Assistant Active (Bot will reply normally).`
+          });
           continue;
         }
 
         if (cmd === '/ignore' || cmd === '/block') {
+          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234')) {
+            await sock.sendMessage(remoteJid, { text: `❌ Barah-e-meherbani number likhein, jaise: */ignore 03001234567*` });
+            continue;
+          }
           await setPhoneControl(targetRaw, { isIgnored: true, reason: 'Admin blacklist' });
-          await sock.sendMessage(remoteJid, { text: `🚫 Number *+${targetRaw}* is now PERMANENTLY IGNORED. Bot will not reply to them.` });
+          await sock.sendMessage(remoteJid, {
+            text: `🚫 *Number Permanently Ignored!*\n\n• Target: *+${targetRaw}*\n• Status: Blacklisted (Bot will permanently ignore all messages from this number).\n\n_Unblock karne ke liye */unignore ${targetRaw}* likhein._`
+          });
           continue;
         }
 
         if (cmd === '/unignore' || cmd === '/unblock') {
+          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234')) {
+            await sock.sendMessage(remoteJid, { text: `❌ Barah-e-meherbani number likhein, jaise: */unignore 03001234567*` });
+            continue;
+          }
           await setPhoneControl(targetRaw, { isIgnored: false, reason: 'Admin unblacklist' });
-          await sock.sendMessage(remoteJid, { text: `✅ Number *+${targetRaw}* unblocked. Bot can now reply normally.` });
+          await sock.sendMessage(remoteJid, {
+            text: `✅ *Number Unblocked!*\n\n• Target: *+${targetRaw}*\n• Status: Bot can now reply normally.`
+          });
           continue;
         }
 
-        if (cmd === '/status' && parts[1]) {
-          const ord = await lookupOrder(parts[1]);
+        if (cmd === '/status') {
+          const queryId = parts[1] || '';
+          if (!queryId) {
+            await sock.sendMessage(remoteJid, { text: `❌ Format: */status <order_id>*\nMisaal: */status 125* ya */status 2785c101*` });
+            continue;
+          }
+          const ord = await lookupOrder(queryId);
           if (ord) {
-            await sock.sendMessage(remoteJid, { text: `📦 *Order #${ord.shortId}*\n• Service: ${ord.serviceName}\n• Qty: ${ord.quantity}\n• Status: *${ord.status}*\n• Link: ${ord.link}` });
+            await sock.sendMessage(remoteJid, {
+              text: `📦 *Order #${ord.shortId} Details*\n\n• Service: *${ord.serviceName}*\n• Quantity: *${ord.quantity}*\n• Status: *${ord.status}*\n• Link: ${ord.link}\n• Charge: *Rs ${ord.chargePkr}*\n• Created: ${ord.createdAt}`
+            });
           } else {
-            await sock.sendMessage(remoteJid, { text: `❌ Order ${parts[1]} not found.` });
+            await sock.sendMessage(remoteJid, { text: `❌ Order "${queryId}" database me nahi mila.` });
           }
           continue;
         }
+
+        if (cmd === '/list') {
+          const list = await getPhoneControlsList();
+          if (list.length === 0) {
+            await sock.sendMessage(remoteJid, { text: `📋 *Bot Controls Status:*\n\nKoi number paused ya ignored nahi hai. Sabhi customers ke liye bot active hai!` });
+          } else {
+            let msg = `📋 *Active Bot Controls (${list.length}):*\n\n`;
+            for (const item of list) {
+              const statusStr = item.is_ignored ? '🚫 IGNORED (Permanent)' : `⏸️ PAUSED (until ${new Date(item.paused_until).toLocaleTimeString()})`;
+              msg += `• *+${item.phone}*: ${statusStr}\n`;
+            }
+            await sock.sendMessage(remoteJid, { text: msg });
+          }
+          continue;
+        }
+
+        if (cmd === '/help') {
+          await sock.sendMessage(remoteJid, {
+            text: `🛠️ *VEXARO Admin WhatsApp Commands:*
+
+1️⃣ */pause <number>*
+Bot ko 24 ghante ke liye pause kar dega (Aap customer se sukoon se baat kar sakein). Agar customer ki chat me likhenge to number likhne ki zaroorat nahi.
+
+2️⃣ */resume <number>* ya */unpause <number>*
+Bot ko us customer ke liye dobara active kar dega.
+
+3️⃣ */ignore <number>*
+Uss number ko permanently ignore/block kar dega (Bot use kabhi reply nahi karega).
+
+4️⃣ */unignore <number>*
+Ignored number ko unblock karega.
+
+5️⃣ */status <order_id>*
+Kisi bhi order ki real-time status check karne ke liye (e.g. */status 125*).
+
+6️⃣ */list*
+Currently paused aur ignored numbers ki list dekhne ke liye.`
+          });
+          continue;
+        }
+
+        await sock.sendMessage(remoteJid, { text: `❓ Unknown command "${cmd}". Tamam commands dekhne ke liye */help* likhein.` });
+        continue;
       }
+
+      // Human delay & typing status for customer replies
+      await sock.sendPresenceUpdate('composing', remoteJid);
+      await new Promise((r) => setTimeout(r, 2200));
 
       // Check if this sender is permanently ignored or temporarily paused (human takeover)
       const controlStatus = await isPhoneIgnoredOrPaused(senderPhone);

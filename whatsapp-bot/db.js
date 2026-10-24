@@ -724,6 +724,26 @@ export async function setPhoneControl(phone, { isIgnored = false, isPaused = fal
 }
 
 /**
+ * Get active phone controls (ignored or paused)
+ */
+export async function getPhoneControlsList() {
+  try {
+    await ensureNotificationAndControlTables();
+    const res = await pool.query(`
+      SELECT phone, is_ignored, is_paused, paused_until, reason, updated_at
+      FROM vexo_whatsapp_bot_controls
+      WHERE is_ignored = true OR (is_paused = true AND (paused_until IS NULL OR paused_until > NOW()))
+      ORDER BY updated_at DESC
+      LIMIT 25
+    `);
+    return res.rows;
+  } catch (err) {
+    console.warn('[getPhoneControlsList Error]:', err.message);
+    return [];
+  }
+}
+
+/**
  * Fetch pending notifications from queue
  */
 export async function fetchPendingNotifications(limit = 10) {
