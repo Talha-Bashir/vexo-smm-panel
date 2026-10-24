@@ -12,10 +12,10 @@ dotenv.config();
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
 const PANEL_NAME = process.env.PANEL_NAME || 'VEXARO SMM Panel';
 const PANEL_URL = process.env.PANEL_URL || 'https://vexarosmm.com';
-const EASYPAISA_NO = process.env.EASYPAISA_NO || '0300-1234567';
-const EASYPAISA_NAME = process.env.EASYPAISA_NAME || 'VEXARO Official';
-const JAZZCASH_NO = process.env.JAZZCASH_NO || '0300-1234567';
-const JAZZCASH_NAME = process.env.JAZZCASH_NAME || 'VEXARO Official';
+const EASYPAISA_NO = process.env.EASYPAISA_NO || '03197008275';
+const EASYPAISA_NAME = process.env.EASYPAISA_NAME || 'Saeed Bashir';
+const SADAPAY_NO = process.env.SADAPAY_NO || '03197008275';
+const SADAPAY_NAME = process.env.SADAPAY_NAME || 'Saeed Bashir';
 const MIN_BONUS_DEPOSIT = process.env.MIN_BONUS_DEPOSIT || '5000';
 
 // Simple debounce to prevent responding twice to duplicate webhook deliveries
@@ -188,21 +188,21 @@ _Aap apna koi bhi sawal Roman Urdu ya English me seedha likh kar bhi pooch sakte
       }
 
       // 2. Option 1: Payment Details
-      if (cleanText === '1' || cleanText.includes('payment') || cleanText.includes('easypaisa') || cleanText.includes('jazzcash')) {
+      if (cleanText === '1' || cleanText.includes('payment') || cleanText.includes('sadapay') || cleanText.includes('easypaisa') || cleanText.includes('jazzcash')) {
         const paymentMsg =
 `💳 *${PANEL_NAME} - Official Payment Accounts*
+
+*SadaPay:*
+📱 Number: *${SADAPAY_NO}*
+👤 Title: *${SADAPAY_NAME}*
 
 *Easypaisa:*
 📱 Number: *${EASYPAISA_NO}*
 👤 Title: *${EASYPAISA_NAME}*
 
-*JazzCash:*
-📱 Number: *${JAZZCASH_NO}*
-👤 Title: *${JAZZCASH_NAME}*
-
 ━━━━━━━━━━━━━━━━━━
 📝 *Paisa Add Karne Ka Tareeqa:*
-1. Kisi bhi account par payment send karein.
+1. Upar diye gaye number par SadaPay ya Easypaisa se payment transfer karein.
 2. Payment ka screenshot le lein.
 3. Website par login karke *Add Funds* page par jayein:
 👉 ${PANEL_URL}/dashboard?tab=add-funds

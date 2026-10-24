@@ -11,13 +11,13 @@ Yeh bot **100% Free** hai. Isme kisi bhi third-party paid tool (Wasender, Wati, 
 ## 🚀 Bot Start Karne Ka Tareeqa (Step-by-Step)
 
 ### 1. Payment Numbers Set Karein
-Agar aapko apne JazzCash ya Easypaisa ke numbers change karne hain, toh `.env` file ko open karein aur edit karein:
+Agar aapko apne SadaPay ya Easypaisa ke numbers change karne hain, toh `.env` file ko open karein aur edit karein:
 ```env
-EASYPAISA_NO="0300-1234567"
-EASYPAISA_NAME="Aapka Name"
+SADAPAY_NO="03197008275"
+SADAPAY_NAME="Saeed Bashir"
 
-JAZZCASH_NO="0300-1234567"
-JAZZCASH_NAME="Aapka Name"
+EASYPAISA_NO="03197008275"
+EASYPAISA_NAME="Saeed Bashir"
 ```
 
 ### 2. Bot Run Karein
