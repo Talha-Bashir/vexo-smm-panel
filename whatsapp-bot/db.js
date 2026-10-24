@@ -203,10 +203,10 @@ export function parseCountryText(text) {
  */
 export function detectLanguageSwitch(text) {
   const lower = String(text || '').toLowerCase().trim();
-  if (lower.includes('english') || lower === 'en' || lower.includes('in english')) return 'en';
-  if (lower.includes('urdu') || lower.includes('hindi') || lower === 'ur') return 'ur';
-  if (lower.includes('bangla') || lower.includes('bengali') || lower === 'bn') return 'bn';
-  if (lower.includes('arabic') || lower.includes('arabi') || lower === 'ar') return 'ar';
+  if (lower === '7a' || lower === 'en' || lower.includes('english') || lower.includes('in english')) return 'en';
+  if (lower === '7b' || lower === 'ur' || lower.includes('urdu') || lower.includes('hindi')) return 'ur';
+  if (lower === '7c' || lower === 'bn' || lower.includes('bangla') || lower.includes('bengali')) return 'bn';
+  if (lower === '7d' || lower === 'ar' || lower.includes('arabic') || lower.includes('arabi')) return 'ar';
   return null;
 }
 

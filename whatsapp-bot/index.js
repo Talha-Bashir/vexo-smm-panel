@@ -258,7 +258,7 @@ async function startBot() {
 
       // Check if user requested an explicit language switch
       const langSwitch = detectLanguageSwitch(text);
-      if (langSwitch && customer) {
+      if (langSwitch) {
         customer = await upsertCustomer(senderPhone, { language: langSwitch });
         const langNames = { en: 'English', ur: 'Urdu / Hindi', bn: 'বাংলা (Bengali)', ar: 'العربية (Arabic)' };
         const switchConfirm = langSwitch === 'ur'
@@ -491,7 +491,9 @@ ${cheapText}
 *2* 📦 - Order Status & Speed Up
 *3* 🎁 - Deposit Bonus Offers
 *4* 🌐 - Website Services & Rates
-*5* 👤 - Human Support`
+*5* 👤 - Human Support
+*6* ✨ - Free Test Trial Services
+*7* 🌐 - Change Language / Zaban`
           : `🎉 *Welcome to ${PANEL_NAME}, ${customer.name}!*
 
 Your profile is ready!
@@ -511,7 +513,9 @@ ${cheapText}
 *2* 📦 - Order Status & Speed Up
 *3* 🎁 - Deposit Bonus Offers
 *4* 🌐 - Website Services & Rates
-*5* 👤 - Human Support`;
+*5* 👤 - Human Support
+*6* ✨ - Free Test Trial Services
+*7* 🌐 - Change Language / Zaban`;
 
         await sock.sendMessage(remoteJid, { text: completedMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);
@@ -607,6 +611,7 @@ Main aapki kya madad kar sakta hoon?
 *4* 🌐 - Website Services & Rates (${customer.currency || 'PKR'})
 *5* 👤 - Admin / Human Support se Baat Karein
 *6* ✨ - Free Test Trial Services (1,000 Views / 50 Likes Free)
+*7* 🌐 - Change Language / Zaban (English, اردو, বাংলা, العربية)
 
 _Aap apna koi bhi sawal apni zuban me seedha pooch sakte hain!_`;
 
@@ -748,7 +753,33 @@ _Order automatically 1-5 minutes me start ho jayega!_`;
       }
 
       // ========================================================
-      // 9. INTELLIGENT AI "THINKING" (LOCAL CURRENCY RATES)
+      // 9. OPTION 7: LANGUAGE SELECTION / ZABAN BADLEIN
+      // ========================================================
+      if (
+        cleanText === '7' ||
+        cleanText === 'language' ||
+        cleanText === 'zaban' ||
+        cleanText === 'zuban' ||
+        cleanText === 'bhasha'
+      ) {
+        const langMenuMsg =
+`🌐 *Select Your Preferred Language / Apni Zaban Chunein:*
+
+Reply with:
+• *7A* or *EN* - 🇬🇧 English
+• *7B* or *UR* - 🇵🇰 Roman Urdu / اردو
+• *7C* or *BN* - 🇧🇩 বাংলা (Bengali)
+• *7D* or *AR* - 🇸🇦 العربية (Arabic)
+
+_Aap direct language ka naam (e.g. "English" ya "Urdu") bhi likh kar bhej sakte hain!_`;
+
+        await sock.sendMessage(remoteJid, { text: langMenuMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // ========================================================
+      // 10. INTELLIGENT AI "THINKING" (LOCAL CURRENCY RATES)
       // ========================================================
       let liveContext = '';
 
