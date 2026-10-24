@@ -16,6 +16,7 @@ import {
   saveContactToVcf,
   detectCountryFromPhone,
   parseCountryText,
+  detectLanguageSwitch,
   convertPkrToCurrency,
   getCheapestServices,
   searchServices,
