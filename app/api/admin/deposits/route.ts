@@ -3,6 +3,7 @@ import { requireAdminPermission } from "@/lib/admin-guard";
 import { ensureWalletSchema, calculateDepositBonus } from "@/lib/wallet";
 import { getPlatformSetting } from "@/lib/admin";
 import { db } from "@/lib/db";
+import { queueWhatsAppNotification, getUserWhatsAppPhone } from "@/lib/whatsapp-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -148,6 +149,33 @@ export async function PATCH(request: Request) {
 
       await client.query("COMMIT");
 
+      // Queue WhatsApp notification for Deposit Approval
+      try {
+        const userPhone = await getUserWhatsAppPhone(deposit.user_id);
+        if (userPhone) {
+          const bonusText = bonusPkr > 0 ? `\n🎁 *Promotional Bonus:* ₨${bonusPkr.toLocaleString()} (${ratePercent}% extra balance!)` : "";
+          const msg =
+            `🎉 *Payment Received & Deposit Approved!* 💳\n\n` +
+            `Aapka deposit VEXARO SMM Panel par kamyabi se verify aur approve ho chuka hai:\n\n` +
+            `💰 *Amount Credited:* ₨${depositAmountPkr.toLocaleString()}${bonusText}\n` +
+            `📱 *Method:* ${deposit.method || "Online Deposit"}\n\n` +
+            `━━━━━━━━━━━━━━━━━━━\n` +
+            `Aapka wallet balance live update ho chuka hai! Abhi new order lagayein:\n` +
+            `👉 https://vexarosmm.com/dashboard\n\n` +
+            `_VEXARO SMM Panel choose karne ka shukriya!_`;
+
+          await queueWhatsAppNotification({
+            phone: userPhone,
+            message: msg,
+            type: "deposit_approved",
+            referenceId: `deposit_approved_${deposit.id}`,
+            metadata: { depositId: deposit.id, userId: deposit.user_id, amount: depositAmountPkr },
+          });
+        }
+      } catch (notifErr) {
+        console.warn("[Deposit WhatsApp Alert Error]:", notifErr);
+      }
+
       return NextResponse.json({
         success: true,
         status: "Approved",
@@ -166,6 +194,30 @@ export async function PATCH(request: Request) {
       );
 
       await client.query("COMMIT");
+
+      // Queue WhatsApp notification for Deposit Rejection
+      try {
+        const userPhone = await getUserWhatsAppPhone(deposit.user_id);
+        if (userPhone) {
+          const reasonText = rejectionReason ? `\n⚠️ *Reason:* ${rejectionReason}` : "";
+          const msg =
+            `⚠️ *VEXARO Deposit Update (#${deposit.id})*\n\n` +
+            `Aapka deposit verify nahi ho saka aur reject ho gaya hai.${reasonText}\n\n` +
+            `Barah-e-meherbani sahi TID aur clear payment screenshot ke sath dubara submit karein.\n` +
+            `Help ke liye hamari WhatsApp Support par rabta karein: +92 308 8180234\n\n` +
+            `👉 Deposit Page: https://vexarosmm.com/dashboard?tab=add-funds`;
+
+          await queueWhatsAppNotification({
+            phone: userPhone,
+            message: msg,
+            type: "deposit_rejected",
+            referenceId: `deposit_rejected_${deposit.id}`,
+            metadata: { depositId: deposit.id, userId: deposit.user_id },
+          });
+        }
+      } catch (notifErr) {
+        console.warn("[Deposit WhatsApp Alert Error]:", notifErr);
+      }
 
       return NextResponse.json({
         success: true,

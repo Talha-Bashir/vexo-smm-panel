@@ -17,6 +17,7 @@ import { getCachedProviderBalances, resolveEffectiveServicePricing } from "@/lib
 import { sendSubscriptionTelegramAlert } from "@/lib/balance-monitor/telegram";
 
 import { checkMaintenanceApiBlock } from "@/lib/maintenance";
+import { queueWhatsAppNotification, getUserWhatsAppPhone } from "@/lib/whatsapp-queue";
 
 type RizviService = {
   service: number;
@@ -274,6 +275,11 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    const userPhone =
+      (body.whatsapp ? String(body.whatsapp).trim() : null) ||
+      (user as unknown as { whatsapp?: string }).whatsapp ||
+      (await getUserWhatsAppPhone(user.id));
+
     const reservation = await reserveWalletForOrder({
       userId: Number(user.id),
       orderIdempotencyKey: idempotencyKey,
@@ -284,6 +290,7 @@ export async function POST(request: Request) {
       quantity: numericQuantity,
       ratePkr: rate,
       chargePkr: charge,
+      whatsapp: userPhone || undefined,
     });
 
     if (reservation.existing) {
@@ -398,6 +405,28 @@ export async function POST(request: Request) {
       if (!dispatchResult.success || !dispatchResult.orderId) {
         const reason = dispatchResult.error || "All upstream providers failed to accept the order.";
         await refundFailedOrder(vexoOrderId, reason);
+
+        // Queue WhatsApp notification for failed/refunded order
+        try {
+          if (userPhone) {
+            const shortId = vexoOrderId.slice(0, 8);
+            const msg =
+              `⚠️ *VEXARO Order Notice (#${shortId})*\n\n` +
+              `Aapka order provider issue ki wajah se start nahi ho saka.\n\n` +
+              `💰 *100% Refund:* Aapka balance (₨${Number(charge).toLocaleString()}) aapke wallet me *foran wapis refund* kar diya gaya hai! ✅\n\n` +
+              `👉 Aap doosri recommended service select karke re-order kar sakte hain:\nhttps://vexarosmm.com/dashboard`;
+
+            await queueWhatsAppNotification({
+              phone: userPhone,
+              message: msg,
+              type: "order_refunded",
+              referenceId: `order_refunded_${vexoOrderId}`,
+              metadata: { orderId: vexoOrderId, userId: user.id },
+            });
+          }
+        } catch (notifErr) {
+          console.warn("[Order Refund WhatsApp Queue Error]:", notifErr);
+        }
         return NextResponse.json({
           success: false,
           error: `${reason} Your wallet balance was refunded in full.`,

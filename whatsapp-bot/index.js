@@ -11,6 +11,12 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import {
   ensureCustomerSchema,
+  ensureNotificationAndControlTables,
+  isPhoneIgnoredOrPaused,
+  setPhoneControl,
+  fetchPendingNotifications,
+  markNotificationSent,
+  markNotificationFailed,
   getCustomer,
   upsertCustomer,
   saveContactToVcf,
@@ -23,6 +29,7 @@ import {
   searchServices,
   lookupOrder,
   processOrderSpeedUp,
+  processOrderRefill,
   sanitizeText
 } from './db.js';
 
@@ -157,12 +164,48 @@ async function sendOfficialVCard(sock, remoteJid) {
 
 const SESSION_DIR = path.join(__dirname, 'auth_session');
 let qrCounter = 0;
+let notificationWorkerRunning = false;
+
+function startNotificationWorker(sock) {
+  if (notificationWorkerRunning) return;
+  notificationWorkerRunning = true;
+
+  console.log('🔔 [Notification Dispatcher] Polling queue active for Order Completed, Refunded, and Deposit Approved alerts...');
+
+  setInterval(async () => {
+    try {
+      const pending = await fetchPendingNotifications(5);
+      if (pending.length === 0) return;
+
+      for (const notif of pending) {
+        try {
+          const rawPhone = String(notif.phone).replace(/\D/g, '');
+          const cleanPhone = rawPhone.replace(/^0/, '92');
+          const jid = `${cleanPhone}@s.whatsapp.net`;
+
+          console.log(`🔔 [Notification Dispatcher] Sending ${notif.type} alert to +${cleanPhone}...`);
+          await sock.sendMessage(jid, { text: notif.message });
+          await markNotificationSent(notif.id);
+          console.log(`🔔 [Notification Dispatcher] ✓ Delivered successfully (ID: ${notif.id})`);
+
+          await new Promise((r) => setTimeout(r, 1600));
+        } catch (sendErr) {
+          console.error(`🔔 [Notification Dispatcher Error] Failed ID ${notif.id}:`, sendErr.message);
+          await markNotificationFailed(notif.id, sendErr.message);
+        }
+      }
+    } catch (pollErr) {
+      console.warn('🔔 [Notification Dispatcher Warning]:', pollErr.message);
+    }
+  }, 7000);
+}
 
 /**
  * Main WhatsApp Connection Handler
  */
 async function startBot() {
   await ensureCustomerSchema();
+  await ensureNotificationAndControlTables();
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
@@ -198,6 +241,7 @@ async function startBot() {
     }
 
     if (connection === 'close') {
+      notificationWorkerRunning = false;
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
 
@@ -224,6 +268,7 @@ async function startBot() {
       console.log(`✅ [${PANEL_NAME}] WHATSAPP BOT CONNECTED SUCCESSFULLY!`);
       console.log('Bot is now LIVE and listening for customer messages.');
       console.log('======================================================\n');
+      startNotificationWorker(sock);
     }
   });
 
@@ -262,6 +307,61 @@ async function startBot() {
       await new Promise((r) => setTimeout(r, 2200));
 
       const cleanText = text.toLowerCase();
+
+      // ========================================================
+      // 0. ADMIN LIVE COMMANDS (/pause, /unpause, /ignore, /unignore, /status)
+      // ========================================================
+      const isAdminSender = senderPhone === cleanSupportPhone || senderPhone === '923088180234' || senderPhone.endsWith('3088180234');
+      if (cleanText.startsWith('/')) {
+        const parts = cleanText.split(/\s+/);
+        const cmd = parts[0];
+        const targetRaw = parts[1] ? parts[1].replace(/\D/g, '').replace(/^0/, '92') : senderPhone;
+
+        if (cmd === '/pause') {
+          await setPhoneControl(targetRaw, { isPaused: true, pauseHours: 24, reason: 'Admin manual pause' });
+          await sock.sendMessage(remoteJid, { text: `⏸️ Bot has been PAUSED for *+${targetRaw}* for 24 hours (Human Takeover Mode).` });
+          continue;
+        }
+
+        if (cmd === '/unpause' || cmd === '/resume') {
+          await setPhoneControl(targetRaw, { isPaused: false, reason: 'Admin resumed' });
+          await sock.sendMessage(remoteJid, { text: `▶️ Bot RESUMED for *+${targetRaw}* successfully!` });
+          continue;
+        }
+
+        if (cmd === '/ignore' || cmd === '/block') {
+          await setPhoneControl(targetRaw, { isIgnored: true, reason: 'Admin blacklist' });
+          await sock.sendMessage(remoteJid, { text: `🚫 Number *+${targetRaw}* is now PERMANENTLY IGNORED. Bot will not reply to them.` });
+          continue;
+        }
+
+        if (cmd === '/unignore' || cmd === '/unblock') {
+          await setPhoneControl(targetRaw, { isIgnored: false, reason: 'Admin unblacklist' });
+          await sock.sendMessage(remoteJid, { text: `✅ Number *+${targetRaw}* unblocked. Bot can now reply normally.` });
+          continue;
+        }
+
+        if (cmd === '/status' && parts[1]) {
+          const ord = await lookupOrder(parts[1]);
+          if (ord) {
+            await sock.sendMessage(remoteJid, { text: `📦 *Order #${ord.shortId}*\n• Service: ${ord.serviceName}\n• Qty: ${ord.quantity}\n• Status: *${ord.status}*\n• Link: ${ord.link}` });
+          } else {
+            await sock.sendMessage(remoteJid, { text: `❌ Order ${parts[1]} not found.` });
+          }
+          continue;
+        }
+      }
+
+      // Check if this sender is permanently ignored or temporarily paused (human takeover)
+      const controlStatus = await isPhoneIgnoredOrPaused(senderPhone);
+      if (controlStatus.ignored) {
+        console.log(`[Bot Control] Ignored message from blacklisted number: +${senderPhone}`);
+        continue;
+      }
+      if (controlStatus.paused) {
+        console.log(`[Bot Control] Bot is paused for +${senderPhone} until ${controlStatus.pausedUntil} (Human Takeover Active)`);
+        continue;
+      }
 
       // Fetch customer profile from DB / memory
       let customer = await getCustomer(senderPhone);
@@ -569,6 +669,37 @@ Jaise hi aap Order ID bhejenge, hamara bot foran upstream server ko *Priority Sp
       }
 
       // ========================================================
+      // 2.5 REFILL REQUEST (Instant Refill & Drop Protection)
+      // ========================================================
+      const isRefillRequest =
+        cleanText.startsWith('refill') ||
+        cleanText.includes('drop hua') ||
+        cleanText.includes('kam ho gaye') ||
+        cleanText.includes('refill order');
+
+      if (isRefillRequest) {
+        const orderId = extractOrderId(text);
+        if (orderId) {
+          const refillRes = await processOrderRefill(orderId, senderPhone);
+          await sock.sendMessage(remoteJid, { text: refillRes.message });
+          await sock.sendPresenceUpdate('paused', remoteJid);
+          continue;
+        } else {
+          const promptRefill =
+`♻️ *VEXARO Automated Refill Service*
+
+${customer.name ? `${customer.name} bhai, ` : ''}Drop refill karne ke liye apna *Order ID* likhein:
+👉 Maslan: *refill order 125* ya *refill #2785c101*
+
+Aapka Order ID milte hi bot foran server check karke drop replenish/refill karna start kar dega!`;
+
+          await sock.sendMessage(remoteJid, { text: promptRefill });
+          await sock.sendPresenceUpdate('paused', remoteJid);
+          continue;
+        }
+      }
+
+      // ========================================================
       // 3. OPTION 2 & DIRECT ORDER STATUS CHECK
       // ========================================================
       const extractedId = extractOrderId(text);
@@ -829,6 +960,9 @@ ${cheapList}
         cleanText.includes('human') ||
         cleanText.includes('agent')
       ) {
+        // Automatically pause bot for 24h for human takeover so Admin can chat smoothly!
+        await setPhoneControl(senderPhone, { isPaused: true, pauseHours: 24, reason: 'Customer requested human support' });
+
         const adminMsg =
 `👤 *Human Admin Support:*
 
@@ -836,7 +970,8 @@ ${customer.name ? `${customer.name} bhai, ` : ''}Aapka message hamare support ad
 Aap hamari official WhatsApp Support helpline par bhi direct rabta kar sakte hain:
 📱 *Support WhatsApp:* +92 308 8180234
 
-Aap apna masla (Order ID ya screenshot) yahan likh kar chhor dein, admin jald se jald aapko reply karenge!`;
+Aap apna masla (Order ID ya screenshot) yahan likh kar chhor dein, admin jald se jald aapko reply karenge!
+_(Note: Admin ke reply aane tak bot ko temporarily pause kar diya gaya hai taake aap direct insan se baat kar sakein)._`;
 
         await sock.sendMessage(remoteJid, { text: adminMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);

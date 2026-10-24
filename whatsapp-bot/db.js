@@ -623,3 +623,186 @@ Aapke order ke liye automated *Priority Speed-Up Ticket* create karke direct hig
 Server queue ne ise *High Priority* mark kar diya hai taake order jaldi se jaldi complete ho sake.`
   };
 }
+
+/**
+ * Ensures notification and bot control tables exist in PostgreSQL
+ */
+export async function ensureNotificationAndControlTables() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS vexo_whatsapp_notifications (
+        id BIGSERIAL PRIMARY KEY,
+        phone VARCHAR(40) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(40) NOT NULL,
+        reference_id VARCHAR(100),
+        status VARCHAR(20) DEFAULT 'pending',
+        metadata JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        sent_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS idx_vexo_wa_notif_status ON vexo_whatsapp_notifications(status);
+
+      CREATE TABLE IF NOT EXISTS vexo_whatsapp_bot_controls (
+        phone VARCHAR(40) PRIMARY KEY,
+        is_ignored BOOLEAN DEFAULT FALSE,
+        is_paused BOOLEAN DEFAULT FALSE,
+        paused_until TIMESTAMPTZ,
+        reason TEXT,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+  } catch (err) {
+    console.warn('[DB Tables Init Warning]:', err.message);
+  }
+}
+
+/**
+ * Check if a phone number is permanently ignored or temporarily paused (human takeover)
+ */
+export async function isPhoneIgnoredOrPaused(phone) {
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
+  if (!cleanPhone) return { ignored: false, paused: false };
+
+  try {
+    const res = await pool.query(
+      `SELECT is_ignored, is_paused, paused_until FROM vexo_whatsapp_bot_controls WHERE phone = $1 LIMIT 1`,
+      [cleanPhone]
+    );
+    if (res.rows.length === 0) return { ignored: false, paused: false };
+
+    const row = res.rows[0];
+    if (row.is_ignored) return { ignored: true, paused: false };
+
+    if (row.is_paused) {
+      if (row.paused_until && new Date(row.paused_until) < new Date()) {
+        await pool.query(
+          `UPDATE vexo_whatsapp_bot_controls SET is_paused = FALSE, paused_until = NULL, updated_at = NOW() WHERE phone = $1`,
+          [cleanPhone]
+        );
+        return { ignored: false, paused: false };
+      }
+      return { ignored: false, paused: true, pausedUntil: row.paused_until };
+    }
+
+    return { ignored: false, paused: false };
+  } catch {
+    return { ignored: false, paused: false };
+  }
+}
+
+/**
+ * Update phone control settings (ignore, pause, unpause)
+ */
+export async function setPhoneControl(phone, { isIgnored = false, isPaused = false, pauseHours = 24, reason = '' } = {}) {
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
+  if (!cleanPhone) return false;
+
+  try {
+    await ensureNotificationAndControlTables();
+    let pausedUntil = null;
+    if (isPaused) {
+      pausedUntil = new Date(Date.now() + pauseHours * 60 * 60 * 1000);
+    }
+
+    await pool.query(`
+      INSERT INTO vexo_whatsapp_bot_controls (phone, is_ignored, is_paused, paused_until, reason, updated_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (phone) DO UPDATE SET
+        is_ignored = EXCLUDED.is_ignored,
+        is_paused = EXCLUDED.is_paused,
+        paused_until = EXCLUDED.paused_until,
+        reason = EXCLUDED.reason,
+        updated_at = NOW()
+    `, [cleanPhone, isIgnored, isPaused, pausedUntil, reason]);
+
+    return true;
+  } catch (err) {
+    console.warn('[setPhoneControl Error]:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Fetch pending notifications from queue
+ */
+export async function fetchPendingNotifications(limit = 10) {
+  try {
+    await ensureNotificationAndControlTables();
+    const res = await pool.query(
+      `SELECT id, phone, message, type, reference_id, metadata
+       FROM vexo_whatsapp_notifications
+       WHERE status = 'pending'
+       ORDER BY id ASC
+       LIMIT $1`,
+      [limit]
+    );
+    return res.rows;
+  } catch {
+    return [];
+  }
+}
+
+export async function markNotificationSent(id) {
+  try {
+    await pool.query(
+      `UPDATE vexo_whatsapp_notifications SET status = 'sent', sent_at = NOW() WHERE id = $1`,
+      [id]
+    );
+  } catch {}
+}
+
+export async function markNotificationFailed(id, error) {
+  try {
+    await pool.query(
+      `UPDATE vexo_whatsapp_notifications SET status = 'failed', metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{error}', to_jsonb($2::text)) WHERE id = $1`,
+      [id, String(error)]
+    );
+  } catch {}
+}
+
+/**
+ * Automated Refill Processor via WhatsApp
+ */
+export async function processOrderRefill(orderId, senderPhone) {
+  const order = await lookupOrder(orderId);
+  if (!order) {
+    return {
+      success: false,
+      message: `❌ Order *#${orderId}* hamare record me nahi mila. Barah-e-meherbani sahi Order ID check karein.`
+    };
+  }
+
+  let providerRefillSent = false;
+  if (order.providerId && order.providerOrderId) {
+    try {
+      const provRes = await pool.query(`SELECT api_url, api_key FROM vexo_providers WHERE id = $1 LIMIT 1`, [order.providerId]);
+      if (provRes.rows[0]) {
+        const { api_url, api_key } = provRes.rows[0];
+        const res = await fetch(api_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ key: api_key, action: 'refill', order: String(order.providerOrderId) }),
+          signal: AbortSignal.timeout(8000)
+        });
+        const data = await res.json();
+        if (data && (data.refill || data.success)) providerRefillSent = true;
+      }
+    } catch (e) {
+      console.warn('[Refill Provider Warning]:', e.message);
+    }
+  }
+
+  return {
+    success: true,
+    message:
+`♻️ *Refill Request Submitted!*
+
+📦 *Order ID:* #${order.shortId}
+🚀 *Service:* ${order.serviceName}
+📊 *Current Status:* ${order.status}
+
+Aapke order ke liye *Free Refill Request* system me enter kar di gayi hai!${providerRefillSent ? '\nServer ko instant replenish signal bhej diya gaya hai.' : ''}
+Drop check karke delivery jald complete ho jayegi.`
+  };
+}

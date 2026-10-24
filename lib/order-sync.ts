@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ensureWalletSchema } from "@/lib/wallet";
 import { getRizviOrderStatus } from "@/lib/rizvi";
+import { queueWhatsAppNotification, getUserWhatsAppPhone } from "@/lib/whatsapp-queue";
 import {
   fetchProviderOrderStatus,
   getRegisteredProviders,
@@ -283,6 +284,28 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
 
           await client.query("COMMIT");
 
+          // Queue WhatsApp notification for Partial refund
+          try {
+            const userPhone = order.whatsapp || (await getUserWhatsAppPhone(order.user_id));
+            if (userPhone) {
+              const shortId = String(order.id).slice(0, 8);
+              const msg =
+                `📦 *VEXARO Order Update (#${shortId})*\n\n` +
+                `Aapka order partially deliver hua hai:\n` +
+                `⏳ *Delivered:* ${(Number(order.quantity) || 0) - remains} | *Remains:* ${remains}\n\n` +
+                `💰 *Partial Refund:* Baqi amount (₨${refundPkr.toLocaleString()}) aapke wallet me refund kar di gayi hai! ✅\n\n` +
+                `👉 Dashboard par check karein: https://vexarosmm.com/dashboard`;
+
+              await queueWhatsAppNotification({
+                phone: userPhone,
+                message: msg,
+                type: "order_partial",
+                referenceId: `order_partial_${order.id}`,
+                metadata: { orderId: order.id, userId: order.user_id },
+              });
+            }
+          } catch {}
+
           updatedCount++;
           details.push({
             orderId: String(order.id),
@@ -402,6 +425,27 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
 
           await client.query("COMMIT");
 
+          // Queue WhatsApp notification for Cancelled full refund
+          try {
+            const userPhone = order.whatsapp || (await getUserWhatsAppPhone(order.user_id));
+            if (userPhone) {
+              const shortId = String(order.id).slice(0, 8);
+              const msg =
+                `⚠️ *VEXARO Order Update (#${shortId})*\n\n` +
+                `Aapka order provider issue ki wajah se cancel kar diya gaya hai.\n\n` +
+                `💰 *100% Refund:* Aapki poori payment (₨${Number(chargePkr).toLocaleString()}) aapke wallet me *foran wapis refund* kar di gayi hai! ✅\n\n` +
+                `👉 Dashboard par check karein: https://vexarosmm.com/dashboard`;
+
+              await queueWhatsAppNotification({
+                phone: userPhone,
+                message: msg,
+                type: "order_cancelled",
+                referenceId: `order_cancelled_${order.id}`,
+                metadata: { orderId: order.id, userId: order.user_id },
+              });
+            }
+          } catch {}
+
           updatedCount++;
           details.push({
             orderId: String(order.id),
@@ -452,6 +496,37 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
           [normalizedStatus, startCount, rawRemainsStr, order.id]
         );
         updatedCount++;
+
+        // Queue WhatsApp notification for Order Completed!
+        if (hasStatusChange && normalizedStatus === "Completed") {
+          try {
+            const userPhone = order.whatsapp || (await getUserWhatsAppPhone(order.user_id));
+            if (userPhone) {
+              const shortId = String(order.id).slice(0, 8);
+              const msg =
+                `🎉 *Mubarak Ho! Aapka Order Completed Ho Gaya Hai!* ✅\n\n` +
+                `VEXARO SMM Panel par aapka order mukammal deliver ho chuka hai:\n\n` +
+                `🔢 *Order ID:* #${shortId}\n` +
+                `🚀 *Service:* ${order.service_name || "SMM Service"}\n` +
+                `👥 *Quantity:* ${Number(order.quantity).toLocaleString()}\n` +
+                (order.link ? `🔗 *Link:* ${order.link}\n` : "") +
+                `📊 *Status:* ✅ *COMPLETED*\n\n` +
+                `━━━━━━━━━━━━━━━━━━━\n` +
+                `⭐ Apne account ya link par results check kar lein.\n` +
+                `👉 *New Order Lagane Ke Liye:* https://vexarosmm.com/dashboard\n\n` +
+                `_VEXARO SMM Panel use karne ka shukriya! Agar koi masla ho toh WhatsApp par '5' likh kar support le sakte hain._`;
+
+              await queueWhatsAppNotification({
+                phone: userPhone,
+                message: msg,
+                type: "order_completed",
+                referenceId: `order_completed_${order.id}`,
+                metadata: { orderId: order.id, userId: order.user_id },
+              });
+            }
+          } catch {}
+        }
+
         details.push({
           orderId: String(order.id),
           providerOrderId,
