@@ -6721,7 +6721,7 @@ function AddFundsPage({
                 className="group inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2.5 text-xs font-semibold text-slate-300 hover:border-[#25d366]/40 hover:bg-[#25d366]/10 hover:text-[#25d366] transition cursor-pointer w-full"
               >
                 <Icon name="whatsapp" size={16} className="text-[#25d366] group-hover:scale-110 transition-transform" />
-                <span>Optional: Send Receipt on WhatsApp (+92 317 6437013)</span>
+                <span>Optional: Send Receipt on WhatsApp (+92 308 8180234)</span>
                 <span className="text-[10px] text-slate-500 group-hover:text-[#25d366]">↗</span>
               </a>
             </div>
@@ -8808,7 +8808,7 @@ function SupportPage({
 
           <div className="mt-6">
             <p className="text-xs uppercase font-bold tracking-wider text-slate-400">WhatsApp Business Support</p>
-            <h3 className="mt-1 text-2xl font-black text-white">+92 317 6437013</h3>
+            <h3 className="mt-1 text-2xl font-black text-white">+92 308 8180234</h3>
             <p className="text-xs text-[#25d366] font-medium mt-0.5">Username: @VexaroSMMAdmin</p>
             <p className="mt-2 text-xs leading-relaxed text-slate-300">
               Message VEXARO SMM Admin directly on WhatsApp for instant deposit verifications, order acceleration, custom bulk packages, and 24/7 dedicated support.

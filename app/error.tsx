@@ -45,7 +45,7 @@ export default function GlobalError({
         </div>
 
         <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-center gap-4 text-xs text-slate-500">
-          <a href="https://wa.me/923176437013" target="_blank" rel="noreferrer" className="hover:text-emerald-400 transition">WhatsApp Support</a>
+          <a href="https://wa.me/923088180234" target="_blank" rel="noreferrer" className="hover:text-emerald-400 transition">WhatsApp Support</a>
           <span>•</span>
           <a href="https://t.me/VexaroSMMAdmin" target="_blank" rel="noreferrer" className="hover:text-[#229ed9] transition">Telegram Admin</a>
         </div>

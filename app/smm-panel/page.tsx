@@ -229,7 +229,7 @@ export default function ServiceLandingPage() {
               </div>
               <h3 className="mt-4 text-lg font-black text-white">24/7 Human Support</h3>
               <p className="mt-2 text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Get real human assistance via WhatsApp (+92 317 6437013) and Telegram (@VexaroSMMAdmin) any time of day or night.
+                Get real human assistance via WhatsApp (+92 308 8180234) and Telegram (@VexaroSMMAdmin) any time of day or night.
               </p>
             </div>
           </div>

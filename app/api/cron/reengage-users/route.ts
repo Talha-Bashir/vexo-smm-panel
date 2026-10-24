@@ -135,8 +135,8 @@ function buildReengagementEmailHtml(name: string): string {
                 Need help or have questions? Chat with our Admin directly:
               </p>
               <div>
-                <a href="https://wa.me/923176437013" target="_blank" style="display:inline-block;color:#10b981;font-weight:700;font-size:12px;text-decoration:none;margin-right:16px;">
-                  💬 WhatsApp: +92 317 6437013
+                <a href="https://wa.me/923088180234" target="_blank" style="display:inline-block;color:#10b981;font-weight:700;font-size:12px;text-decoration:none;margin-right:16px;">
+                  💬 WhatsApp: +92 308 8180234
                 </a>
                 <a href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q" target="_blank" style="display:inline-block;color:#38bdf8;font-weight:700;font-size:12px;text-decoration:none;">
                   📢 Join VIP Channel

@@ -101,7 +101,7 @@ export default function LoginPage() {
             {[
               ["bolt", "Instant Delivery", "Starts in 0 - 15 minutes"],
               ["shield", "100% Safe & Secure", "Zero passwords needed"],
-              ["support", "Human WhatsApp Support", "+92 317 6437013"],
+              ["support", "Human WhatsApp Support", "+92 308 8180234"],
             ].map(([icon, title, text]) => (
               <div key={title} className="vexo-card rounded-2xl border border-slate-800 bg-[#111827]/80 p-4 backdrop-blur-sm">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-400"><Icon name={icon as "shield" | "bolt" | "support"} size={17} /></div>

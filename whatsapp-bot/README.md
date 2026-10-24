@@ -51,7 +51,8 @@ npm start
 
 ## ⚙️ Settings (.env)
 Aap [whatsapp-bot/.env](file:///c:/Users/User/Desktop/smm-panel/whatsapp-bot/.env) me yeh details manage kar sakte hain:
-- `SADAPAY_NO="03197008275"`
+- `SUPPORT_WHATSAPP="03088180234"` (Official Human Support)
+- `SADAPAY_NO="03197008275"` (Receiving Deposit Account)
 - `SADAPAY_NAME="Saeed Bashir"`
-- `EASYPAISA_NO="03197008275"`
-- `EASYPAISA_NAME="Saeed Bashir"`
+- `EASYPAISA_NO="03176437013"` (Receiving Deposit Account)
+- `EASYPAISA_NAME="Baigum Shazia Bashir"`

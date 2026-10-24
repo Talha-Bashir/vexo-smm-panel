@@ -110,7 +110,7 @@ export default function TermsPage() {
               For inquiries, disputes, or order assistance, our dedicated staff is available 24/7 via:
             </p>
             <div className="rounded-xl border border-white/10 bg-[#0d1618] p-4 text-xs space-y-1 font-mono">
-              <p>WhatsApp: <span className="text-[#25d366]">+92 317 6437013</span></p>
+              <p>WhatsApp: <span className="text-[#25d366]">+92 308 8180234</span></p>
               <p>Telegram: <span className="text-[#229ed9]">@VexaroSMMAdmin</span></p>
               <p>WhatsApp Channel: <a href="https://whatsapp.com/channel/0029VbDBiTC35fLrgdgBnB0Q" target="_blank" rel="noreferrer" className="text-[#25d366] hover:underline font-bold">Follow VEXARO Updates</a></p>
               <p>Support Portal: In-app ticket system at /dashboard</p>

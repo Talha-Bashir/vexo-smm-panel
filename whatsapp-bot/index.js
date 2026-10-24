@@ -32,11 +32,12 @@ const PANEL_NAME = process.env.PANEL_NAME || 'VEXARO SMM Panel';
 const PANEL_URL = process.env.PANEL_URL || 'https://vexarosmm.com';
 const SADAPAY_NO = process.env.SADAPAY_NO || '03197008275';
 const SADAPAY_NAME = process.env.SADAPAY_NAME || 'Saeed Bashir';
-const EASYPAISA_NO = process.env.EASYPAISA_NO || '03197008275';
-const EASYPAISA_NAME = process.env.EASYPAISA_NAME || 'Saeed Bashir';
+const EASYPAISA_NO = process.env.EASYPAISA_NO || '03176437013';
+const EASYPAISA_NAME = process.env.EASYPAISA_NAME || 'Baigum Shazia Bashir';
+const SUPPORT_PHONE = process.env.SUPPORT_WHATSAPP || process.env.ADMIN_WHATSAPP || '03088180234';
 const MIN_BONUS_DEPOSIT = process.env.MIN_BONUS_DEPOSIT || '5000';
 
-const cleanAdminPhone = SADAPAY_NO.replace(/\D/g, '');
+const cleanSupportPhone = SUPPORT_PHONE.replace(/\D/g, '').replace(/^0/, '92');
 
 // Deduplication cache
 const recentMessages = new Set();
@@ -125,9 +126,9 @@ async function sendOfficialVCard(sock, remoteJid) {
     'VERSION:3.0\n' +
     'FN:VEXARO SMM Support\n' +
     'ORG:VEXARO SMM Panel;\n' +
-    `TEL;type=CELL;type=VOICE;waid=${cleanAdminPhone}:+${cleanAdminPhone}\n` +
+    `TEL;type=CELL;type=VOICE;waid=${cleanSupportPhone}:+${cleanSupportPhone}\n` +
     `URL:${PANEL_URL}\n` +
-    'NOTE:Official 24/7 Support for VEXARO SMM Panel\n' +
+    'NOTE:Official 24/7 Human Support for VEXARO SMM Panel\n' +
     'END:VCARD';
 
   await sock.sendMessage(remoteJid, {
@@ -223,7 +224,7 @@ async function startBot() {
       recentMessages.add(msgId);
       setTimeout(() => recentMessages.delete(msgId), 15000);
 
-      const senderPhone = remoteJid.split('@')[0];
+      const senderPhone = remoteJid.replace(/:\d+@/, '@').split('@')[0].replace(/\D/g, '');
       console.log(`📩 [New Message] From: +${senderPhone} -> "${text}"`);
 
       // Human delay & typing status
@@ -255,7 +256,7 @@ async function startBot() {
 Main VEXARO ka automated assistant hoon. Hamare panel par Pakistan, Bangladesh, US aur Worldwide sab se cheapest aur fast social media services milti hain.
 
 Aapko aapke mulk ke mutabiq best rates aur VIP discount dene ke liye:
-👤 *1. Barah-e-karam apna Pyara Naam batayein?*
+👤 *1. Barah-e-karam apna Pyara Naam batayein?* (Maslan: *Talha*)
 
 ━━━━━━━━━━━━━━━━━━
 📌 *Zaroori Anti-Ban Request:*
@@ -268,7 +269,19 @@ Upar bheje gaye contact card par click karke hamara number *"VEXARO Official"* k
 
       // --- STEP 2: Customer responds with their Name ---
       if (customer.stage === 'ask_name') {
-        const customerName = text.replace(/^(my name is|mera naam|naam|name)\s*/i, '').trim();
+        // If customer is just acknowledging contact save
+        if (cleanText === 'saved' || cleanText === 'save' || cleanText === 'done' || cleanText === 'ho gaya' || cleanText === 'ok') {
+          const reminderMsg =
+`Boht shukriya hamara number save karne ka! 😊
+
+Aapko aapke mulk ke mutabiq best rates aur special discount dene ke liye:
+👤 *Barah-e-karam apna Pyara Naam batayein?* (Maslan: *Talha*)`;
+          await sock.sendMessage(remoteJid, { text: reminderMsg });
+          await sock.sendPresenceUpdate('paused', remoteJid);
+          continue;
+        }
+
+        const customerName = text.replace(/^(my name is|mera naam|naam|name)\s*[:=]?\s*/i, '').trim();
         customer = await upsertCustomer(senderPhone, {
           name: customerName,
           stage: 'ask_country',
@@ -292,6 +305,17 @@ _Yeh is liye zaroori hai taake hum aapko aapki local currency me rates aur local
 
       // --- STEP 3: Customer responds with Country ---
       if (customer.stage === 'ask_country') {
+        if (cleanText === 'saved' || cleanText === 'save' || cleanText === 'done' || cleanText === 'ok') {
+          const reminderMsg =
+`Shukriya ${customer.name || ''} bhai! 😊
+
+🌍 *Barah-e-karam apna Mulk / Country batayein?*
+(Maslan: *Pakistan*, *Bangladesh*, *USA*, *UAE*, etc.)`;
+          await sock.sendMessage(remoteJid, { text: reminderMsg });
+          await sock.sendPresenceUpdate('paused', remoteJid);
+          continue;
+        }
+
         const parsedGeo = parseCountryText(text) || detectCountryFromPhone(senderPhone);
         customer = await upsertCustomer(senderPhone, {
           country: parsedGeo.country,
@@ -549,6 +573,9 @@ Abhi login karein aur extra balance hasil karein:
 `👤 *Human Admin Support:*
 
 ${customer.name ? `${customer.name} bhai, ` : ''}Aapka message hamare support admin ko forward kar diya gaya hai.
+Aap hamari official WhatsApp Support helpline par bhi direct rabta kar sakte hain:
+📱 *Support WhatsApp:* +92 308 8180234
+
 Aap apna masla (Order ID ya screenshot) yahan likh kar chhor dein, admin jald se jald aapko reply karenge!`;
 
         await sock.sendMessage(remoteJid, { text: adminMsg });

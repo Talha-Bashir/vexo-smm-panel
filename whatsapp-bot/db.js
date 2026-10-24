@@ -197,81 +197,107 @@ export function parseCountryText(text) {
 }
 
 /**
- * Customer Management in Database
+ * In-memory fallback map to ensure customer stage is NEVER lost
+ */
+const memoryCustomerMap = new Map();
+
+/**
+ * Customer Management in Database with Memory Fallback
  */
 export async function getCustomer(phone) {
-  await ensureCustomerSchema();
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
+  if (!cleanPhone) return null;
+
   try {
+    await ensureCustomerSchema();
     const res = await pool.query(
       `SELECT phone, name, country, currency, interest, stage, vcard_sent
        FROM vexo_whatsapp_customers
-       WHERE phone = $1 LIMIT 1`,
-      [phone]
+       WHERE phone = $1`,
+      [cleanPhone]
     );
-    if (res.rows.length === 0) return null;
-    return res.rows[0];
+    if (res.rows.length > 0) {
+      memoryCustomerMap.set(cleanPhone, res.rows[0]);
+      return res.rows[0];
+    }
   } catch (err) {
     console.error('[DB] getCustomer error:', err.message);
-    return null;
   }
+
+  return memoryCustomerMap.get(cleanPhone) || null;
 }
 
 export async function upsertCustomer(phone, data) {
   await ensureCustomerSchema();
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
+  if (!cleanPhone) return null;
+
   try {
-    const fields = [];
-    const values = [phone];
-    let idx = 2;
+    const existing = await pool.query(
+      `SELECT phone, name, country, currency, interest, stage, vcard_sent
+       FROM vexo_whatsapp_customers
+       WHERE phone = $1`,
+      [cleanPhone]
+    );
 
-    if (data.name !== undefined) {
-      fields.push(`name = $${idx++}`);
-      values.push(data.name);
-    }
-    if (data.country !== undefined) {
-      fields.push(`country = $${idx++}`);
-      values.push(data.country);
-    }
-    if (data.currency !== undefined) {
-      fields.push(`currency = $${idx++}`);
-      values.push(data.currency);
-    }
-    if (data.interest !== undefined) {
-      fields.push(`interest = $${idx++}`);
-      values.push(data.interest);
-    }
-    if (data.stage !== undefined) {
-      fields.push(`stage = $${idx++}`);
-      values.push(data.stage);
-    }
-    if (data.vcard_sent !== undefined) {
-      fields.push(`vcard_sent = $${idx++}`);
-      values.push(data.vcard_sent);
+    let result;
+    if (existing.rows.length === 0) {
+      const res = await pool.query(
+        `INSERT INTO vexo_whatsapp_customers (phone, name, country, currency, interest, stage, vcard_sent, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+         RETURNING *`,
+        [
+          cleanPhone,
+          data.name ?? null,
+          data.country ?? null,
+          data.currency ?? 'PKR',
+          data.interest ?? null,
+          data.stage ?? 'ask_name',
+          Boolean(data.vcard_sent),
+        ]
+      );
+      result = res.rows[0];
+    } else {
+      const current = existing.rows[0];
+      const updatedName = data.name !== undefined ? data.name : current.name;
+      const updatedCountry = data.country !== undefined ? data.country : current.country;
+      const updatedCurrency = data.currency !== undefined ? data.currency : current.currency;
+      const updatedInterest = data.interest !== undefined ? data.interest : current.interest;
+      const updatedStage = data.stage !== undefined ? data.stage : current.stage;
+      const updatedVcard = data.vcard_sent !== undefined ? Boolean(data.vcard_sent) : current.vcard_sent;
+
+      const res = await pool.query(
+        `UPDATE vexo_whatsapp_customers
+         SET name = $2, country = $3, currency = $4, interest = $5, stage = $6, vcard_sent = $7, updated_at = NOW()
+         WHERE phone = $1
+         RETURNING *`,
+        [
+          cleanPhone,
+          updatedName,
+          updatedCountry,
+          updatedCurrency,
+          updatedInterest,
+          updatedStage,
+          updatedVcard,
+        ]
+      );
+      result = res.rows[0];
     }
 
-    fields.push(`updated_at = NOW()`);
-
-    const query = `
-      INSERT INTO vexo_whatsapp_customers (phone, name, country, currency, interest, stage, vcard_sent)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (phone) DO UPDATE SET
-        ${fields.join(', ')}
-      RETURNING *
-    `;
-
-    const res = await pool.query(query, [
-      phone,
-      data.name || null,
-      data.country || null,
-      data.currency || 'PKR',
-      data.interest || null,
-      data.stage || 'ask_name',
-      data.vcard_sent || false,
-    ]);
-
-    return res.rows[0];
+    if (result) {
+      memoryCustomerMap.set(cleanPhone, result);
+    }
+    return result;
   } catch (err) {
     console.error('[DB] upsertCustomer error:', err.message);
-    return null;
+    const current = memoryCustomerMap.get(cleanPhone) || {
+      phone: cleanPhone,
+      stage: 'ask_name',
+      currency: 'PKR',
+    };
+    const merged = { ...current, ...data };
+    memoryCustomerMap.set(cleanPhone, merged);
+    return merged;
   }
 }
 
