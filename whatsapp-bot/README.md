@@ -1,63 +1,57 @@
-# 🤖 VEXARO SMM Panel - 100% Free WhatsApp Bot
+# 🤖 VEXARO SMM Panel - Intelligent WhatsApp AI Bot (100% Free)
 
-Yeh bot **100% Free** hai. Isme kisi bhi third-party paid tool (Wasender, Wati, UltraMsg) ya paid ChatGPT API ki zaroorat nahi hai.
+Yeh bot **100% Free** hai. Isme kisi bhi third-party paid tool ya paid ChatGPT subscription ki zaroorat nahi hai.
 
-- **WhatsApp Engine:** Baileys (Pure open-source WhatsApp Web protocol)
-- **AI Engine:** Google Gemini Flash (100% Free Tier API)
-- **Running Cost:** 0 Rupees (Aapke apne PC / Laptop par chalta hai)
+- **WhatsApp Connection:** Baileys (Open-Source Multi-Device QR)
+- **AI Brain:** Google Gemini Flash Free Tier (Soch kar aur website data dekh kar jawab deta hai)
+- **Database Link:** VEXARO Neon PostgreSQL (Live Services, Real-time Order Status, Speed-Up Tickets)
+- **Security Guardrails:** Upstream panels (SMM Flare, PAK SMM, Rizvi, Smooth SMM), API keys aur sensitive info **100% Hidden & Protected**.
 
 ---
 
-## 🚀 Bot Start Karne Ka Tareeqa (Step-by-Step)
+## ⚡ Bot Ki Super Powers (Naye Features)
 
-### 1. Payment Numbers Set Karein
-Agar aapko apne SadaPay ya Easypaisa ke numbers change karne hain, toh `.env` file ko open karein aur edit karein:
-```env
-SADAPAY_NO="03197008275"
-SADAPAY_NAME="Saeed Bashir"
+### 1. 🧠 Dynamic & Real-time Thinking (Website Data Lookup)
+- Agar koi customer puche: *"Aap ki cheap services konsi hain?"*
+  - Bot foran database me ja kar real-time sasti services (e.g. Free TikTok Views trial, 0.03 PKR services, 0.16 PKR Instagram shares) dhoondta hai aur customer ko accurate rate batata hai.
+- Agar koi puche: *"TikTok views kitne ke hain?"*
+  - Bot database se TikTok ke live rates check karke Roman Urdu me clean answer deta hai.
 
-EASYPAISA_NO="03197008275"
-EASYPAISA_NAME="Saeed Bashir"
-```
+### 2. 🛡️ 100% Zero-Leak Security & Privacy
+- Bot kisi bhi upstream provider ka naam (SMM Flare, Pak SMM, Smooth SMM, Rizvi, etc.), supplier URL, API key ya profit margin **kisi ko nahi batata**.
+- Hamesha *"VEXARO Automated High-Speed Server"* ke naam se baat karta hai.
 
-### 2. Bot Run Karein
-Terminal ya PowerShell me `whatsapp-bot` folder ke andar jayein aur yeh command likhein:
+### 3. ⚡ Automated "Speed-Up" & Upstream Ticket Creation
+- Agar customer WhatsApp par likhe:
+  - *"Speed up order 26684bd1"*
+  - *"Order 125 late hai fast karo"*
+  - *"Order jaldi complete karo"*
+- **Bot foran kya karta hai:**
+  1. Database me Order ID check karta hai.
+  2. Jis provider panel par order laga ho, wahan automated **Priority Speed-Up / Ticket** send kar deta hai.
+  3. VEXARO ke database me Support Ticket create kar deta hai.
+  4. Customer ko WhatsApp par confirmation bhej deta hai ke order High Priority queue me chala gaya hai!
 
+---
+
+## 🚀 Bot Run Karne Ka Tareeqa
+
+### Step 1: Terminal Me Run Karein
 ```bash
 cd whatsapp-bot
 npm start
 ```
 
-### 3. QR Code Scan Karein
-1. Terminal me ek QR Code print ho jayega.
-2. Apne mobile me **WhatsApp** open karein.
-3. Top right par 3 dots (ya Settings) dabayein -> **Linked Devices**.
-4. **"Link a Device"** par click karke terminal wala QR code scan karein.
-5. Connected! Terminal me likha aayega: `✅ WHATSAPP BOT CONNECTED SUCCESSFULLY!`.
+### Step 2: QR Code Scan Karein
+1. Terminal me QR code aayega.
+2. Apne WhatsApp mobile se **Linked Devices** -> **Link a Device** par ja kar scan karein.
+3. Bot live ho jayega!
 
 ---
 
-## ⚡ Bot 24/7 Background Me Kaise Chalayein? (PC band kiye baghair)
-
-Agar aap chahte hain ke terminal window band bhi ho jaye tab bhi bot background me chalta rahe, toh **PM2** (Free Process Manager) use karein:
-
-```bash
-# PM2 install karein (sirf 1 dafa):
-npm install -g pm2
-
-# Bot background me start karein:
-cd whatsapp-bot
-pm2 start index.js --name vexaro-bot
-
-# Check status:
-pm2 status
-
-# Agar bot stop karna ho:
-pm2 stop vexaro-bot
-```
-
----
-
-## 🛡️ WhatsApp Ban Se Bachne Ke Rules:
-1. **Never send bulk/spam messages**: Bot sirf un customers ko reply karta hai jo **khud pehle message karte hain**.
-2. Is bot me already **2.2 seconds ka human delay** aur **typing indicator** shamil hai taake WhatsApp block na kare.
+## ⚙️ Settings (.env)
+Aap [whatsapp-bot/.env](file:///c:/Users/User/Desktop/smm-panel/whatsapp-bot/.env) me yeh details manage kar sakte hain:
+- `SADAPAY_NO="03197008275"`
+- `SADAPAY_NAME="Saeed Bashir"`
+- `EASYPAISA_NO="03197008275"`
+- `EASYPAISA_NAME="Saeed Bashir"`
