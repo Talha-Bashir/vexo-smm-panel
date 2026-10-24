@@ -5,7 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "clean": "node -e \"import('fs').then(fs => { fs.rmSync('./auth_session', { recursive: true, force: true }); console.log('Session wiped cleanly. Run npm start to scan a new QR code.'); });\"",
+    "reset": "npm run clean"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.24",

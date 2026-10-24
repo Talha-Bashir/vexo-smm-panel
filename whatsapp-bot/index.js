@@ -7,6 +7,7 @@ import pino from 'pino';
 import qrcode from 'qrcode-terminal';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import {
   ensureCustomerSchema,
@@ -139,12 +140,15 @@ async function sendOfficialVCard(sock, remoteJid) {
   });
 }
 
+const SESSION_DIR = path.join(__dirname, 'auth_session');
+let qrCounter = 0;
+
 /**
  * Main WhatsApp Connection Handler
  */
 async function startBot() {
   await ensureCustomerSchema();
-  const { state, saveCreds } = await useMultiFileAuthState('./auth_session');
+  const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
   console.log(`\n======================================================`);
@@ -167,32 +171,43 @@ async function startBot() {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
+      qrCounter++;
       console.log('\n======================================================');
-      console.log('📲 SCAN THIS QR CODE WITH YOUR WHATSAPP TO CONNECT:');
+      console.log(`📲 FRESH QR CODE #${qrCounter} (Scan with WhatsApp):`);
       console.log('1. Open WhatsApp on your phone');
       console.log('2. Tap 3 dots (or Settings) -> Linked Devices');
-      console.log('3. Tap "Link a Device" and scan the code below:');
+      console.log('3. Tap "Link a Device" and SCAN the code below:');
+      console.log('(Note: WhatsApp QR codes auto-refresh every 25 seconds)');
       console.log('======================================================\n');
       qrcode.generate(qr, { small: true });
     }
 
     if (connection === 'close') {
-      const shouldReconnect =
-        lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
 
       console.log(
-        `\n⚠️ Connection closed (reason: ${lastDisconnect?.error?.message || 'Unknown'}). Reconnecting: ${shouldReconnect}...`
+        `\n⚠️ Connection closed (Status: ${statusCode || 'Unknown'}, Reason: ${lastDisconnect?.error?.message || 'Disconnected'})`
       );
 
-      if (shouldReconnect) {
-        setTimeout(startBot, 3000);
+      if (isLoggedOut) {
+        console.log('🔄 Session was logged out from phone. Auto-clearing old session files...');
+        try {
+          fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+          console.log('✅ Old session wiped cleanly! Generating a BRAND NEW QR code in 2 seconds...');
+        } catch (err) {
+          console.warn('[Session Cleanup Warning]:', err.message);
+        }
+        setTimeout(startBot, 2000);
       } else {
-        console.log('❌ Device logged out. Please restart the script and scan the new QR code.');
+        console.log('🔄 Reconnecting in 3 seconds...');
+        setTimeout(startBot, 3000);
       }
     } else if (connection === 'open') {
+      qrCounter = 0;
       console.log('\n======================================================');
       console.log(`✅ [${PANEL_NAME}] WHATSAPP BOT CONNECTED SUCCESSFULLY!`);
-      console.log('Bot is now LIVE with Onboarding & Currency Detection.');
+      console.log('Bot is now LIVE and listening for customer messages.');
       console.log('======================================================\n');
     }
   });

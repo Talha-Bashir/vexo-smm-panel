@@ -42,10 +42,15 @@ cd whatsapp-bot
 npm start
 ```
 
-### Step 2: QR Code Scan Karein
-1. Terminal me QR code aayega.
+### Step 2: QR Code Scan & Auto-Reconnect
+1. Terminal me ek fresh **QR code** aayega.
 2. Apne WhatsApp mobile se **Linked Devices** -> **Link a Device** par ja kar scan karein.
-3. Bot live ho jayega!
+3. **Auto-Reset on Logout:** Agar aap phone se WhatsApp logout karenge, bot automatically purana session delete karke **Fresh QR Code** generate kar dega!
+4. **Manual Reset Command:**
+```bash
+npm run reset
+npm start
+```
 
 ---
 
