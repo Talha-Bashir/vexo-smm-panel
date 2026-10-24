@@ -31,9 +31,11 @@ export async function ensureCustomerSchema() {
         interest VARCHAR(120),
         stage VARCHAR(30) DEFAULT 'ask_name',
         vcard_sent BOOLEAN DEFAULT FALSE,
+        language VARCHAR(20) DEFAULT 'en',
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+      ALTER TABLE vexo_whatsapp_customers ADD COLUMN IF NOT EXISTS language VARCHAR(20) DEFAULT 'en';
       CREATE INDEX IF NOT EXISTS vexo_wa_cust_stage_idx ON vexo_whatsapp_customers(stage);
     `);
     schemaInitialized = true;
@@ -139,32 +141,32 @@ export function convertPkrToCurrency(pkrAmount, targetCurrency = 'PKR') {
 }
 
 /**
- * Detect Country and default Currency from phone number prefix
+ * Detect Country, default Currency, and Native Language from phone number prefix
  */
 export function detectCountryFromPhone(phone) {
   const clean = String(phone || '').replace(/\D/g, '');
   if (clean.startsWith('92')) {
-    return { country: 'Pakistan', currency: 'PKR', symbol: 'Rs' };
+    return { country: 'Pakistan', currency: 'PKR', symbol: 'Rs', language: 'ur' };
   }
   if (clean.startsWith('880')) {
-    return { country: 'Bangladesh', currency: 'BDT', symbol: '৳' };
+    return { country: 'Bangladesh', currency: 'BDT', symbol: '৳', language: 'bn' };
   }
   if (clean.startsWith('1')) {
-    return { country: 'United States', currency: 'USD', symbol: '$' };
+    return { country: 'United States', currency: 'USD', symbol: '$', language: 'en' };
   }
   if (clean.startsWith('971')) {
-    return { country: 'United Arab Emirates', currency: 'AED', symbol: 'AED' };
+    return { country: 'United Arab Emirates', currency: 'AED', symbol: 'AED', language: 'ar' };
   }
   if (clean.startsWith('966')) {
-    return { country: 'Saudi Arabia', currency: 'SAR', symbol: 'SAR' };
+    return { country: 'Saudi Arabia', currency: 'SAR', symbol: 'SAR', language: 'ar' };
   }
   if (clean.startsWith('91')) {
-    return { country: 'India', currency: 'INR', symbol: '₹' };
+    return { country: 'India', currency: 'INR', symbol: '₹', language: 'en' };
   }
   if (clean.startsWith('44')) {
-    return { country: 'United Kingdom', currency: 'GBP', symbol: '£' };
+    return { country: 'United Kingdom', currency: 'GBP', symbol: '£', language: 'en' };
   }
-  return { country: 'International', currency: 'USD', symbol: '$' };
+  return { country: 'International', currency: 'USD', symbol: '$', language: 'en' };
 }
 
 /**
@@ -173,26 +175,38 @@ export function detectCountryFromPhone(phone) {
 export function parseCountryText(text) {
   const lower = String(text || '').toLowerCase().trim();
   if (lower.includes('pak') || lower.includes('pk')) {
-    return { country: 'Pakistan', currency: 'PKR', symbol: 'Rs' };
+    return { country: 'Pakistan', currency: 'PKR', symbol: 'Rs', language: 'ur' };
   }
   if (lower.includes('bangla') || lower.includes('bd') || lower.includes('dhaka')) {
-    return { country: 'Bangladesh', currency: 'BDT', symbol: '৳' };
+    return { country: 'Bangladesh', currency: 'BDT', symbol: '৳', language: 'bn' };
   }
   if (lower.includes('us') || lower.includes('america') || lower.includes('united states') || lower.includes('canada')) {
-    return { country: 'United States', currency: 'USD', symbol: '$' };
+    return { country: 'United States', currency: 'USD', symbol: '$', language: 'en' };
   }
   if (lower.includes('uae') || lower.includes('dubai') || lower.includes('emirates')) {
-    return { country: 'United Arab Emirates', currency: 'AED', symbol: 'AED' };
+    return { country: 'United Arab Emirates', currency: 'AED', symbol: 'AED', language: 'ar' };
   }
   if (lower.includes('saudi') || lower.includes('ksa') || lower.includes('riyadh')) {
-    return { country: 'Saudi Arabia', currency: 'SAR', symbol: 'SAR' };
+    return { country: 'Saudi Arabia', currency: 'SAR', symbol: 'SAR', language: 'ar' };
   }
   if (lower.includes('india') || lower.includes('inr') || lower.includes('hindustan')) {
-    return { country: 'India', currency: 'INR', symbol: '₹' };
+    return { country: 'India', currency: 'INR', symbol: '₹', language: 'en' };
   }
   if (lower.includes('uk') || lower.includes('england') || lower.includes('britain') || lower.includes('london')) {
-    return { country: 'United Kingdom', currency: 'GBP', symbol: '£' };
+    return { country: 'United Kingdom', currency: 'GBP', symbol: '£', language: 'en' };
   }
+  return null;
+}
+
+/**
+ * Detect explicit language preference switch requested by user
+ */
+export function detectLanguageSwitch(text) {
+  const lower = String(text || '').toLowerCase().trim();
+  if (lower.includes('english') || lower === 'en' || lower.includes('in english')) return 'en';
+  if (lower.includes('urdu') || lower.includes('hindi') || lower === 'ur') return 'ur';
+  if (lower.includes('bangla') || lower.includes('bengali') || lower === 'bn') return 'bn';
+  if (lower.includes('arabic') || lower.includes('arabi') || lower === 'ar') return 'ar';
   return null;
 }
 
@@ -211,7 +225,7 @@ export async function getCustomer(phone) {
   try {
     await ensureCustomerSchema();
     const res = await pool.query(
-      `SELECT phone, name, country, currency, interest, stage, vcard_sent
+      `SELECT phone, name, country, currency, interest, stage, vcard_sent, language
        FROM vexo_whatsapp_customers
        WHERE phone = $1`,
       [cleanPhone]
@@ -234,7 +248,7 @@ export async function upsertCustomer(phone, data) {
 
   try {
     const existing = await pool.query(
-      `SELECT phone, name, country, currency, interest, stage, vcard_sent
+      `SELECT phone, name, country, currency, interest, stage, vcard_sent, language
        FROM vexo_whatsapp_customers
        WHERE phone = $1`,
       [cleanPhone]
@@ -243,8 +257,8 @@ export async function upsertCustomer(phone, data) {
     let result;
     if (existing.rows.length === 0) {
       const res = await pool.query(
-        `INSERT INTO vexo_whatsapp_customers (phone, name, country, currency, interest, stage, vcard_sent, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        `INSERT INTO vexo_whatsapp_customers (phone, name, country, currency, interest, stage, vcard_sent, language, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
          RETURNING *`,
         [
           cleanPhone,
@@ -254,6 +268,7 @@ export async function upsertCustomer(phone, data) {
           data.interest ?? null,
           data.stage ?? 'ask_name',
           Boolean(data.vcard_sent),
+          data.language ?? 'en',
         ]
       );
       result = res.rows[0];
@@ -265,10 +280,11 @@ export async function upsertCustomer(phone, data) {
       const updatedInterest = data.interest !== undefined ? data.interest : current.interest;
       const updatedStage = data.stage !== undefined ? data.stage : current.stage;
       const updatedVcard = data.vcard_sent !== undefined ? Boolean(data.vcard_sent) : current.vcard_sent;
+      const updatedLang = data.language !== undefined ? data.language : (current.language || 'en');
 
       const res = await pool.query(
         `UPDATE vexo_whatsapp_customers
-         SET name = $2, country = $3, currency = $4, interest = $5, stage = $6, vcard_sent = $7, updated_at = NOW()
+         SET name = $2, country = $3, currency = $4, interest = $5, stage = $6, vcard_sent = $7, language = $8, updated_at = NOW()
          WHERE phone = $1
          RETURNING *`,
         [
@@ -279,6 +295,7 @@ export async function upsertCustomer(phone, data) {
           updatedInterest,
           updatedStage,
           updatedVcard,
+          updatedLang,
         ]
       );
       result = res.rows[0];
@@ -294,6 +311,7 @@ export async function upsertCustomer(phone, data) {
       phone: cleanPhone,
       stage: 'ask_name',
       currency: 'PKR',
+      language: 'en',
     };
     const merged = { ...current, ...data };
     memoryCustomerMap.set(cleanPhone, merged);

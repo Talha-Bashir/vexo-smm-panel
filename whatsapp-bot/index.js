@@ -54,6 +54,7 @@ async function askIntelligentGemini(userMessage, contextData = '', customer = nu
   const userCurrency = customer?.currency || 'PKR';
   const userName = customer?.name || 'Customer';
   const userCountry = customer?.country || 'Pakistan';
+  const userLanguage = customer?.language || 'en';
 
   const systemPrompt = `You are the friendly, intelligent official WhatsApp assistant for ${PANEL_NAME} (website: ${PANEL_URL}).
 
@@ -61,17 +62,19 @@ CUSTOMER PROFILE:
 - Name: ${userName}
 - Country: ${userCountry}
 - Preferred Currency: ${userCurrency}
+- Primary Language: ${userLanguage}
 
-CRITICAL SECURITY & CONFIDENTIALITY RULES (STRICT ENFORCEMENT):
-1. You represent ONLY ${PANEL_NAME}.
-2. You must NEVER, under any circumstance, reveal or mention:
-   - Any upstream provider or third-party panel names (e.g. SMM Flare, PAK SMM, Smooth SMM, Rizvi SMM, AM SMM, etc.).
-   - Any supplier websites, URLs, API keys, database credentials, or server connection strings.
-   - Always refer to backend servers as "VEXARO Automated High-Speed Server" or "VEXARO Direct Server".
-3. Always quote prices and rates in the customer's preferred currency (${userCurrency}).
-4. Reply in natural, friendly, polite Roman Urdu (or English if the user asked in English). Address them respectfully by their name (${userName}).
-5. Use the live website data provided in the context to answer questions about services and prices accurately.
-6. Keep replies concise, helpful, and transparent (maximum 3-4 sentences).`;
+CRITICAL MULTILINGUAL & TONE RULES:
+1. Detect the user's language from their message and ALWAYS reply in their language!
+   - If user asks in English -> Reply in clean, friendly English.
+   - If user asks in Roman Urdu / Urdu -> Reply in simple, natural Roman Urdu.
+   - If user asks in Bengali -> Reply in Bengali.
+   - If user asks in Arabic -> Reply in Arabic.
+   - If user asks in another language (Turkish, Spanish, Russian, Hindi, etc.) -> Reply in their language!
+2. Do NOT use stiff, archaic, or overly formal phrases like "barah-e-karam" or "pyara naam". Speak like a modern, friendly human assistant.
+3. Always quote prices in the customer's currency (${userCurrency}).
+4. Strictly confidential: NEVER mention upstream providers, supplier names (e.g. SMM Flare, PAK SMM, Smooth SMM, Rizvi SMM, AM SMM), API keys, or URLs. Always brand as VEXARO SMM Panel.
+5. Maximum 2-3 sentences. Short, direct, and helpful.`;
 
   try {
     const inputContent = contextData
@@ -248,11 +251,26 @@ async function startBot() {
 
       const cleanText = text.toLowerCase();
 
+      // Check if user requested an explicit language switch
+      const langSwitch = detectLanguageSwitch(text);
+      if (langSwitch && customer) {
+        customer = await upsertCustomer(senderPhone, { language: langSwitch });
+        const langNames = { en: 'English', ur: 'Urdu / Hindi', bn: 'বাংলা (Bengali)', ar: 'العربية (Arabic)' };
+        const switchConfirm = langSwitch === 'ur'
+          ? `Zabardast! Ab hum Urdu me baat karenge. Main aapki kya madad kar sakta hoon?`
+          : langSwitch === 'bn'
+          ? `দারুণ! এখন থেকে আমরা বাংলায় কথা বলব। আমি আপনাকে কিভাবে সাহায্য করতে পারি?`
+          : langSwitch === 'ar'
+          ? `ممتاز! سنتحدث باللغة العربية الآن. كيف يمكنني مساعدتك؟`
+          : `Great! Language switched to English. How can I help you today?`;
+        await sock.sendMessage(remoteJid, { text: switchConfirm });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
       // ========================================================
       // 1. ONBOARDING & CONTACT SAVE FLOW FOR FIRST-TIME USERS
       // ========================================================
-      let customer = await getCustomer(senderPhone);
-
       // --- STEP 1: First time message from new phone ---
       if (!customer) {
         const defaultGeo = detectCountryFromPhone(senderPhone);
@@ -262,35 +280,64 @@ async function startBot() {
           stage: 'ask_name',
           country: defaultGeo.country,
           currency: defaultGeo.currency,
+          language: defaultGeo.language,
           vcard_sent: true,
         });
 
-        const welcomeAskName =
-`👋 *Assalam-o-Alaikum! Welcome to ${PANEL_NAME}.*
+        let welcomeAskName = '';
+        if (defaultGeo.language === 'bn') {
+          welcomeAskName =
+`👋 *Welcome to ${PANEL_NAME}!*
 
-Main VEXARO ka automated assistant hoon. Hamare panel par Pakistan, Bangladesh, US aur Worldwide sab se cheapest aur fast social media services milti hain.
-
-Aapko aapke mulk ke mutabiq best rates aur VIP discount dene ke liye:
-👤 *1. Barah-e-karam apna Pyara Naam batayein?* (Maslan: *Talha*)
+আপনার নাম কি? (What is your name?)
+_You can chat in English or বাংলা_
 
 ━━━━━━━━━━━━━━━━━━
-📌 *Zaroori Anti-Ban Request:*
-Upar bheje gaye contact card par click karke hamara number *"VEXARO Official"* ke naam se apne phone me **SAVE** kar lein taake aapka account aur tamam updates safe rahein!`;
+📌 *Please save our contact card above so your account and chat stay safe!*`;
+        } else if (defaultGeo.language === 'ar') {
+          welcomeAskName =
+`👋 *Welcome to ${PANEL_NAME}!*
+
+ما هو اسمك؟ (What is your name?)
+_You can chat in English or العربية_
+
+━━━━━━━━━━━━━━━━━━
+📌 *يرجى حفظ جهة الاتصال أعلاه للحفاظ على أمان حسابك ورسائلك!*`;
+        } else if (defaultGeo.language === 'ur') {
+          welcomeAskName =
+`👋 *Welcome to ${PANEL_NAME}!*
+
+Aapka naam kya hai? (What is your name?)
+
+━━━━━━━━━━━━━━━━━━
+📌 *Upar diye gaye contact card par click karke number SAVE kar lein taake aapka account aur chat safe rahe!*`;
+        } else {
+          // English / International
+          welcomeAskName =
+`👋 *Welcome to ${PANEL_NAME}!*
+
+What is your name?
+_Feel free to chat in English or your native language_
+
+━━━━━━━━━━━━━━━━━━
+📌 *Please click and SAVE our contact card above so your account and chat stay safe!*`;
+        }
 
         await sock.sendMessage(remoteJid, { text: welcomeAskName });
         await sock.sendPresenceUpdate('paused', remoteJid);
         continue;
       }
 
+      const userLang = customer.language || 'en';
+
       // --- STEP 2: Customer responds with their Name ---
       if (customer.stage === 'ask_name') {
-        // If customer is just acknowledging contact save
         if (cleanText === 'saved' || cleanText === 'save' || cleanText === 'done' || cleanText === 'ho gaya' || cleanText === 'ok') {
-          const reminderMsg =
-`Boht shukriya hamara number save karne ka! 😊
-
-Aapko aapke mulk ke mutabiq best rates aur special discount dene ke liye:
-👤 *Barah-e-karam apna Pyara Naam batayein?* (Maslan: *Talha*)`;
+          const reminderMsg = userLang === 'ur'
+            ? `Number save karne ka shukriya! 😊\n\nAapka naam kya hai? (What is your name?)`
+            : userLang === 'bn'
+            ? `নাম্বারটি সেভ করার জন্য ধন্যবাদ! 😊\n\nআপনার নাম কি? (What is your name?)`
+            : `Thank you for saving our contact! 😊\n\nWhat is your name?`;
           await sock.sendMessage(remoteJid, { text: reminderMsg });
           await sock.sendPresenceUpdate('paused', remoteJid);
           continue;
@@ -302,16 +349,34 @@ Aapko aapke mulk ke mutabiq best rates aur special discount dene ke liye:
           stage: 'ask_country',
         });
 
-        // Save contact to phone VCF file
         saveContactToVcf(senderPhone, customerName, customer.country || 'Global');
 
-        const askCountryMsg =
-`Boht shukriya, *${customerName}* bhai! 😊
+        let askCountryMsg = '';
+        if (userLang === 'ur') {
+          askCountryMsg =
+`Welcome, *${customerName}*! 😊
 
-🌍 *2. Aap kis Mulk / Country se hain?*
-(Maslan: *Pakistan*, *Bangladesh*, *USA*, *UAE*, *Saudi Arabia*, etc.)
+Aap kis country se hain?
+(Pakistan, Bangladesh, USA, UAE wagera - taake aapko aapki local currency me rates mil sakein)`;
+        } else if (userLang === 'bn') {
+          askCountryMsg =
+`Welcome, *${customerName}*! 😊
 
-_Yeh is liye zaroori hai taake hum aapko aapki local currency me rates aur local payment methods dikha sakein!_`;
+আপনি কোন দেশ থেকে বলছেন? (Which country are you from?)
+(Bangladesh, USA, UAE, etc. - so we can show rates in your local currency)`;
+        } else if (userLang === 'ar') {
+          askCountryMsg =
+`أهلاً بك يا *${customerName}*! 😊
+
+من أي دولة أنت؟ (Which country are you from?)
+(UAE, Saudi Arabia, USA, etc. - to show rates in your local currency)`;
+        } else {
+          askCountryMsg =
+`Welcome, *${customerName}*! 😊
+
+Which country are you from?
+(USA, Bangladesh, UAE, etc. - so we can show rates in your local currency)`;
+        }
 
         await sock.sendMessage(remoteJid, { text: askCountryMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);
@@ -321,11 +386,9 @@ _Yeh is liye zaroori hai taake hum aapko aapki local currency me rates aur local
       // --- STEP 3: Customer responds with Country ---
       if (customer.stage === 'ask_country') {
         if (cleanText === 'saved' || cleanText === 'save' || cleanText === 'done' || cleanText === 'ok') {
-          const reminderMsg =
-`Shukriya ${customer.name || ''} bhai! 😊
-
-🌍 *Barah-e-karam apna Mulk / Country batayein?*
-(Maslan: *Pakistan*, *Bangladesh*, *USA*, *UAE*, etc.)`;
+          const reminderMsg = userLang === 'ur'
+            ? `Aap kis country se hain? (Pakistan, Bangladesh, USA, UAE wagera)`
+            : `Which country are you from? (USA, Bangladesh, UAE, etc.)`;
           await sock.sendMessage(remoteJid, { text: reminderMsg });
           await sock.sendPresenceUpdate('paused', remoteJid);
           continue;
@@ -335,22 +398,48 @@ _Yeh is liye zaroori hai taake hum aapko aapki local currency me rates aur local
         customer = await upsertCustomer(senderPhone, {
           country: parsedGeo.country,
           currency: parsedGeo.currency,
+          language: parsedGeo.language,
           stage: 'ask_interest',
         });
 
-        // Update VCF file with customer name and country
         saveContactToVcf(senderPhone, customer.name, parsedGeo.country);
 
-        const askInterestMsg =
-`Zabardast! Aapka Mulk *${parsedGeo.country}* aur Currency *${parsedGeo.currency} (${parsedGeo.symbol})* set ho gayi hai. ✅
+        const currentLang = parsedGeo.language;
+        let askInterestMsg = '';
+        if (currentLang === 'ur') {
+          askInterestMsg =
+`Country *${parsedGeo.country}* aur Currency *${parsedGeo.currency}* set ho gayi hai! ✅
 
-🎯 *3. Aapko kis platform ki services chahiye?*
+Aapko kis platform ki services chahiye?
 *A* - Instagram (Followers, Likes, Views)
 *B* - TikTok (Views, Followers, Likes)
 *C* - YouTube (Watch Time, Subscribers)
 *D* - All Services & Reseller Panel
 
-_Aap letter (A, B, C, D) ya platform ka naam likh kar reply karein!_`;
+_Aap letter (A, B, C, D) ya platform ka naam likh kar bhej sakte hain!_`;
+        } else if (currentLang === 'bn') {
+          askInterestMsg =
+`Country *${parsedGeo.country}* এবং Currency *${parsedGeo.currency} (${parsedGeo.symbol})* সেট করা হয়েছে! ✅
+
+আপনার কোন প্ল্যাটফর্মের সার্ভিস প্রয়োজন?
+*A* - Instagram (Followers, Likes, Views)
+*B* - TikTok (Views, Followers, Likes)
+*C* - YouTube (Watch Time, Subscribers)
+*D* - All Services & Reseller Panel
+
+_আপনি letter (A, B, C, D) অথবা প্ল্যাটফর্মের নাম লিখে পাঠাতে পারেন!_`;
+        } else {
+          askInterestMsg =
+`Country *${parsedGeo.country}* and Currency *${parsedGeo.currency} (${parsedGeo.symbol})* configured! ✅
+
+Which platform services do you need?
+*A* - Instagram (Followers, Likes, Views)
+*B* - TikTok (Views, Followers, Likes)
+*C* - YouTube (Watch Time, Subscribers)
+*D* - All Services & Reseller Panel
+
+_Reply with A, B, C, D or your platform name!_`;
+        }
 
         await sock.sendMessage(remoteJid, { text: askInterestMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);
@@ -376,20 +465,41 @@ _Aap letter (A, B, C, D) ya platform ka naam likh kar reply karein!_`;
           .map((s) => `• *${s.name}*: ${s.rateConverted} per 1,000`)
           .join('\n');
 
-        const completedMsg =
-`🎉 *Welcome to ${PANEL_NAME}, ${customer.name} bhai!*
+        const isUrdu = customer.language === 'ur';
+        const completedMsg = isUrdu
+          ? `🎉 *Welcome to ${PANEL_NAME}, ${customer.name}!*
 
-Aapka profile successfully set ho gaya hai!
+Aapka profile set ho gaya hai!
 🌍 Country: *${customer.country}*
 💰 Currency: *${customer.currency}*
-🎯 Category: *${chosen}*
+🎯 Platform: *${chosen}*
 
 ━━━━━━━━━━━━━━━━━━
 🔥 *Live Cheapest Rates in ${customer.currency}:*
 ${cheapText}
 ━━━━━━━━━━━━━━━━━━
 
-*Ab aap jo bhi sawal poochenge, aapko aapki currency (${customer.currency}) me live rates milenge!*
+*Aap koi bhi sawal apni zuban me seedha pooch sakte hain!*
+
+*Quick Menu:*
+*1* 💳 - Payment Methods
+*2* 📦 - Order Status & Speed Up
+*3* 🎁 - Deposit Bonus Offers
+*4* 🌐 - Website Services & Rates
+*5* 👤 - Human Support`
+          : `🎉 *Welcome to ${PANEL_NAME}, ${customer.name}!*
+
+Your profile is ready!
+🌍 Country: *${customer.country}*
+💰 Currency: *${customer.currency}*
+🎯 Platform: *${chosen}*
+
+━━━━━━━━━━━━━━━━━━
+🔥 *Live Cheapest Rates in ${customer.currency}:*
+${cheapText}
+━━━━━━━━━━━━━━━━━━
+
+*Feel free to chat and ask any questions in your own language!*
 
 *Quick Menu:*
 *1* 💳 - Payment Methods (${customer.currency})
