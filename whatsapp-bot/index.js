@@ -66,17 +66,27 @@ CUSTOMER PROFILE:
 - Preferred Currency: ${userCurrency}
 - Primary Language: ${userLanguage}
 
+MAIN MENU REFERENCE:
+1 = Payment Methods (SadaPay, Easypaisa, Binance, Cards)
+2 = Order Status & Priority Speed Up
+3 = Deposit Bonus Offers (5% to 10% extra on Rs 5,000+)
+4 = Live Website Services & Rates Catalog
+5 = Human Support Helpline (+92 308 8180234)
+6 = Free Test Trial Services (1,000 Views / 50 Likes Free)
+7 = Language Switcher (English, Urdu, Bengali, Arabic)
+
 CRITICAL MULTILINGUAL & TONE RULES:
 1. Detect the user's language from their message and ALWAYS reply in their language!
    - If user asks in English -> Reply in clean, friendly English.
    - If user asks in Roman Urdu / Urdu -> Reply in simple, natural Roman Urdu.
    - If user asks in Bengali -> Reply in Bengali.
    - If user asks in Arabic -> Reply in Arabic.
-   - If user asks in another language (Turkish, Spanish, Russian, Hindi, etc.) -> Reply in their language!
+   - If user asks in another language -> Reply in their language!
 2. Do NOT use stiff, archaic, or overly formal phrases like "barah-e-karam" or "pyara naam". Speak like a modern, friendly human assistant.
-3. Always quote prices in the customer's currency (${userCurrency}).
-4. Strictly confidential: NEVER mention upstream providers, supplier names (e.g. SMM Flare, PAK SMM, Smooth SMM, Rizvi SMM, AM SMM), API keys, or URLs. Always brand as VEXARO SMM Panel.
-5. Maximum 2-3 sentences. Short, direct, and helpful.`;
+3. If the user mentions a number or asks about a service, guide them directly according to the menu above. NEVER say "It looks like you just sent a number".
+4. Always quote prices in the customer's currency (${userCurrency}).
+5. Strictly confidential: NEVER mention upstream providers, supplier names (e.g. SMM Flare, PAK SMM, Smooth SMM, Rizvi SMM, AM SMM), API keys, or URLs. Always brand as VEXARO SMM Panel.
+6. Maximum 2-3 sentences. Short, direct, and helpful.`;
 
   try {
     const inputContent = contextData
@@ -559,21 +569,33 @@ Jaise hi aap Order ID bhejenge, hamara bot foran upstream server ko *Priority Sp
       }
 
       // ========================================================
-      // 3. DIRECT ORDER STATUS CHECK
+      // 3. OPTION 2 & DIRECT ORDER STATUS CHECK
       // ========================================================
+      const extractedId = extractOrderId(text);
+      const isOption2 =
+        cleanText === '2' ||
+        cleanText === '2.' ||
+        cleanText === '#2' ||
+        cleanText === 'option 2' ||
+        cleanText === 'order status' ||
+        cleanText === 'order check' ||
+        cleanText === 'track order' ||
+        cleanText === 'status check';
+
       const isOrderQuery =
+        isOption2 ||
         cleanText.startsWith('order') ||
         cleanText.startsWith('#') ||
         cleanText.includes('order status') ||
         cleanText.includes('kahan pohancha') ||
-        cleanText.includes('status check');
+        (extractedId && !['1', '2', '3', '4', '5', '6', '7'].includes(cleanText));
 
-      const extractedId = extractOrderId(text);
-      if (isOrderQuery && extractedId) {
-        const order = await lookupOrder(extractedId);
-        if (order) {
-          const convertedCharge = convertPkrToCurrency(order.chargePkr, customer.currency);
-          const statusMsg =
+      if (isOrderQuery) {
+        if (extractedId) {
+          const order = await lookupOrder(extractedId);
+          if (order) {
+            const convertedCharge = convertPkrToCurrency(order.chargePkr, customer.currency);
+            const statusMsg =
 `📦 *VEXARO Live Order Details:*
 
 🔢 *Order ID:* #${order.shortId}
@@ -586,7 +608,32 @@ ${order.remains ? `⏳ *Remains:* ${order.remains}` : ''}
 ━━━━━━━━━━━━━━━━━━
 ⚡ *Tip:* Agar aapka order slow hai, toh *speed up order ${order.shortId}* likh kar reply karein! Hamara bot foran server ko priority speed-up ticket send kar dega.`;
 
-          await sock.sendMessage(remoteJid, { text: statusMsg });
+            await sock.sendMessage(remoteJid, { text: statusMsg });
+            await sock.sendPresenceUpdate('paused', remoteJid);
+            continue;
+          } else {
+            const notFoundMsg = customer.language === 'ur'
+              ? `❌ Order ID *#${extractedId}* hamare record me nahi mila. Barah-e-meherbani apna sahi Order ID dobara bhejien ya Website par check karein: ${PANEL_URL}/dashboard?tab=orders`
+              : `❌ Order ID *#${extractedId}* was not found. Please double-check your Order ID on our website: ${PANEL_URL}/dashboard?tab=orders`;
+            await sock.sendMessage(remoteJid, { text: notFoundMsg });
+            await sock.sendPresenceUpdate('paused', remoteJid);
+            continue;
+          }
+        } else {
+          // User sent '2' without an Order ID
+          const isUrdu = customer.language === 'ur';
+          const isBn = customer.language === 'bn';
+          const isAr = customer.language === 'ar';
+
+          const promptMsg = isUrdu
+            ? `📦 *VEXARO Order Status & Speed Up Service*\n\nApna *Order ID* number bhejien (maslan: *125* ya *#2785c101*).\n\nHamara bot live status check karega aur agar order atka ya slow hua, toh foran upstream server ko *Priority Speed-Up Ticket* bhej kar fast karwa dega!`
+            : isBn
+            ? `📦 *VEXARO Order Status & Speed Up*\n\nআপনার *Order ID* নাম্বারটি লিখে পাঠান (যেমন: *125* বা *#2785c101*)।\n\nআমরা সরাসরি লাইভ স্ট্যাটাস চেক করব এবং অর্ডার স্লো থাকলে স্পিড আপ করে দেব!`
+            : isAr
+            ? `📦 *VEXARO حالة الطلب وتسريع الخدمة*\n\nيرجى إرسال *رقم الطلب (Order ID)* (مثال: *125* أو *#2785c101*).\n\nسنتحقق من الحالة فوراً وتسريع الطلب إن كان بطيئاً!`
+            : `📦 *VEXARO Order Tracking & Speed Up Service*\n\nPlease reply with your *Order ID* (for example: *125* or *#2785c101*).\n\nOur system will check live database status and dispatch a priority speed-up ticket if your order is pending or slow!`;
+
+          await sock.sendMessage(remoteJid, { text: promptMsg });
           await sock.sendPresenceUpdate('paused', remoteJid);
           continue;
         }
@@ -625,6 +672,9 @@ _Aap apna koi bhi sawal apni zuban me seedha pooch sakte hain!_`;
       // ========================================================
       if (
         cleanText === '1' ||
+        cleanText === '1.' ||
+        cleanText === '#1' ||
+        cleanText === 'option 1' ||
         cleanText.includes('payment') ||
         cleanText.includes('sadapay') ||
         cleanText.includes('easypaisa') ||
@@ -683,7 +733,14 @@ For *${customer.country}* & Worldwide users:
       // ========================================================
       // 6. OPTION 3: DEPOSIT BONUS
       // ========================================================
-      if (cleanText === '3' || cleanText.includes('bonus') || cleanText.includes('offer')) {
+      if (
+        cleanText === '3' ||
+        cleanText === '3.' ||
+        cleanText === '#3' ||
+        cleanText === 'option 3' ||
+        cleanText.includes('bonus') ||
+        cleanText.includes('offer')
+      ) {
         const bonusMsg =
 `🎁 *${PANEL_NAME} Deposit Bonus Rewards:*
 
@@ -702,9 +759,76 @@ Abhi login karein aur extra balance hasil karein:
       }
 
       // ========================================================
-      // 7. OPTION 5: HUMAN ADMIN SUPPORT
+      // 7. OPTION 4: WEBSITE SERVICES & LIVE RATES
       // ========================================================
-      if (cleanText === '5' || cleanText === 'admin' || cleanText.includes('human') || cleanText.includes('agent')) {
+      if (
+        cleanText === '4' ||
+        cleanText === '4.' ||
+        cleanText === '#4' ||
+        cleanText === 'option 4' ||
+        cleanText === 'services' ||
+        cleanText === 'rates' ||
+        cleanText === 'rate list' ||
+        cleanText === 'prices'
+      ) {
+        const cheapServices = await getCheapestServices(null, 6, customer.currency);
+        const cheapList = cheapServices
+          .map((s) => `• *${s.name}*\n  Rate: *${s.rateConverted}* per 1,000 (Min: ${s.min})`)
+          .join('\n\n');
+
+        const isUrdu = customer.language === 'ur';
+        const isBn = customer.language === 'bn';
+        const isAr = customer.language === 'ar';
+
+        const servicesMsg = isUrdu
+          ? `🌐 *${PANEL_NAME} - Sab Se Sasti Services & Live Rates (${customer.currency}):*
+
+${cheapList}
+
+━━━━━━━━━━━━━━━━━━
+📊 *Full Catalog & Instant Orders:*
+👉 ${PANEL_URL}/services`
+          : isBn
+          ? `🌐 *${PANEL_NAME} - লাইভ সার্ভিস এবং রেট তালিকা (${customer.currency}):*
+
+${cheapList}
+
+━━━━━━━━━━━━━━━━━━
+📊 *সম্পূর্ণ সার্ভিস তালিকা দেখুন:*
+👉 ${PANEL_URL}/services`
+          : isAr
+          ? `🌐 *${PANEL_NAME} - قائمة الخدمات والأسعار المباشرة (${customer.currency}):*
+
+${cheapList}
+
+━━━━━━━━━━━━━━━━━━
+📊 *للاطلاع على جميع الخدمات:*
+👉 ${PANEL_URL}/services`
+          : `🌐 *${PANEL_NAME} - Popular Services & Live Rates (${customer.currency}):*
+
+${cheapList}
+
+━━━━━━━━━━━━━━━━━━
+📊 *View Full Catalog & Order Live:*
+👉 ${PANEL_URL}/services`;
+
+        await sock.sendMessage(remoteJid, { text: servicesMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // ========================================================
+      // 8. OPTION 5: HUMAN ADMIN SUPPORT
+      // ========================================================
+      if (
+        cleanText === '5' ||
+        cleanText === '5.' ||
+        cleanText === '#5' ||
+        cleanText === 'option 5' ||
+        cleanText === 'admin' ||
+        cleanText.includes('human') ||
+        cleanText.includes('agent')
+      ) {
         const adminMsg =
 `👤 *Human Admin Support:*
 
@@ -720,10 +844,13 @@ Aap apna masla (Order ID ya screenshot) yahan likh kar chhor dein, admin jald se
       }
 
       // ========================================================
-      // 8. OPTION 6: FREE TEST TRIAL SERVICES (SEPARATE FROM CHEAP SERVICES)
+      // 9. OPTION 6: FREE TEST TRIAL SERVICES (SEPARATE FROM CHEAP SERVICES)
       // ========================================================
       if (
         cleanText === '6' ||
+        cleanText === '6.' ||
+        cleanText === '#6' ||
+        cleanText === 'option 6' ||
         cleanText.includes('trial') ||
         cleanText.includes('free test') ||
         cleanText.includes('free service') ||
@@ -753,10 +880,13 @@ _Order automatically 1-5 minutes me start ho jayega!_`;
       }
 
       // ========================================================
-      // 9. OPTION 7: LANGUAGE SELECTION / ZABAN BADLEIN
+      // 10. OPTION 7: LANGUAGE SELECTION / ZABAN BADLEIN
       // ========================================================
       if (
         cleanText === '7' ||
+        cleanText === '7.' ||
+        cleanText === '#7' ||
+        cleanText === 'option 7' ||
         cleanText === 'language' ||
         cleanText === 'zaban' ||
         cleanText === 'zuban' ||
