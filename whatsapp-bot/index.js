@@ -541,8 +541,23 @@ _Feel free to chat in English or your native language_
 
       const userLang = customer.language || 'en';
 
+      // --- INTENT FIRST: a real request must never be swallowed as a name/country answer ---
+            // While onboarding is unfinished, intents are checked before the stage handlers.
+            // If an intent matches, the stage blocks below are skipped and the message
+            // falls through to the intent sections (speed up, refill, status, cancel, menu, AI).
+            const INTENT_WORDS = ['speed up', 'speedup', 'fast karo', 'tez karo', 'jaldi karo', 'push order', 'order late', 'stuck', 'atki hui', 'refill', 'drop hua', 'cancel', 'status'];
+            const QUESTION_WORDS = ['?', 'kya', 'kaise', 'kab', 'kahan', 'kitne', 'kyun', 'kyon', 'can ', 'how ', 'what ', 'why ', 'ho sakta', 'hoga'];
+            const isMenuDigit = ['1', '2', '3', '4', '5', '6', '7'].includes(cleanText);
+            const isGreetingWord = ['hi', 'hello', 'salam', 'aoa', 'assalam', 'hey', 'start', 'menu', 'help', 'info', 'hy', 'bot'].some((g) => cleanText === g || cleanText.startsWith(g + ' '));
+            const hasDirectIntent =
+                      !!extractOrderId(text) ||
+                      INTENT_WORDS.some((w) => cleanText.includes(w)) ||
+                      QUESTION_WORDS.some((w) => cleanText.includes(w)) ||
+                      isMenuDigit ||
+                      isGreetingWord;
+      
       // --- STEP 2: Customer responds with their Name ---
-      if (customer.stage === 'ask_name') {
+      if (customer.stage === 'ask_name' && !hasDirectIntent) {
         if (cleanText === 'saved' || cleanText === 'save' || cleanText === 'done' || cleanText === 'ho gaya' || cleanText === 'ok') {
           const reminderMsg = userLang === 'ur'
             ? `Number save karne ka shukriya! 😊\n\nAapka naam kya hai? (What is your name?)`
@@ -595,7 +610,7 @@ Which country are you from?
       }
 
       // --- STEP 3: Customer responds with Country ---
-      if (customer.stage === 'ask_country') {
+      if (customer.stage === 'ask_country' && !hasDirectIntent) {
         if (cleanText === 'saved' || cleanText === 'save' || cleanText === 'done' || cleanText === 'ok') {
           const reminderMsg = userLang === 'ur'
             ? `Aap kis country se hain? (Pakistan, Bangladesh, USA, UAE wagera)`
@@ -658,7 +673,7 @@ _Reply with A, B, C, D or your platform name!_`;
       }
 
       // --- STEP 4: Customer selects Platform / Interest -> Onboarding Complete! ---
-      if (customer.stage === 'ask_interest') {
+      if (customer.stage === 'ask_interest' && !hasDirectIntent) {
         let chosen = text.trim();
         if (cleanText === 'a') chosen = 'Instagram Services';
         else if (cleanText === 'b') chosen = 'TikTok Services';
@@ -728,6 +743,35 @@ ${cheapText}
         continue;
       }
 
+      // ========================================================
+            // 1.5 CANCEL REQUEST (check the real order status first)
+            // ========================================================
+            const isCancelRequest = cleanText.includes('cancel') || cleanText.includes('mansookh');
+            if (isCancelRequest) {
+                      const cancelOrderId = extractOrderId(text);
+                      if (!cancelOrderId) {
+                                  await sock.sendMessage(remoteJid, { text: `❌ *Order cancel karne ke liye apna Order ID likhein:*\n👉 Maslan: *cancel order 125* ya *cancel #2843090*` });
+                                  await sock.sendPresenceUpdate('paused', remoteJid);
+                                  continue;
+                      }
+                      const cancelOrd = await lookupOrder(cancelOrderId);
+                      if (!cancelOrd) {
+                                  await sock.sendMessage(remoteJid, { text: `❌ Order "${cancelOrderId}" database me nahi mila. Order ID dobara check karke bhejein.` });
+                                  await sock.sendPresenceUpdate('paused', remoteJid);
+                                  continue;
+                      }
+                      const cancelSt = String(cancelOrd.status || '').toLowerCase();
+                      if (cancelSt.includes('cancel')) {
+                                  await sock.sendMessage(remoteJid, { text: `✅ *Order #${cancelOrd.shortId} pehle se Cancelled hai aur iska balance refund ho chuka hai.*` });
+                      } else if (cancelSt.includes('complet')) {
+                                  await sock.sendMessage(remoteJid, { text: `📦 *Order #${cancelOrd.shortId} already complete ho chuka hai, isliye isay cancel nahi kiya ja sakta.*\n\nUrgent madad ke liye *5* likh kar Human Support se rabta karein.` });
+                      } else {
+                                  await sock.sendMessage(remoteJid, { text: `📦 *Order #${cancelOrd.shortId}*\n• Status: *${cancelOrd.status}*\n\nAapki cancel request note kar li gayi hai, hamari team jald confirm karegi. Urgent ho to *5* likh kar Human Support se rabta karein.` });
+                      }
+                      await sock.sendPresenceUpdate('paused', remoteJid);
+                      continue;
+            }
+      
       // ========================================================
       // 2. SPEED UP REQUEST (Automated Upstream Ticket & Push)
       // ========================================================
