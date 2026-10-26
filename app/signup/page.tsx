@@ -29,6 +29,7 @@ export default function SignupPage() {
   const [step, setStep] = useState<"form" | "verify">("form");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -113,7 +114,7 @@ export default function SignupPage() {
     setError("");
     setIsExistingAccount(false);
 
-    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
+    if (!name.trim() || !email.trim() || !password || !confirmPassword || !whatsapp.trim()) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -125,6 +126,11 @@ export default function SignupPage() {
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+    const cleanWhatsapp = whatsapp.replace(/[\s-]/g, "").trim();
+    if (!/^\+?[0-9]{7,15}$/.test(cleanWhatsapp)) {
+      setError("Enter a valid WhatsApp number.");
       return;
     }
 
@@ -146,6 +152,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
+          whatsapp: whatsapp.replace(/[\s-]/g, "").trim(),
           password,
           confirmPassword,
           referralCode: referralCode.trim(),
@@ -238,6 +245,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
+          whatsapp: whatsapp.replace(/[\s-]/g, "").trim(),
           password,
           confirmPassword,
           referralCode: referralCode.trim(),
@@ -453,6 +461,22 @@ export default function SignupPage() {
                     className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   />
                 </div>
+                <div>
+                  <label htmlFor="vexaro-signup-whatsapp" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400>
+                    WhatsApp Number
+                    </label>
+                    <input
+                    id="vexaro-signup-whatsapp"
+                  name="whatsapp"
+                  type="tel"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="e.g. 03001234567"
+                  autoComplete="tel"
+                  required
+                  className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 00/20
+
+                                </div>
 
                 <div>
                   <label htmlFor="vexaro-signup-password" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
