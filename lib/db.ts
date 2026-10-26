@@ -50,6 +50,7 @@ export async function ensureDatabase() {
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES vexo_users(id) ON DELETE SET NULL;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(32);
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS whatsapp_prompted BOOLEAN NOT NULL DEFAULT FALSE;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS free_trial_claimed BOOLEAN NOT NULL DEFAULT FALSE;
