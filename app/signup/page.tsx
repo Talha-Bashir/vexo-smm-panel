@@ -465,7 +465,7 @@ export default function SignupPage() {
                   </p>
                 </div>
                 <div>
-                  <label htmlFor="vexaro-signup-whatsapp" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400>
+                  <label htmlFor="vexaro-signup-whatsapp" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
                     WhatsApp Number
                     </label>
                     <input
@@ -477,7 +477,7 @@ export default function SignupPage() {
                   placeholder="e.g. 03001234567"
                   autoComplete="tel"
                   required
-                  className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 00/20
+                  className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
                   />
                                 </div>
 
