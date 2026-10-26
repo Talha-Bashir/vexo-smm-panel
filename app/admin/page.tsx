@@ -1515,6 +1515,9 @@ function Users({
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-white text-sm truncate">{u.name}</p>
                   <p className="text-[10px] text-slate-400 font-mono truncate">ID #{u.id} • {u.email}</p>
+                  {u.whatsapp ? (
+            <p className="text-[10px] text-slate-400 font-mono truncate">WhatsApp: {u.whatsapp}</p>
+          ) : null}
                 </div>
               </div>
               <div className="shrink-0 text-right">
@@ -1639,7 +1642,7 @@ function Users({
         <table className="min-w-[1000px] w-full text-left">
           <thead className="bg-[#0b1418] text-xs uppercase text-slate-500">
             <tr>
-              {["User", "Role & Access", "Balance", "Orders", "Deposits", "Joined", "Actions"].map((x) => (
+              {["User", "WhatsApp", "Role & Access", "Balance", "Orders", "Deposits", "Joined", "Actions"].map((x) => (
                 <th key={x} className="px-5 py-4">{x}</th>
               ))}
             </tr>
@@ -1663,6 +1666,9 @@ function Users({
                     )}
                   </div>
                 </td>
+                <td className="px-5 py-4">
+                <span className="text-sm font-mono text-slate-300">{u.whatsapp || "—"}</span>
+              </td>
                 <td className="px-5 py-4">
                   <div className="flex flex-col gap-1.5">
                     {/* Role Selector */}

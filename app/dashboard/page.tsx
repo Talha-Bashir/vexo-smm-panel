@@ -725,6 +725,10 @@ export default function Home() {
   }
 
 
+    const [whatsappPromptOpen, setWhatsappPromptOpen] = useState(false);
+  const [whatsappInput, setWhatsappInput] = useState("");
+  const [whatsappSaving, setWhatsappSaving] = useState(false);
+  
   useEffect(() => {
     async function loadUser() {
       try {
@@ -735,6 +739,9 @@ export default function Home() {
         const data = await response.json().catch(() => null);
         if (response.ok && data?.success && data?.user) {
           setCurrentUser(data.user);
+          if (!data.user.whatsapp && !data.user.whatsapp_prompted) {
+            setWhatsappPromptOpen(true);
+          }
         } else {
           setCurrentUser({
             id: 1,
@@ -1001,7 +1008,60 @@ export default function Home() {
 
   return (
     <main className="vexo-shell min-h-screen w-full max-w-full overflow-x-hidden antigravity-space-bg text-slate-100">
+      {whatsappPromptOpen && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
+      
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#111a1d] p-6">
+      
+      <h3 className="text-base font-bold text-white">Add your WhatsApp number</h3>
+        <p className="mt-1 text-xs text-slate-400">We use it for order updates and support. You can skip this. If you skip, it will not ask again.</p>
+        <input
+          type="tel"
+          value={whatsappInput}
+          onChange={(e) => setWhatsappInput(e.target.value)}
+          placeholder="e.g. 03001234567"
+          className="mt-4 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 py-3 text-sm text-white outline-none focus:border-[#baff00]"
+          />
+        <div className="mt-4 flex gap-2">
+        
+        <button
+          onClick={async () => {
+            
+            const num = whatsappInput.replace(/[\s-]/g, "").trim();
+            
+            if (!/^\+?[0-9]{7,15}$/.test(num)) return;
+            setWhatsappSaving(true);
+            try {
+              const res = await fetch("/api/auth/whatsapp", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ whatsapp: num }) });
+              if (res.ok) setWhatsappPromptOpen(false);
+            } catch {}
+            setWhatsappSaving(false);
+          }}
+          disabled={whatsappSaving || !/^\+?[0-9]{7,15}$/.test(whatsappInput.replace(/[\s-]/g, "").trim())}
+          className="flex-1 rounded-xl bg-[#baff00] px-4 py-2.5 text-sm font-black text-[#07100f] hover:bg-[#d2ff5a] transition cursor-pointer disabled:opacity-50"
+          >
+        
+          {whatsappSaving ? "Saving..." : "Save"}
+        </button>
+          <button
+            onClick={async () => {
+              try {
+                await fetch("/api/auth/whatsapp", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ skip: true }) });
+              } catch {}
+              setWhatsappPromptOpen(false);
+            }}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-slate-300 hover:text-white transition cursor-pointer"
+            >
+          
+          Skip
+          </button>
+        </div>
+      </div>
+      </div>
+      )}
       {/* Mobile overlay */}
+
+            
       {sidebarOpen && (
         <button
           aria-label="Close sidebar"

@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     await ensureAdminSchema();
     const q = new URL(req.url).searchParams.get("q")?.trim() || "";
     const r = await db.query(
-      `SELECT u.id, u.name, u.email, 
+      `SELECT u.id, u.name, u.email, u.whatsapp, 
               COALESCE(u.role, 'user') AS role,
               COALESCE(u.is_active, true) AS is_active,
               COALESCE(u.email_verified, false) AS email_verified,
@@ -47,6 +47,7 @@ export async function GET(req: Request) {
         id: x.id,
         name: x.name,
         email: x.email,
+        whatsapp: x.whatsapp || null,
         role: x.role,
         isActive: Boolean(x.is_active),
         emailVerified: Boolean(x.email_verified),
