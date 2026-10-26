@@ -61,6 +61,7 @@ export async function POST(request: Request) {
       referralCode?: string;
       referredBy?: number | null;
       couponCode?: string;
+      whatsapp?: string;
       deviceFingerprint?: string;
       clientIp?: string;
       userAgent?: string;
@@ -87,8 +88,8 @@ export async function POST(request: Request) {
     // Insert new verified user
     const insertRes = await db.query(
       `INSERT INTO vexo_users(
-         name, email, password_hash, referral_code, referred_by, api_key, email_verified, email_verified_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
+         name, email, password_hash, referral_code, referred_by, api_key, whatsapp, email_verified, email_verified_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, NOW())
        RETURNING id, name, email, referral_code, api_key`,
       [
         payload.name,
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
         userReferralCode,
         payload.referredBy || null,
         apiKey,
+        payload.whatsapp || null,
       ]
     );
 
