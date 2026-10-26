@@ -18,6 +18,7 @@ import { sendSubscriptionTelegramAlert } from "@/lib/balance-monitor/telegram";
 
 import { checkMaintenanceApiBlock } from "@/lib/maintenance";
 import { queueWhatsAppNotification, getUserWhatsAppPhone } from "@/lib/whatsapp-queue";
+import { isAllowedEmailDomain } from "@/lib/email-domains";
 
 type RizviService = {
   service: number;
@@ -106,6 +107,16 @@ export async function POST(request: Request) {
         (Number(routed.custom_rate_pkr) === 0 && Number(routed.rate_pkr) === 0 && Number(routed.base_rate_usd) === 0);
 
       if (isFreeTrial) {
+        // 0. Verified Email Provider Check (Block tempmail users from claiming free trial)
+        const userEmail = String(user.email || "").toLowerCase();
+        const emailDomainCheck = isAllowedEmailDomain(userEmail);
+        if (!emailDomainCheck.valid) {
+          return NextResponse.json({
+            success: false,
+            error: "The 1-time free test trial is strictly reserved for verified accounts (Gmail, Yahoo, Outlook, iCloud).",
+          }, { status: 403 });
+        }
+
         // 1. Strict 1-Time Rule: Check if user already claimed free trial
         const userClaim = await db.query(
           `SELECT id FROM vexo_free_trial_claims WHERE user_id = $1 LIMIT 1`,
@@ -118,8 +129,40 @@ export async function POST(request: Request) {
           }, { status: 400 });
         }
 
-        // 2. Multi-account prevention: check client IP and fingerprint
+        // 2. Target Link Lockout: The same video or profile link CANNOT receive free trial twice!
+        const cleanLinkTarget = sanitizedLink.replace(/[\?#].*$/, "").replace(/\/+$/, "").toLowerCase();
+        if (cleanLinkTarget.length >= 10) {
+          const linkClaim = await db.query(
+            `SELECT id FROM vexo_free_trial_claims 
+             WHERE LOWER(link) = LOWER($1) 
+                OR LOWER(link) LIKE $2 
+                OR $3 LIKE ('%' || LOWER(link) || '%')
+             LIMIT 1`,
+            [sanitizedLink, `%${cleanLinkTarget}%`, cleanLinkTarget]
+          );
+          if (linkClaim.rows.length > 0) {
+            return NextResponse.json({
+              success: false,
+              error: "This video or profile link has already received the 1-time free test trial. To boost this link further, please add funds to your wallet.",
+            }, { status: 400 });
+          }
+        }
+
+        // 3. Multi-account prevention: check client IP and fingerprint
         const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
+        if (clientIp && clientIp !== "127.0.0.1" && clientIp !== "::1") {
+          const ipClaim = await db.query(
+            `SELECT id FROM vexo_free_trial_claims WHERE client_ip = $1 LIMIT 1`,
+            [clientIp]
+          );
+          if (ipClaim.rows.length > 0) {
+            return NextResponse.json({
+              success: false,
+              error: "The 1-time free test trial has already been claimed from this internet connection / network. Please add funds to your wallet to continue.",
+            }, { status: 400 });
+          }
+        }
+
         const deviceFingerprint = String(body.deviceFingerprint || "").trim();
         if (deviceFingerprint) {
           const fpClaim = await db.query(

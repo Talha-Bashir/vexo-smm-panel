@@ -364,18 +364,43 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: false, error: "User not found." }, { status: 404 });
     }
 
-    // Clean up sessions, wallets, deposits, claims
-    await db.query(`DELETE FROM vexo_sessions WHERE user_id = $1`, [userId]);
-    await db.query(`DELETE FROM vexo_wallets WHERE user_id = $1`, [userId]);
-    await db.query(`DELETE FROM vexo_signup_bonus_claims WHERE user_id = $1`, [userId]);
-    await db.query(`DELETE FROM vexo_email_verifications WHERE LOWER(email) = LOWER($1)`, [u.rows[0].email]);
-    await db.query(`DELETE FROM vexo_users WHERE id = $1`, [userId]);
+    // Clean up all user dependencies across panel tables inside a safe transaction
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      
+      await client.query(`DELETE FROM vexo_free_trial_claims WHERE user_id = $1`, [userId]);
+      await client.query(`DELETE FROM vexo_order_refills WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_orders WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_support_tickets WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_coupon_redemptions WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_tool_subscriptions WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_event_messages WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_event_participants WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_referral_withdrawals WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_referral_earnings WHERE referrer_id = $1 OR referee_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_wallet_transactions WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_deposits WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_wallets WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_signup_bonus_claims WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_sessions WHERE user_id = $1`, [userId]).catch(() => {});
+      await client.query(`UPDATE vexo_users SET referred_by = NULL WHERE referred_by = $1`, [userId]).catch(() => {});
+      await client.query(`DELETE FROM vexo_email_verifications WHERE LOWER(email) = LOWER($1)`, [u.rows[0].email]).catch(() => {});
+      await client.query(`DELETE FROM vexo_users WHERE id = $1`, [userId]);
 
-    await db.query(
-      `INSERT INTO vexo_admin_activity(admin_user_id, action, target_type, target_id, details)
-       VALUES ($1, 'delete_user', 'user', $2, $3::jsonb)`,
-      [+g.user!.id, String(userId), JSON.stringify({ email: u.rows[0].email, name: u.rows[0].name })]
-    );
+      await client.query(
+        `INSERT INTO vexo_admin_activity(admin_user_id, action, target_type, target_id, details)
+         VALUES ($1, 'delete_user', 'user', $2, $3::jsonb)`,
+        [+g.user!.id, String(userId), JSON.stringify({ email: u.rows[0].email, name: u.rows[0].name })]
+      );
+
+      await client.query("COMMIT");
+    } catch (txErr) {
+      await client.query("ROLLBACK");
+      throw txErr;
+    } finally {
+      client.release();
+    }
 
     return NextResponse.json({
       success: true,

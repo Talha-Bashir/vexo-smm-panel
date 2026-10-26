@@ -20,6 +20,7 @@ export async function OPTIONS(request: Request) {
 
 
 import { checkMaintenanceApiBlock } from "@/lib/maintenance";
+import { isAllowedEmailDomain } from "@/lib/email-domains";
 
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
@@ -59,6 +60,15 @@ export async function POST(request: Request) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
         { success: false, error: "Enter a valid email address." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Enforce verified email domains (block temp-mail, disposable inboxes, burner domains)
+    const domainCheck = isAllowedEmailDomain(email);
+    if (!domainCheck.valid) {
+      return NextResponse.json(
+        { success: false, error: domainCheck.error },
         { status: 400, headers: corsHeaders }
       );
     }

@@ -5,6 +5,7 @@ import { getCorsHeaders, handleCorsPreflight } from "@/lib/cors";
 import { verifyAnyCaptcha } from "@/lib/captcha";
 import { createAndSendVerification } from "@/lib/email-verification";
 import { checkMaintenanceApiBlock } from "@/lib/maintenance";
+import { isAllowedEmailDomain } from "@/lib/email-domains";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,15 @@ export async function POST(request: Request) {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
         { success: false, error: "Please enter a valid email address." },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Enforce verified email domains (block temp-mail, disposable inboxes, burner domains)
+    const domainCheck = isAllowedEmailDomain(email);
+    if (!domainCheck.valid) {
+      return NextResponse.json(
+        { success: false, error: domainCheck.error },
         { status: 400, headers: corsHeaders }
       );
     }

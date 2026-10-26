@@ -460,6 +460,9 @@ export default function SignupPage() {
                     required
                     className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   />
+                  <p className="mt-1 text-[11px] text-slate-500 flex items-center gap-1">
+                    <span className="text-emerald-400 font-semibold">✓ Verified only:</span> Gmail, Yahoo, Outlook, Hotmail, iCloud. (Temp-mail blocked)
+                  </p>
                 </div>
                 <div>
                   <label htmlFor="vexaro-signup-whatsapp" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400>
