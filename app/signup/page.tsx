@@ -475,7 +475,7 @@ export default function SignupPage() {
                   autoComplete="tel"
                   required
                   className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 00/20
-
+                  />
                                 </div>
 
                 <div>
