@@ -45,7 +45,7 @@ export async function getRequestUser() {
   }
 
   const result = await db.query(
-    `SELECT id, name, email, COALESCE(whatsapp, '') as whatsapp, COALESCE(role, 'user') as role, COALESCE(permissions, '{}'::jsonb) as permissions, COALESCE(is_active, true) as is_active
+    `SELECT id, name, email, COALESCE(whatsapp, '') as whatsapp, COALESCE(whatsapp_prompted, false) as whatsapp_prompted, COALESCE(role, 'user') as role, COALESCE(permissions, '{}'::jsonb) as permissions, COALESCE(is_active, true) as is_active
      FROM vexo_users
      WHERE id = $1
      LIMIT 1`,
