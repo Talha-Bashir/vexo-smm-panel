@@ -50,6 +50,14 @@ export const STATIC_PROVIDERS: ProviderConfig[] = [
     currency: "USD",
     enabled: true,
   },
+  {
+    id: process.env.PROVIDER_6_ID || "bulk_supplier",
+    name: process.env.PROVIDER_6_NAME || "Bulk Supplier",
+    apiUrl: process.env.PROVIDER_6_URL || "https://bulksupplier.org/api/v2",
+    apiKey: process.env.PROVIDER_6_KEY || "277ffd2b3a2e34fa733320185ccfe795",
+    currency: "USD",
+    enabled: true,
+  },
 ];
 
 let schemaInitPromise: Promise<void> | null = null;
