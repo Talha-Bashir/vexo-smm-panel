@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     const confirmPassword = String(body.confirmPassword || "");
     const referralCode = String(body.referralCode || body.ref || "").trim().toUpperCase();
     const couponCode = String(body.couponCode || body.coupon || "").trim().toUpperCase();
+    const whatsappRaw = String(body.whatsapp || "").replace(/[\s-]/g, "" ).trim();   
     const honeypot = String(body.honeypot || body._hp_trap || "");
     const captchaResponse = String(body.captchaResponse || "");
     const captchaToken = String(body.captchaToken || "");
@@ -79,7 +80,12 @@ export async function POST(request: Request) {
         { status: 400, headers: corsHeaders }
       );
     }
-
+    if (!/^\+?[0-9]{7,15}$/.test(whatsappRaw)) {
+      return NextResponse.json(
+        { success: false, error: "Enter a valid WhatsApp number." },
+        { status: 400, headers: corsHeaders }
+    );
+    }
     await ensureDatabase();
 
     // 3. Check if account already exists
@@ -122,6 +128,7 @@ export async function POST(request: Request) {
         referralCode,
         referredBy,
         couponCode,
+        whatsapp: whatsappRaw,
         deviceFingerprint,
         clientIp,
         userAgent,
