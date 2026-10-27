@@ -1,7 +1,8 @@
 import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  Browsers
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
@@ -207,6 +208,19 @@ function startNotificationWorker(sock) {
 async function startBot() {
   await ensureCustomerSchema();
   await ensureNotificationAndControlTables();
+
+  // If previous creds exist but are unregistered / invalidated, wipe cleanly so QR generates instantly
+  const credsPath = path.join(SESSION_DIR, 'creds.json');
+  if (fs.existsSync(credsPath)) {
+    try {
+      const parsedCreds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+      if (parsedCreds && parsedCreds.registered === false) {
+        console.log('⚠️ Previous WhatsApp session is unregistered or unlinked. Auto-cleaning session for fresh QR...');
+        fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+      }
+    } catch {}
+  }
+
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
@@ -221,7 +235,7 @@ async function startBot() {
     logger: pino({ level: 'silent' }),
     printQRInTerminal: false,
     auth: state,
-    browser: ['VexaroBot', 'Chrome', '1.0.0']
+    browser: Browsers.ubuntu('Chrome'),
   });
 
   sock.ev.on('creds.update', saveCreds);
@@ -244,14 +258,23 @@ async function startBot() {
     if (connection === 'close') {
       notificationWorkerRunning = false;
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
+      const errorMsg = String(lastDisconnect?.error?.message || '');
+      const isLoggedOut =
+        statusCode === DisconnectReason.loggedOut ||
+        statusCode === 401 ||
+        statusCode === 403 ||
+        statusCode === 405 ||
+        statusCode === 428 ||
+        errorMsg.includes('logged out') ||
+        errorMsg.includes('Stream Errored') ||
+        errorMsg.includes('Bad MAC');
 
       console.log(
         `\n⚠️ Connection closed (Status: ${statusCode || 'Unknown'}, Reason: ${lastDisconnect?.error?.message || 'Disconnected'})`
       );
 
       if (isLoggedOut) {
-        console.log('🔄 Session was logged out from phone. Auto-clearing old session files...');
+        console.log('🔄 Session was logged out or invalidated. Auto-clearing old session files...');
         try {
           fs.rmSync(SESSION_DIR, { recursive: true, force: true });
           console.log('✅ Old session wiped cleanly! Generating a BRAND NEW QR code in 2 seconds...');
