@@ -2,7 +2,8 @@ import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
-  Browsers
+  Browsers,
+  makeCacheableSignalKeyStore
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
@@ -209,18 +210,6 @@ async function startBot() {
   await ensureCustomerSchema();
   await ensureNotificationAndControlTables();
 
-  // If previous creds exist but are unregistered / invalidated, wipe cleanly so QR generates instantly
-  const credsPath = path.join(SESSION_DIR, 'creds.json');
-  if (fs.existsSync(credsPath)) {
-    try {
-      const parsedCreds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
-      if (parsedCreds && parsedCreds.registered === false) {
-        console.log('⚠️ Previous WhatsApp session is unregistered or unlinked. Auto-cleaning session for fresh QR...');
-        fs.rmSync(SESSION_DIR, { recursive: true, force: true });
-      }
-    } catch {}
-  }
-
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
@@ -234,16 +223,46 @@ async function startBot() {
     version,
     logger: pino({ level: 'silent' }),
     printQRInTerminal: false,
-    auth: state,
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
+    },
     browser: Browsers.ubuntu('Chrome'),
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000,
+    keepAliveIntervalMs: 15000,
+    syncFullHistory: false,
   });
 
   sock.ev.on('creds.update', saveCreds);
 
+  // Optional phone pairing code feature (--pair flag or PAIRING_CODE=true)
+  const usePairingCode = process.argv.includes('--pair') || process.env.PAIRING_CODE === 'true';
+  if (usePairingCode && !sock.authState.creds.registered) {
+    const rawTarget = process.env.ADMIN_WHATSAPP || process.env.SUPPORT_WHATSAPP || '923088180234';
+    const pairPhone = rawTarget.replace(/\D/g, '');
+    setTimeout(async () => {
+      try {
+        const pairCode = await sock.requestPairingCode(pairPhone);
+        console.log('\n======================================================');
+        console.log(`🔑 WHATSAPP PAIRING CODE FOR +${pairPhone}:`);
+        console.log(`\n           👉  ${pairCode}  👈\n`);
+        console.log('Instructions:');
+        console.log('1. Open WhatsApp on your phone (+92' + pairPhone.slice(-10) + ')');
+        console.log('2. Tap 3 dots (or Settings) -> Linked Devices');
+        console.log('3. Tap "Link a Device" -> tap "Link with phone number instead"');
+        console.log(`4. Enter the 8-digit code shown above: ${pairCode}`);
+        console.log('======================================================\n');
+      } catch (err) {
+        console.warn('Pairing code request error:', err.message);
+      }
+    }, 4000);
+  }
+
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
-    if (qr) {
+    if (qr && !usePairingCode) {
       qrCounter++;
       console.log('\n======================================================');
       console.log(`📲 FRESH QR CODE #${qrCounter} (Scan with WhatsApp):`);
@@ -258,23 +277,14 @@ async function startBot() {
     if (connection === 'close') {
       notificationWorkerRunning = false;
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const errorMsg = String(lastDisconnect?.error?.message || '');
-      const isLoggedOut =
-        statusCode === DisconnectReason.loggedOut ||
-        statusCode === 401 ||
-        statusCode === 403 ||
-        statusCode === 405 ||
-        statusCode === 428 ||
-        errorMsg.includes('logged out') ||
-        errorMsg.includes('Stream Errored') ||
-        errorMsg.includes('Bad MAC');
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
 
       console.log(
         `\n⚠️ Connection closed (Status: ${statusCode || 'Unknown'}, Reason: ${lastDisconnect?.error?.message || 'Disconnected'})`
       );
 
       if (isLoggedOut) {
-        console.log('🔄 Session was logged out or invalidated. Auto-clearing old session files...');
+        console.log('🔄 Session was unlinked/logged out from WhatsApp on phone. Auto-clearing old session files...');
         try {
           fs.rmSync(SESSION_DIR, { recursive: true, force: true });
           console.log('✅ Old session wiped cleanly! Generating a BRAND NEW QR code in 2 seconds...');
@@ -283,8 +293,14 @@ async function startBot() {
         }
         setTimeout(startBot, 2000);
       } else {
-        console.log('🔄 Reconnecting in 3 seconds...');
-        setTimeout(startBot, 3000);
+        const isRestart = statusCode === DisconnectReason.restartRequired || statusCode === 515;
+        if (isRestart) {
+          console.log('🔄 Pairing handshake received! Restarting socket with new saved credentials...');
+          setTimeout(startBot, 1000);
+        } else {
+          console.log('🔄 Reconnecting in 3 seconds (keeping session keys intact)...');
+          setTimeout(startBot, 3000);
+        }
       }
     } else if (connection === 'open') {
       qrCounter = 0;
