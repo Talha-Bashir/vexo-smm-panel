@@ -81,7 +81,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         success: true,
-        message: "Successfully synchronized all 5 providers and recalculated least-cost routes.",
+        message: "Successfully synchronized all upstream providers and recalculated least-cost routes.",
         stats,
       });
     }

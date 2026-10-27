@@ -1,3 +1,7 @@
+import dns from "node:dns";
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {}
 import { getElevateXBalance } from "@/lib/elevatex-api";
 
 export interface ProviderBalanceCheckResult {
@@ -47,6 +51,12 @@ function getSmmV2Providers(): SmmV2ProviderDefinition[] {
       name: process.env.PROVIDER_5_NAME || "Rizvi SMM Panels",
       apiUrl: process.env.PROVIDER_5_URL || process.env.RIZVI_API_URL || "https://rizvismmpanels.com/api/v2",
       apiKey: process.env.PROVIDER_5_KEY || process.env.RIZVI_API_KEY || "",
+    },
+    {
+      id: process.env.PROVIDER_6_ID || "bulk_supplier",
+      name: process.env.PROVIDER_6_NAME || "Bulk Supplier",
+      apiUrl: process.env.PROVIDER_6_URL || "https://bulksupplier.org/api/v2",
+      apiKey: process.env.PROVIDER_6_KEY || "277ffd2b3a2e34fa733320185ccfe795",
     },
   ];
 }

@@ -183,7 +183,7 @@ export function FreeTrialOnboardingModal({
   const firstName = userName ? userName.split(" ")[0] : "Creator";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
       <div className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-slate-800 bg-[#111827] p-6 sm:p-8 shadow-2xl shadow-black/80">
         {/* Background ambient glow */}
         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-600/15 blur-3xl" />

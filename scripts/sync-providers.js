@@ -11,6 +11,9 @@
 const fs = require("fs");
 const path = require("path");
 const { Pool } = require("pg");
+try {
+  require("node:dns").setDefaultResultOrder("ipv4first");
+} catch {}
 
 function loadEnv() {
   const envPath = path.join(__dirname, "..", ".env.local");
@@ -82,10 +85,10 @@ const PROVIDERS = [
     enabled: true,
   },
   {
-    id: env.PROVIDER_4_ID || "pakistan_smm",
-    name: env.PROVIDER_4_NAME || "Pakistan SMM Panel",
-    apiUrl: env.PROVIDER_4_URL || "https://pakistansmmpanel.pk/api/v2",
-    apiKey: env.PROVIDER_4_KEY || "",
+    id: (env.PROVIDER_4_ID && env.PROVIDER_4_ID !== "pakistan_smm") ? env.PROVIDER_4_ID : "smmflare",
+    name: (env.PROVIDER_4_NAME && !env.PROVIDER_4_NAME.includes("Pakistan")) ? env.PROVIDER_4_NAME : "SMM Flare",
+    apiUrl: (env.PROVIDER_4_URL && !env.PROVIDER_4_URL.includes("pakistansmmpanel")) ? env.PROVIDER_4_URL : "https://smmflare.com/api/v2",
+    apiKey: (env.PROVIDER_4_KEY && !env.PROVIDER_4_URL?.includes("pakistansmmpanel") && env.PROVIDER_4_KEY.length > 10) ? env.PROVIDER_4_KEY : "1206e0791f26d2b6d0807feeb1a11f9a",
     currency: "USD",
     enabled: true,
   },
@@ -94,6 +97,14 @@ const PROVIDERS = [
     name: env.PROVIDER_5_NAME || "Rizvi SMM Panels",
     apiUrl: env.PROVIDER_5_URL || "https://rizvismmpanels.com/api/v2",
     apiKey: env.PROVIDER_5_KEY || env.RIZVI_API_KEY || "",
+    currency: "USD",
+    enabled: true,
+  },
+  {
+    id: env.PROVIDER_6_ID || "bulk_supplier",
+    name: env.PROVIDER_6_NAME || "Bulk Supplier",
+    apiUrl: env.PROVIDER_6_URL || "https://bulksupplier.org/api/v2",
+    apiKey: env.PROVIDER_6_KEY || "277ffd2b3a2e34fa733320185ccfe795",
     currency: "USD",
     enabled: true,
   },

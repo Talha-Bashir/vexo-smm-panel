@@ -818,6 +818,9 @@ export default function Home() {
     if (activePage === "Orders") {
       loadOrders();
     }
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   }, [activePage]);
 
   async function loadWallet() {
@@ -965,6 +968,9 @@ export default function Home() {
     }
     setActivePage(page);
     setSidebarOpen(false);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   }
 
   const [buyAgainPrefill, setBuyAgainPrefill] = useState<{
@@ -979,6 +985,9 @@ export default function Home() {
     setSelectedServiceId(String(serviceId));
     setActivePage("New Order");
     setSidebarOpen(false);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   }
 
   function handleBuyAgain(order: VexoOrder) {
@@ -1004,6 +1013,9 @@ export default function Home() {
 
     setActivePage("New Order");
     setSidebarOpen(false);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   }
 
   return (

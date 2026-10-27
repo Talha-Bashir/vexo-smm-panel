@@ -1,3 +1,7 @@
+import dns from "node:dns";
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {}
 import { db } from "@/lib/db";
 
 export interface ProviderConfig {

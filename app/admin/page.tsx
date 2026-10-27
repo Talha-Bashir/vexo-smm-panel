@@ -228,16 +228,23 @@ export default function Admin() {
     }
   }, [visibleTabs, tab]);
 
+  // Whenever tab changes, always reset scroll to top so admin never lands stranded in the middle of a page
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [tab]);
+
   async function syncProviders() {
     try {
       setSyncingProviders(true);
-      setSyncMessage("⚡ Contacting all 5 providers and running least-cost routing engine...");
+      setSyncMessage("⚡ Contacting all 6 providers and running least-cost routing engine...");
       const res = await api("/api/admin/providers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "sync" }),
       });
-      setSyncMessage(res.message || "✓ All 4 providers synced successfully!");
+      setSyncMessage(res.message || "✓ All providers synced successfully!");
       await load();
       setTimeout(() => setSyncMessage(""), 6000);
     } catch (e) {
@@ -833,6 +840,7 @@ function ProviderBalancesWidget({
     { id: "am_smm", name: "AM SMM Panel", url: "amsmmpanel.com" },
     { id: "smmflare", name: "SMM Flare", url: "smmflare.com" },
     { id: "rizvi_smm", name: "Rizvi SMM Panels", url: "rizvismmpanels.com" },
+    { id: "bulk_supplier", name: "Bulk Supplier", url: "bulksupplier.org" },
     { id: "elevatex_bot", name: "ElevateX Partner Gateway", url: "shop.elevatexbyzaid.com" },
   ];
 
@@ -1821,7 +1829,7 @@ function Users({
 
       {/* Wholesale & Custom Pricing Modal */}
       {wholesaleUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
               <div>
@@ -2418,7 +2426,7 @@ function DepositsAdmin({
 
       {/* Deposit Approval Confirmation & Bonus Rate Modal */}
       {approvingDeposit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
           <div className="relative max-h-[90vh] max-w-lg w-full overflow-hidden rounded-3xl border border-[#baff00]/30 bg-[#111a1d] p-6 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
@@ -2616,7 +2624,7 @@ function DepositsAdmin({
 
       {/* Proof Screenshot Modal */}
       {previewScreenshot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
           <div className="relative max-h-[90vh] max-w-2xl w-full overflow-hidden rounded-3xl border border-white/10 bg-[#111a1d] p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -3345,10 +3353,10 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
     }
   }, [s.rate_usd, s.rate_pkr]);
 
-  // Determine lowest rate across all 5 quotes
+  // Determine lowest rate across all quotes
   let lowestProvId: string | null = null;
   let lowestRate = Infinity;
-  for (const pId of ["pak_smm", "smooth_smm", "am_smm", "smmflare", "pakistan_smm", "rizvi_smm"]) {
+  for (const pId of ["pak_smm", "smooth_smm", "am_smm", "smmflare", "pakistan_smm", "rizvi_smm", "bulk_supplier"]) {
     if (rates[pId] && typeof rates[pId].rateUsd === "number") {
       if (rates[pId].rateUsd < lowestRate) {
         lowestRate = rates[pId].rateUsd;
@@ -3452,6 +3460,7 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
               <option value="am_smm">AM SMM</option>
               <option value="smmflare">SMM Flare</option>
               <option value="rizvi_smm">Rizvi SMM</option>
+              <option value="bulk_supplier">Bulk Supplier</option>
             </select>
           )}
         </div>
@@ -3572,6 +3581,29 @@ const ServiceMatrixRow = memo(function ServiceMatrixRow({
               </span>
             )}
             {s.active_provider_id === "rizvi_smm" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
+                ACTIVE
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-600">—</span>
+        )}
+      </td>
+
+      {/* Bulk Supplier Rate */}
+      <td className="px-4 py-3.5 font-mono">
+        {rates.bulk_supplier ? (
+          <div className="flex flex-col">
+            <span className={`text-slate-200 ${s.active_provider_id === "bulk_supplier" ? "font-bold text-white" : ""}`}>
+              ${Number(rates.bulk_supplier.rateUsd).toFixed(4)}
+            </span>
+            {lowestProvId === "bulk_supplier" && (
+              <span className="mt-0.5 inline-flex items-center rounded bg-[#baff00]/20 px-1 py-0.5 text-[8px] font-black text-[#cfff62] shadow-[0_0_8px_rgba(186,255,0,0.3)]">
+                ★ CHEAPEST
+              </span>
+            )}
+            {s.active_provider_id === "bulk_supplier" && (
               <span className="mt-0.5 inline-flex items-center rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">
                 ACTIVE
               </span>
@@ -3826,7 +3858,7 @@ const MobileServiceCard = memo(function MobileServiceCard({
 
   let lowestProvId: string | null = null;
   let lowestRate = Infinity;
-  for (const pId of ["pak_smm", "smooth_smm", "am_smm", "smmflare", "pakistan_smm", "rizvi_smm"]) {
+  for (const pId of ["pak_smm", "smooth_smm", "am_smm", "smmflare", "pakistan_smm", "rizvi_smm", "bulk_supplier"]) {
     if (rates[pId] && typeof rates[pId].rateUsd === "number") {
       if (rates[pId].rateUsd < lowestRate) {
         lowestRate = rates[pId].rateUsd;
@@ -3852,6 +3884,7 @@ const MobileServiceCard = memo(function MobileServiceCard({
     smmflare: "SMM Flare",
     pakistan_smm: "SMM Flare",
     rizvi_smm: "Rizvi SMM",
+    bulk_supplier: "Bulk Supplier",
   };
 
   const handlePkrSave = () => {
@@ -4013,13 +4046,13 @@ const MobileServiceCard = memo(function MobileServiceCard({
           onClick={() => setExpanded(!expanded)}
           className="w-full text-left flex items-center justify-between py-1 text-[10px] text-slate-400 hover:text-white transition"
         >
-          <span>Quotes from 5 upstream APIs:</span>
+          <span>Quotes from 6 upstream APIs:</span>
           <span className="text-[#baff00] font-bold">{expanded ? "Hide ▲" : "View Quotes ▼"}</span>
         </button>
 
         {expanded && (
           <div className="mt-1.5 grid grid-cols-2 gap-1.5 rounded-lg border border-white/5 bg-[#07100f] p-2 text-[10px] animate-in fade-in duration-200">
-            {["pak_smm", "smooth_smm", "am_smm", "smmflare", "rizvi_smm"].map((pId) => {
+            {["pak_smm", "smooth_smm", "am_smm", "smmflare", "rizvi_smm", "bulk_supplier"].map((pId) => {
               const q = rates[pId] || (pId === "smmflare" ? rates["pakistan_smm"] : null);
               const isLowest = (lowestProvId === pId || (pId === "smmflare" && lowestProvId === "pakistan_smm"));
               const isActive = (s.active_provider_id === pId || (pId === "smmflare" && s.active_provider_id === "pakistan_smm"));
@@ -4200,6 +4233,7 @@ function Services({
       { id: "am_smm", name: "AM SMM", short: "AM SMM", color: "text-purple-400", border: "border-purple-500/30", badge: "bg-purple-500/20 text-purple-300", barBg: "bg-purple-500" },
       { id: "smmflare", name: "SMM Flare", short: "SMM Flare", color: "text-amber-400", border: "border-amber-500/30", badge: "bg-amber-500/20 text-amber-300", barBg: "bg-amber-500" },
       { id: "rizvi_smm", name: "Rizvi SMM", short: "Rizvi", color: "text-rose-400", border: "border-rose-500/30", badge: "bg-rose-500/20 text-rose-300", barBg: "bg-rose-500" },
+      { id: "bulk_supplier", name: "Bulk Supplier", short: "Bulk", color: "text-cyan-400", border: "border-cyan-500/30", badge: "bg-cyan-500/20 text-cyan-300", barBg: "bg-cyan-500" },
     ];
 
     const totalServices = services.length || 1;
@@ -4210,6 +4244,7 @@ function Services({
       smmflare: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
       pakistan_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
       rizvi_smm: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
+      bulk_supplier: { activeCount: 0, cheapestCount: 0, quotesCount: 0 },
     };
 
     services.forEach((s) => {
@@ -4555,7 +4590,7 @@ function Services({
               </span>
             </div>
             <p className="mt-1 text-xs text-slate-400">
-              Live price synchronization across PAK SMM, Smooth SMM, AM SMM, SMM Flare &amp; Rizvi SMM. Upstream rates are native <strong className="text-slate-200">USD ($)</strong>, dynamically converted to <strong className="text-[#baff00]">PKR (₨)</strong>.
+              Live price synchronization across PAK SMM, Smooth SMM, AM SMM, SMM Flare, Rizvi SMM &amp; Bulk Supplier. Upstream rates are native <strong className="text-slate-200">USD ($)</strong>, dynamically converted to <strong className="text-[#baff00]">PKR (₨)</strong>.
             </p>
           </div>
 
@@ -4811,7 +4846,7 @@ function Services({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[1550px] w-full text-left">
+            <table className="min-w-[1700px] w-full text-left">
               <thead className="bg-[#0b1418] text-[11px] font-black uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-4 py-3.5">Service &amp; Platform</th>
@@ -4822,6 +4857,7 @@ function Services({
                   <th className="px-4 py-3.5">AM SMM ($)</th>
                   <th className="px-4 py-3.5">SMM Flare ($)</th>
                   <th className="px-4 py-3.5">Rizvi SMM ($)</th>
+                  <th className="px-4 py-3.5">Bulk Supplier ($)</th>
                   <th className="px-4 py-3.5">Markup Multiplier</th>
                   <th className="px-4 py-3.5">Retail Price ($ USD)</th>
                   <th className="px-4 py-3.5">Retail Price (₨ PKR)</th>
@@ -4958,6 +4994,7 @@ function Services({
                     <option value="am_smm">AM SMM Panel (amsmmpanel.com)</option>
                     <option value="smmflare">SMM Flare (smmflare.com)</option>
                     <option value="rizvi_smm">Rizvi SMM Panels (rizvismmpanels.com)</option>
+                    <option value="bulk_supplier">Bulk Supplier (bulksupplier.org)</option>
                     <option value="manual">Manual / Direct Fulfillment</option>
                   </select>
                 </div>
@@ -5272,6 +5309,7 @@ function Services({
                     <option value="am_smm">AM SMM Panel (amsmmpanel.com)</option>
                     <option value="smmflare">SMM Flare (smmflare.com)</option>
                     <option value="rizvi_smm">Rizvi SMM Panels (rizvismmpanels.com)</option>
+                    <option value="bulk_supplier">Bulk Supplier (bulksupplier.org)</option>
                     <option value="manual">Manual / Direct Fulfillment</option>
                   </select>
                 </div>
