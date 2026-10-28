@@ -2031,7 +2031,8 @@ function DepositsAdmin({
         d.name?.toLowerCase().includes(query) ||
         d.email?.toLowerCase().includes(query) ||
         d.transactionId?.toLowerCase().includes(query) ||
-        d.method?.toLowerCase().includes(query);
+        d.method?.toLowerCase().includes(query) ||
+        d.senderSource?.toLowerCase().includes(query);
       return matchFilter && matchQuery;
     });
   }, [deposits, filter, q]);
@@ -2062,6 +2063,7 @@ function DepositsAdmin({
                   d.id,
                   d.transactionId,
                   d.method,
+                  d.senderSource || "",
                   d.name || "",
                   d.email || "",
                   d.amountPkr,
@@ -2069,7 +2071,7 @@ function DepositsAdmin({
                   d.status,
                   d.createdAt ? new Date(d.createdAt).toISOString() : "",
                 ]);
-                downloadCsv("vexaro_deposits_export.csv", ["ID", "TID", "Method", "User", "Email", "Amount PKR", "Bonus PKR", "Status", "Created At"], rows);
+                downloadCsv("vexaro_deposits_export.csv", ["ID", "TID", "Method", "Sent From", "User", "Email", "Amount PKR", "Bonus PKR", "Status", "Created At"], rows);
               }}
               className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
             >
@@ -2223,6 +2225,11 @@ function DepositsAdmin({
                   <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-0.5 text-xs font-bold text-slate-200 mt-0.5">
                     💳 {d.method}
                   </span>
+                  {d.senderSource && (
+                    <span className="block text-[10px] text-amber-300 font-semibold mt-0.5">
+                      From: {d.senderSource}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2324,6 +2331,11 @@ function DepositsAdmin({
                   <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-1 font-semibold text-slate-200">
                     {d.method}
                   </span>
+                  {d.senderSource && (
+                    <span className="mt-1 block text-[10px] text-amber-300 font-semibold">
+                      From: {d.senderSource}
+                    </span>
+                  )}
                 </td>
                 <td className="px-5 py-4">
                   <p className="font-black text-sm text-white">

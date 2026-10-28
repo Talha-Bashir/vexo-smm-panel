@@ -30,6 +30,8 @@ export async function POST(request: Request) {
     const amount = Number(body?.amount);
     const transactionId = String(body?.transactionId ?? "").trim();
     const screenshot = typeof body?.screenshot === "string" ? body.screenshot.trim() : null;
+    const rawSenderSource = typeof body?.senderSource === "string" ? body.senderSource.trim() : "";
+    const senderSource = rawSenderSource ? rawSenderSource.slice(0, 60) : null;
 
     if (!METHODS.has(method)) {
       return NextResponse.json({ success: false, error: "Invalid payment method." }, { status: 400 });
@@ -74,10 +76,10 @@ export async function POST(request: Request) {
     }
 
     const result = await db.query(
-      `INSERT INTO vexo_deposits (user_id, method, amount_pkr, transaction_id, screenshot)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, method, amount_pkr, transaction_id, status, created_at`,
-      [Number(user.id), method, Math.round(amount * 100) / 100, transactionId, screenshot]
+      `INSERT INTO vexo_deposits (user_id, method, amount_pkr, transaction_id, screenshot, sender_source)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, method, amount_pkr, transaction_id, status, created_at, sender_source`,
+      [Number(user.id), method, Math.round(amount * 100) / 100, transactionId, screenshot, senderSource]
     );
 
     const row = result.rows[0];
@@ -90,6 +92,7 @@ export async function POST(request: Request) {
         transactionId: row.transaction_id,
         status: row.status,
         createdAt: row.created_at,
+        senderSource: row.sender_source ?? null,
       },
     });
   } catch (error) {

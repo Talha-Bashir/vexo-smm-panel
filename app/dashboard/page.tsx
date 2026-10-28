@@ -115,6 +115,7 @@ type VexoDeposit = {
   reviewedAt?: string | null;
   rejectionReason?: string | null;
   bonusPkr?: number;
+  senderSource?: string | null;
 };
 
 type CurrentUser = {
@@ -5765,6 +5766,7 @@ function AddFundsPage({
   const [openCurrency, setOpenCurrency] = useState(false);
   const [searchCurrency, setSearchCurrency] = useState("");
   const [method, setMethod] = useState("SadaPay");
+  const [senderSource, setSenderSource] = useState("SadaPay");
   const [amount, setAmount] = useState("");
   const [binanceAmountUsd, setBinanceAmountUsd] = useState("");
   const [binanceInputMode, setBinanceInputMode] = useState<"USD" | "PKR">("USD");
@@ -5953,7 +5955,7 @@ function AddFundsPage({
     }
 
     if (transactionId.trim().length < 4) {
-      setError(isBinance ? "Please enter your Binance Order ID or TxHash from your receipt." : "Please enter the transaction ID/reference from your payment receipt.");
+      setError(isBinance ? "Please enter your Binance Pay Order ID from your receipt." : "Please enter the transaction ID/reference from your payment receipt.");
       return;
     }
 
@@ -5974,6 +5976,7 @@ function AddFundsPage({
           amount: depositPkr,
           transactionId: transactionId.trim(),
           screenshot,
+          senderSource,
         }),
       });
 
@@ -6167,8 +6170,19 @@ function AddFundsPage({
                   type="button"
                   onClick={() => {
                     setMethod(item.id);
-                    if (item.id === "Binance Pay" && binanceAmountUsd && Number(binanceAmountUsd) > 0) {
-                      setAmount(String(Math.round(Number(binanceAmountUsd) * liveForexUsdRate * 100) / 100));
+                    if (item.id === "Binance Pay") {
+                      setSenderSource("Binance (Pay / UID)");
+                      if (binanceAmountUsd && Number(binanceAmountUsd) > 0) {
+                        setAmount(String(Math.round(Number(binanceAmountUsd) * liveForexUsdRate * 100) / 100));
+                      }
+                    } else if (item.id === "JazzCash") {
+                      setSenderSource("JazzCash");
+                    } else if (item.id === "Easypaisa") {
+                      setSenderSource("Easypaisa");
+                    } else if (item.id === "SadaPay") {
+                      setSenderSource("SadaPay");
+                    } else if (item.id === "Bank Transfer") {
+                      setSenderSource("Meezan Bank");
                     }
                   }}
                   className={`flex-1 min-w-[120px] sm:min-w-[130px] rounded-xl border px-3 py-2.5 text-left transition cursor-pointer ${
@@ -6200,7 +6214,7 @@ function AddFundsPage({
           {/* STEP 2: OFFICIAL RECEIVING BINANCE CRYPTO BOX */}
           {method === "Binance Pay" && (
             <>
-            <div className="relative overflow-hidden rounded-xl border border-[#F0B90B]/40 bg-gradient-to-br from-[#1c1808] via-[#141208] to-[#241f0a] p-5 sm:p-6 shadow-xl space-y-5">
+            <div className="relative overflow-hidden rounded-xl border border-[#F0B90B]/40 bg-gradient-to-br from-[#1c1808] via-[#141208] to-[#241f0a] p-5 sm:p-6 shadow-xl space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0B90B]/15 text-xl font-black text-[#F0B90B] ring-1 ring-[#F0B90B]/30">
@@ -6210,7 +6224,7 @@ function AddFundsPage({
                     <span className="rounded-full bg-[#F0B90B]/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#F0B90B]">
                       Step 2 · Global Payment Receiver
                     </span>
-                    <h3 className="text-lg font-black text-white">Binance &amp; Crypto Deposit Details</h3>
+                    <h3 className="text-lg font-black text-white">Binance Deposit Details</h3>
                   </div>
                 </div>
 
@@ -6219,12 +6233,12 @@ function AddFundsPage({
                     ● 0% Deposit Fee
                   </span>
                   <span className="rounded-full border border-[#F0B90B]/30 bg-[#F0B90B]/10 px-3 py-1 text-xs font-bold text-[#F0B90B]">
-                    ⚡ BSC (BEP20)
+                    ⚡ Binance Pay (UID)
                   </span>
                 </div>
               </div>
 
-              {/* Account Details with 1-Tap Copy */}
+              {/* Account Details with 1-Tap Copy - ONLY Binance User ID & Name */}
               <div className="grid gap-3 sm:grid-cols-2">
                 {/* Binance UID */}
                 <div className="rounded-xl border border-white/10 bg-[#0c0a06] p-4">
@@ -6263,32 +6277,11 @@ function AddFundsPage({
                     </button>
                   </div>
                 </div>
-
-                {/* USDT Deposit Address */}
-                <div className="rounded-xl border border-white/10 bg-[#0c0a06] p-4 sm:col-span-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                      USDT Deposit Address ({binanceNetwork})
-                    </span>
-                    <span className="text-[11px] font-semibold text-amber-300">
-                      ⚠️ Send BEP-20 (BSC) tokens only
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs sm:text-sm font-bold text-white break-all">
-                      {binanceUsdtAddress}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyAddress(binanceUsdtAddress)}
-                      className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#F0B90B] transition hover:bg-[#F0B90B] hover:text-[#07100f] cursor-pointer"
-                    >
-                      {copiedAddress ? "✓ Copied" : "Copy"}
-                    </button>
-                  </div>
-                </div>
               </div>
 
+              <p className="text-[11px] text-amber-300/90 font-medium">
+                💡 In Binance App, tap <strong className="text-white">Pay → Send</strong>, select <strong className="text-[#F0B90B]">Binance UID</strong>, enter <strong className="text-white">{binanceUid}</strong>, and verify that recipient name is <strong className="text-white">{binanceName}</strong> before sending.
+              </p>
             </div>
 
             {/* Collapsible Transfer Instructions & QR Drawer for Binance */}
@@ -6300,7 +6293,7 @@ function AddFundsPage({
               >
                 <span className="flex items-center gap-2">
                   <span>📖</span>
-                  <span>View How to Transfer via Binance &amp; Crypto</span>
+                  <span>View How to Transfer via Binance Pay</span>
                 </span>
                 <span className="text-xs font-semibold text-[#F0B90B]">
                   {binanceGuideOpen ? "Hide Instructions ▲" : "Expand Instructions & QR ▼"}
@@ -6316,7 +6309,7 @@ function AddFundsPage({
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src="/binance-pay-qr.jpg"
-                          alt="Binance Pay & USDT QR Code"
+                          alt="Binance Pay QR Code"
                           className="h-40 w-40 sm:h-48 sm:w-48 object-contain rounded-xl"
                         />
                       </div>
@@ -6336,9 +6329,9 @@ function AddFundsPage({
                       <div className="flex gap-2.5 items-start rounded-xl bg-white/[0.03] p-3 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">1</span>
                         <div>
-                          <p className="font-bold text-white">Send via Binance App or Web3 Wallet:</p>
+                          <p className="font-bold text-white">Send via Binance App:</p>
                           <p className="text-slate-300 mt-1 leading-relaxed">
-                            Open Binance App $\rightarrow$ tap <strong className="text-[#F0B90B]">Pay</strong> (or Scan icon) $\rightarrow$ scan QR code or enter UID: <code className="rounded bg-black/40 px-1.5 py-0.5 font-bold text-white">{binanceUid}</code>. For external wallets (Trust / MetaMask), transfer USDT via <strong className="text-amber-300">BNB Smart Chain (BEP20)</strong> to: <code className="rounded bg-black/40 px-1.5 py-0.5 font-bold text-white break-all">{binanceUsdtAddress}</code>.
+                            Open Binance App $\rightarrow$ tap <strong className="text-[#F0B90B]">Pay</strong> (or Scan icon) $\rightarrow$ scan QR code or enter UID: <code className="rounded bg-black/40 px-1.5 py-0.5 font-bold text-white">{binanceUid}</code>.
                           </p>
                         </div>
                       </div>
@@ -6356,9 +6349,9 @@ function AddFundsPage({
                       <div className="flex gap-2.5 items-start rounded-xl bg-white/[0.03] p-3 border border-white/5">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F0B90B]/20 font-black text-[#F0B90B] text-[11px]">3</span>
                         <div>
-                          <p className="font-bold text-white">Find Order ID / TxHash &amp; Submit Below:</p>
+                          <p className="font-bold text-white">Find Order ID &amp; Submit Below:</p>
                           <p className="text-slate-300 mt-1 leading-relaxed">
-                            In Binance Pay history, copy your <strong className="text-[#F0B90B]">Order ID</strong> (or crypto <strong className="text-[#38bdf8]">TxHash</strong>), take a screenshot of your receipt, and submit in the form below for fast approval.
+                            In Binance Pay history, copy your <strong className="text-[#F0B90B]">Order ID</strong>, take a screenshot of your receipt, and submit in the form below for fast approval.
                           </p>
                         </div>
                       </div>
@@ -6565,6 +6558,60 @@ function AddFundsPage({
               </div>
             </div>
 
+            {/* SENDER SOURCE / SENDING FROM DROPDOWN */}
+            <div className="mt-5">
+              <label className="block">
+                <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <span>Sent From (Your Bank / Wallet / App)</span>
+                    <span className="text-rose-400">*</span>
+                  </span>
+                  <span className="text-slate-400 font-normal">Sender Source</span>
+                </div>
+                <div className="relative">
+                  <select
+                    value={senderSource}
+                    onChange={(e) => setSenderSource(e.target.value)}
+                    className="h-12 w-full appearance-none rounded-xl border border-white/10 bg-[#0b1418] px-4 pr-10 text-base sm:text-sm font-semibold text-white outline-none focus:border-[#baff00]/50 focus:ring-2 focus:ring-[#baff00]/10 cursor-pointer"
+                  >
+                    <optgroup label="Popular Pakistani Wallets" className="bg-[#0b1418] text-white">
+                      <option value="JazzCash">JazzCash</option>
+                      <option value="Easypaisa">Easypaisa</option>
+                      <option value="SadaPay">SadaPay</option>
+                      <option value="NayaPay">NayaPay</option>
+                    </optgroup>
+                    <optgroup label="Pakistani Commercial Banks" className="bg-[#0b1418] text-white">
+                      <option value="Meezan Bank">Meezan Bank</option>
+                      <option value="Bank Alfalah">Bank Alfalah</option>
+                      <option value="HBL (Habib Bank)">HBL (Habib Bank)</option>
+                      <option value="UBL (United Bank)">UBL (United Bank)</option>
+                      <option value="MCB Bank">MCB Bank</option>
+                      <option value="Allied Bank (ABL)">Allied Bank (ABL)</option>
+                      <option value="Askari Bank">Askari Bank</option>
+                      <option value="Bank of Punjab (BOP)">Bank of Punjab (BOP)</option>
+                      <option value="Faysal Bank">Faysal Bank</option>
+                      <option value="Standard Chartered">Standard Chartered</option>
+                      <option value="Soneri Bank">Soneri Bank</option>
+                      <option value="BankIslami">BankIslami</option>
+                      <option value="JS Bank">JS Bank</option>
+                      <option value="Dubai Islamic Bank">Dubai Islamic Bank</option>
+                      <option value="Other Pakistani Bank">Other Pakistani Bank</option>
+                    </optgroup>
+                    <optgroup label="Crypto / Binance" className="bg-[#0b1418] text-white">
+                      <option value="Binance (Pay / UID)">Binance (Pay / UID)</option>
+                      <option value="Other Crypto Wallet">Other Crypto Wallet</option>
+                    </optgroup>
+                  </select>
+                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
+                    ▼
+                  </div>
+                </div>
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  Select the bank app, mobile wallet, or Binance account from which you sent this payment.
+                </p>
+              </label>
+            </div>
+
             {/* Amount & TID inputs */}
             {method === "Binance Pay" ? (
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -6617,18 +6664,18 @@ function AddFundsPage({
 
                 <label className="block">
                   <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-300">
-                    <span>Binance Order ID / TxHash</span>
+                    <span>Binance Pay Order ID</span>
                     <span className="text-slate-400 font-normal">From Receipt</span>
                   </div>
                   <input
                     type="text"
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
-                    placeholder="e.g. 238910283 or 0x..."
+                    placeholder="e.g. 238910283 (Order ID)"
                     className="h-12 w-full rounded-xl border border-white/10 bg-[#0b1418] px-4 text-base sm:text-sm text-white font-mono outline-none placeholder:text-slate-500 focus:border-[#F0B90B]/50 focus:ring-2 focus:ring-[#F0B90B]/10"
                   />
                   <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400 min-h-[20px]">
-                    <span>Enter Binance Pay Order ID or crypto TxHash</span>
+                    <span>Enter Binance Pay Order ID from your receipt</span>
                   </div>
                 </label>
               </div>
@@ -6785,8 +6832,8 @@ function AddFundsPage({
               <a
                 href={`https://wa.me/923088180234?text=${encodeURIComponent(
                   method === "Binance Pay"
-                    ? `Hello VEXARO SMM Admin, I have submitted a deposit of $${binanceAmountUsd || (Number(amount) / liveForexUsdRate).toFixed(2)} USDT (₨${amount || "..."} PKR) via Binance. TxHash / Order ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
-                    : `Hello Saeed Bashir / VEXARO SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via ${method}. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
+                    ? `Hello VEXARO SMM Admin, I have submitted a deposit of ${binanceAmountUsd || (Number(amount) / liveForexUsdRate).toFixed(2)} USDT (₨${amount || "..."} PKR) via Binance from ${senderSource}. Order ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
+                    : `Hello Saeed Bashir / VEXARO SMM Admin, I have submitted a deposit of PKR ${amount || "..."} via ${method} sent from ${senderSource}. Transaction ID: ${transactionId || "..."}. Account: ${currentUser?.email || currentUser?.name || "Customer"}. Please verify.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -6850,7 +6897,7 @@ function AddFundsPage({
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-slate-200">
-                      <span>{deposit.method}</span>
+                      <span>{deposit.method}{deposit.senderSource ? ` (${deposit.senderSource})` : ""}</span>
                       <span className="font-mono text-slate-300">{deposit.transactionId.length > 12 ? `${deposit.transactionId.slice(0, 10)}...` : deposit.transactionId}</span>
                     </div>
                   </div>
@@ -7127,6 +7174,11 @@ function AddFundsPage({
                           <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] font-bold text-slate-200">
                             {dep.method}
                           </span>
+                          {dep.senderSource && (
+                            <span className="rounded-full bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                              From: {dep.senderSource}
+                            </span>
+                          )}
                           {dep.status === "Approved" && (dep.bonusPkr || 0) > 0 && (
                             <span className="rounded-full bg-[#baff00]/15 border border-[#baff00]/30 px-2.5 py-0.5 text-[11px] font-black text-[#baff00]">
                               🎁 +₨{Number(dep.bonusPkr).toLocaleString()} Bonus Credited

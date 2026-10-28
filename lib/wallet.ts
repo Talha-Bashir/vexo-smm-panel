@@ -32,6 +32,7 @@ export function ensureWalletSchema() {
 
         ALTER TABLE vexo_deposits ADD COLUMN IF NOT EXISTS screenshot TEXT;
         ALTER TABLE vexo_deposits ADD COLUMN IF NOT EXISTS bonus_pkr NUMERIC(14,2) NOT NULL DEFAULT 0;
+        ALTER TABLE vexo_deposits ADD COLUMN IF NOT EXISTS sender_source VARCHAR(60);
 
         CREATE INDEX IF NOT EXISTS vexo_deposits_user_created_idx
           ON vexo_deposits(user_id, created_at DESC);
@@ -146,7 +147,7 @@ export async function getUserWallet(userId: number) {
 
   const deposits = await db.query(
     `SELECT id, method, amount_pkr, transaction_id, status,
-            created_at, reviewed_at, rejection_reason, COALESCE(bonus_pkr, 0) AS bonus_pkr
+            created_at, reviewed_at, rejection_reason, COALESCE(bonus_pkr, 0) AS bonus_pkr, sender_source
      FROM vexo_deposits
      WHERE user_id = $1
      ORDER BY created_at DESC
@@ -181,6 +182,7 @@ export async function getUserWallet(userId: number) {
       reviewedAt: row.reviewed_at,
       rejectionReason: row.rejection_reason,
       bonusPkr: Number(row.bonus_pkr ?? 0),
+      senderSource: row.sender_source ?? null,
     })),
     transactions: transactions.rows.map((row) => ({
       id: row.id,

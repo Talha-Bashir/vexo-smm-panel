@@ -16,7 +16,7 @@ export async function GET() {
     const result = await db.query(`
       SELECT d.id, d.user_id, u.name, u.email, d.method, d.amount_pkr,
              d.transaction_id, d.screenshot, d.status, d.created_at, d.reviewed_at,
-             d.rejection_reason, COALESCE(d.bonus_pkr, 0) AS bonus_pkr
+             d.rejection_reason, COALESCE(d.bonus_pkr, 0) AS bonus_pkr, d.sender_source
       FROM vexo_deposits d
       JOIN vexo_users u ON u.id = d.user_id
       ORDER BY CASE WHEN d.status = 'Pending' THEN 0 ELSE 1 END, d.created_at DESC
@@ -39,6 +39,7 @@ export async function GET() {
         reviewedAt: row.reviewed_at,
         rejectionReason: row.rejection_reason,
         bonusPkr: Number(row.bonus_pkr || 0),
+        senderSource: row.sender_source ?? null,
       })),
     });
   } catch (error) {
