@@ -627,7 +627,9 @@ Server queue ne ise *High Priority* mark kar diya hai taake order jaldi se jaldi
 /**
  * Ensures notification and bot control tables exist in PostgreSQL
  */
+let notificationTablesInitialized = false;
 export async function ensureNotificationAndControlTables() {
+  if (notificationTablesInitialized) return;
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vexo_whatsapp_notifications (
@@ -652,6 +654,7 @@ export async function ensureNotificationAndControlTables() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
+    notificationTablesInitialized = true;
   } catch (err) {
     console.warn('[DB Tables Init Warning]:', err.message);
   }

@@ -8,37 +8,43 @@ export interface QueueNotificationParams {
   metadata?: Record<string, unknown>;
 }
 
+let tablesEnsuredPromise: Promise<void> | null = null;
+
 /**
  * Ensures notification and bot control tables exist in PostgreSQL
  */
 export async function ensureNotificationTables(): Promise<void> {
-  try {
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS vexo_whatsapp_notifications (
-        id BIGSERIAL PRIMARY KEY,
-        phone VARCHAR(40) NOT NULL,
-        message TEXT NOT NULL,
-        type VARCHAR(40) NOT NULL,
-        reference_id VARCHAR(100),
-        status VARCHAR(20) DEFAULT 'pending',
-        metadata JSONB,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        sent_at TIMESTAMPTZ
-      );
-      CREATE INDEX IF NOT EXISTS idx_vexo_wa_notif_status ON vexo_whatsapp_notifications(status);
+  if (!tablesEnsuredPromise) {
+    tablesEnsuredPromise = (async () => {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS vexo_whatsapp_notifications (
+          id BIGSERIAL PRIMARY KEY,
+          phone VARCHAR(40) NOT NULL,
+          message TEXT NOT NULL,
+          type VARCHAR(40) NOT NULL,
+          reference_id VARCHAR(100),
+          status VARCHAR(20) DEFAULT 'pending',
+          metadata JSONB,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          sent_at TIMESTAMPTZ
+        );
+        CREATE INDEX IF NOT EXISTS idx_vexo_wa_notif_status ON vexo_whatsapp_notifications(status);
 
-      CREATE TABLE IF NOT EXISTS vexo_whatsapp_bot_controls (
-        phone VARCHAR(40) PRIMARY KEY,
-        is_ignored BOOLEAN DEFAULT FALSE,
-        is_paused BOOLEAN DEFAULT FALSE,
-        paused_until TIMESTAMPTZ,
-        reason TEXT,
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `);
-  } catch (err) {
-    console.warn("[WhatsApp Notification Tables Init Error]:", err);
+        CREATE TABLE IF NOT EXISTS vexo_whatsapp_bot_controls (
+          phone VARCHAR(40) PRIMARY KEY,
+          is_ignored BOOLEAN DEFAULT FALSE,
+          is_paused BOOLEAN DEFAULT FALSE,
+          paused_until TIMESTAMPTZ,
+          reason TEXT,
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+    })().catch((err) => {
+      tablesEnsuredPromise = null;
+      console.warn("[WhatsApp Notification Tables Init Error]:", err);
+    });
   }
+  return tablesEnsuredPromise;
 }
 
 /**

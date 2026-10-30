@@ -228,7 +228,7 @@ function startNotificationWorker(sock) {
     } catch (pollErr) {
       console.warn('🔔 [Notification Dispatcher Warning]:', pollErr.message);
     }
-  }, 7000);
+  }, 20000);
 }
 
 /**
