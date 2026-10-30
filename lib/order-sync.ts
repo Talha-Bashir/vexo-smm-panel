@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { ensureWalletSchema } from "@/lib/wallet";
 import { getRizviOrderStatus } from "@/lib/rizvi";
 import { queueWhatsAppNotification, getUserWhatsAppPhone } from "@/lib/whatsapp-queue";
+import { triggerNextScheduledOrderForLink, processAllScheduledOrders, retryUndispatchedPendingOrders } from "@/lib/order-queue";
 import {
   fetchProviderOrderStatus,
   getRegisteredProviders,
@@ -106,7 +107,7 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
   }
 
   params.push(limit);
-  const sql = `SELECT id, user_id, provider_order_id, provider_id, service_id, quantity, charge_pkr,
+  const sql = `SELECT id, user_id, provider_order_id, provider_id, service_id, service_name, link, quantity, charge_pkr,
                       COALESCE(bonus_charge_pkr, 0) AS bonus_charge_pkr,
                       COALESCE(real_charge_pkr, 0) AS real_charge_pkr,
                       status, created_at, updated_at
@@ -306,6 +307,11 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
             }
           } catch {}
 
+          // Trigger next scheduled order on this link if any
+          if (order.link) {
+            triggerNextScheduledOrderForLink(Number(order.user_id), String(order.link)).catch(() => {});
+          }
+
           updatedCount++;
           details.push({
             orderId: String(order.id),
@@ -446,6 +452,11 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
             }
           } catch {}
 
+          // Trigger next scheduled order on this link if any
+          if (order.link) {
+            triggerNextScheduledOrderForLink(Number(order.user_id), String(order.link)).catch(() => {});
+          }
+
           updatedCount++;
           details.push({
             orderId: String(order.id),
@@ -496,6 +507,13 @@ export async function syncOrders(options: SyncOrdersOptions = {}): Promise<SyncR
           [normalizedStatus, startCount, rawRemainsStr, order.id]
         );
         updatedCount++;
+
+        // If order completed or reached a final state, trigger any queued scheduled orders on this link
+        if (hasStatusChange && (normalizedStatus === "Completed" || normalizedStatus === "Canceled" || normalizedStatus === "Partial")) {
+          if (order.link) {
+            triggerNextScheduledOrderForLink(Number(order.user_id), String(order.link)).catch(() => {});
+          }
+        }
 
         // Queue WhatsApp notification for Order Completed!
         if (hasStatusChange && normalizedStatus === "Completed") {

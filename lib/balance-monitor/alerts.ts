@@ -8,6 +8,7 @@ import {
   formatRecoveryAlert,
   sendTelegramNotification,
 } from "./telegram";
+import { queueWhatsAppNotification } from "@/lib/whatsapp-queue";
 
 let schemaReadyPromise: Promise<void> | null = null;
 
@@ -34,7 +35,7 @@ export async function ensureBalanceAlertSchema(): Promise<void> {
 }
 
 export function getProviderThresholds(providerId: string): ProviderBalanceThresholds {
-  const defaultLow = Number(process.env.BALANCE_ALERT_DEFAULT_LOW || 10);
+  const defaultLow = Number(process.env.BALANCE_ALERT_DEFAULT_LOW || 15);
   const defaultCritical = Number(process.env.BALANCE_ALERT_DEFAULT_CRITICAL || 5);
 
   let lowEnvKey = "";
@@ -74,6 +75,84 @@ export function getProviderThresholds(providerId: string): ProviderBalanceThresh
   return { low, critical };
 }
 
+/**
+ * Sends urgent balance alert to Admin WhatsApp numbers (03176437013, 03088180234, etc.)
+ */
+async function sendAdminWhatsAppBalanceAlert(params: {
+  providerId: string;
+  providerName: string;
+  type: "CRITICAL" | "LOW" | "ERROR" | "RECOVERY";
+  balance?: number;
+  threshold?: number;
+  currency?: string;
+  error?: string;
+}): Promise<void> {
+  const targetPhones = [
+    "923176437013",
+    "923088180234",
+    ...(process.env.ADMIN_WHATSAPP ? [process.env.ADMIN_WHATSAPP] : []),
+    ...(process.env.SUPPORT_WHATSAPP ? [process.env.SUPPORT_WHATSAPP] : []),
+  ]
+    .map((p) => p.replace(/\D/g, "").replace(/^0/, "92"))
+    .filter(Boolean);
+
+  const uniquePhones = Array.from(new Set(targetPhones));
+  const curr = params.currency || "USD";
+
+  let waText = "";
+  if (params.type === "CRITICAL") {
+    waText =
+      `🚨 *URGENT: Provider Balance CRITICAL!* 💸⚠️\n\n` +
+      `🏢 *Provider:* ${params.providerName}\n` +
+      `💰 *Live Balance:* ${params.balance !== undefined ? `$${params.balance.toFixed(2)} ${curr}` : "Zero / Empty"}\n` +
+      `🔻 *Critical Threshold:* $${params.threshold ?? 5} ${curr}\n\n` +
+      `⚠️ *Khatra:* Provider ka balance taqreeban khatam ho chuka hai! Naye customer orders pending me ja sakte hain.\n\n` +
+      `👉 *Action Required:* Barah-e-karam foran provider account recharge karein.\n` +
+      `🌐 Admin Panel: https://vexarosmm.com/admin`;
+  } else if (params.type === "LOW") {
+    waText =
+      `⚠️ *WARNING: Provider Balance Low!* 📉\n\n` +
+      `🏢 *Provider:* ${params.providerName}\n` +
+      `💰 *Live Balance:* ${params.balance !== undefined ? `$${params.balance.toFixed(2)} ${curr}` : "Low"}\n` +
+      `🔻 *Warning Threshold:* $${params.threshold ?? 15} ${curr}\n\n` +
+      `Balance jald khatam hone ke qareeb hai. Barah-e-karam top-up arrange karein taake customer orders delay na hon.\n\n` +
+      `🌐 Admin Panel: https://vexarosmm.com/admin`;
+  } else if (params.type === "ERROR") {
+    waText =
+      `❌ *ALERT: Provider API Balance Check Error!* 🔌\n\n` +
+      `🏢 *Provider:* ${params.providerName}\n` +
+      `⚠️ *Error:* ${params.error || "Unknown API Connection Failure"}\n\n` +
+      `Provider ke sath balance check karte waqt connection issue aya hai. Barah-e-karam check karein.\n\n` +
+      `🌐 Admin Panel: https://vexarosmm.com/admin`;
+  } else if (params.type === "RECOVERY") {
+    waText =
+      `✅ *RESOLVED: Provider Balance Restored!* 🟢\n\n` +
+      `🏢 *Provider:* ${params.providerName}\n` +
+      `💰 *Current Balance:* ${params.balance !== undefined ? `$${params.balance.toFixed(2)} ${curr}` : "Normal"}\n\n` +
+      `Provider balance normal limit me aa chuka hai! Tamam queued orders normal speed se dispatch honge.`;
+  }
+
+  for (const phone of uniquePhones) {
+    try {
+      await queueWhatsAppNotification({
+        phone,
+        message: waText,
+        type: `balance_${params.type.toLowerCase()}`,
+        referenceId: `bal_${params.providerId}_${params.type}_${Date.now()}_${phone}`,
+        metadata: {
+          providerId: params.providerId,
+          providerName: params.providerName,
+          balance: params.balance,
+          threshold: params.threshold,
+          currency: params.currency,
+        },
+      });
+    } catch (e) {
+      console.warn(`[BalanceMonitor] Could not queue WhatsApp alert to +${phone}:`, e);
+    }
+  }
+}
+
 export async function processProviderAlert(
   check: ProviderBalanceCheckResult
 ): Promise<ProviderBalanceResult> {
@@ -110,6 +189,12 @@ export async function processProviderAlert(
       notificationType = "ERROR";
       const msg = formatProviderErrorAlert(check.name, check.error);
       notificationSent = await sendTelegramNotification(msg);
+      await sendAdminWhatsAppBalanceAlert({
+        providerId: check.id,
+        providerName: check.name,
+        type: "ERROR",
+        error: check.error,
+      });
     }
 
     await saveAlertState(check.id, alertLevel, check.balance, check.currency, check.error, Boolean(notificationType));
@@ -139,6 +224,14 @@ export async function processProviderAlert(
       notificationType = "CRITICAL";
       const msg = formatCriticalBalanceAlert(check.name, balance, thresholds.critical, currency);
       notificationSent = await sendTelegramNotification(msg);
+      await sendAdminWhatsAppBalanceAlert({
+        providerId: check.id,
+        providerName: check.name,
+        type: "CRITICAL",
+        balance,
+        threshold: thresholds.critical,
+        currency,
+      });
     }
   } else if (balance <= thresholds.low) {
     alertLevel = "LOW";
@@ -146,6 +239,14 @@ export async function processProviderAlert(
       notificationType = "LOW";
       const msg = formatLowBalanceAlert(check.name, balance, thresholds.low, currency);
       notificationSent = await sendTelegramNotification(msg);
+      await sendAdminWhatsAppBalanceAlert({
+        providerId: check.id,
+        providerName: check.name,
+        type: "LOW",
+        balance,
+        threshold: thresholds.low,
+        currency,
+      });
     }
   } else {
     alertLevel = "NORMAL";
@@ -154,6 +255,13 @@ export async function processProviderAlert(
       notificationType = "RECOVERY";
       const msg = formatRecoveryAlert(check.name, balance, currency);
       notificationSent = await sendTelegramNotification(msg);
+      await sendAdminWhatsAppBalanceAlert({
+        providerId: check.id,
+        providerName: check.name,
+        type: "RECOVERY",
+        balance,
+        currency,
+      });
     }
   }
 

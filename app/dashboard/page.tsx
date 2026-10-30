@@ -74,6 +74,7 @@ type VexoOrder = {
   status: string;
   startCount?: string | null;
   remains?: string | null;
+  failureReason?: string | null;
   createdAt: string;
 };
 
@@ -4177,13 +4178,17 @@ function NewOrder({
         quantity: qty,
         rate: Number(data.rate ?? service.price),
         charge: Number(data.charge ?? charge),
-        status: "Pending",
+        status: data.status ? String(data.status) : "Pending",
+        failureReason: data.isScheduled ? "Scheduled: Waiting for prior order on this link to complete" : undefined,
         createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString(),
       };
 
       onOrderCreated(createdOrder);
+      const isScheduled = String(data.status || "").toLowerCase() === "scheduled";
       setOrderMessage(
-        data.orderId
+        isScheduled
+          ? `Order #${data.orderId || createdOrder.localId.slice(0, 8)} placed and Scheduled! Because you already have an active order on this link, this order is queued and will automatically start once your active order completes.`
+          : data.orderId
           ? `Order #${data.orderId} placed successfully at ${new Date(createdOrder.createdAt).toLocaleTimeString()}! Tracking live updates in Orders.`
           : `Order placed successfully at ${new Date(createdOrder.createdAt).toLocaleTimeString()}! Dispatched to provider queue.`
       );
@@ -5114,7 +5119,7 @@ function OrdersPage({
   const activeOrdersCount = useMemo(
     () =>
       orders.filter((o) =>
-        ["pending", "processing", "in progress", "in_progress"].includes(
+        ["pending", "processing", "in progress", "in_progress", "scheduled"].includes(
           o.status.toLowerCase()
         )
       ).length,
@@ -5129,7 +5134,7 @@ function OrdersPage({
   const displayedOrders = useMemo(() => {
     if (activeSubTab === "Active") {
       return orders.filter((o) =>
-        ["pending", "processing", "in progress", "in_progress"].includes(
+        ["pending", "processing", "in progress", "in_progress", "scheduled"].includes(
           o.status.toLowerCase()
         )
       );
@@ -5278,9 +5283,11 @@ function OrdersPage({
                 pendingRefillOrderIds.has(order.localId) ||
                 (order.orderId ? pendingRefillOrderIds.has(order.orderId) : false);
 
+              const isScheduled = order.status.toLowerCase() === "scheduled";
               let statusColor = "bg-white/5 text-slate-300";
               if (isCompleted) statusColor = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
               else if (isRefunded) statusColor = "bg-purple-500/10 text-purple-300 border border-purple-500/20";
+              else if (isScheduled) statusColor = "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30";
               else if (["in progress", "processing"].includes(order.status.toLowerCase()))
                 statusColor = "bg-sky-500/10 text-sky-400 border border-sky-500/20";
               else if (order.status.toLowerCase() === "pending")
@@ -5307,6 +5314,11 @@ function OrdersPage({
                   <div>
                     <h4 className="text-sm font-bold text-white leading-snug break-words">{order.service}</h4>
                     <p className="mt-0.5 text-xs text-slate-400">{order.platform}</p>
+                    {isScheduled && (
+                      <p className="mt-1 text-[11px] text-indigo-300 font-semibold bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded-lg">
+                        ⏳ Queued on this link · Will auto-start once your active order completes
+                      </p>
+                    )}
                   </div>
 
                   <div className="rounded-xl bg-[#0a1110] p-2.5 text-xs">
@@ -5414,9 +5426,11 @@ function OrdersPage({
                 pendingRefillOrderIds.has(order.localId) ||
                 (order.orderId ? pendingRefillOrderIds.has(order.orderId) : false);
 
+              const isScheduled = order.status.toLowerCase() === "scheduled";
               let statusColor = "bg-white/5 text-slate-300";
               if (isCompleted) statusColor = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
               else if (isRefunded) statusColor = "bg-purple-500/10 text-purple-300 border border-purple-500/20";
+              else if (isScheduled) statusColor = "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30";
               else if (["in progress", "processing"].includes(order.status.toLowerCase()))
                 statusColor = "bg-sky-500/10 text-sky-400 border border-sky-500/20";
               else if (order.status.toLowerCase() === "pending")
@@ -5444,10 +5458,15 @@ function OrdersPage({
                       </span>
                     </div>
 
-                    <div className="shrink-0">
+                    <div className="shrink-0 text-right">
                       <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
-                        {order.status}
+                        {isScheduled ? "⏳ Scheduled" : order.status}
                       </span>
+                      {isScheduled && (
+                        <span className="block mt-1 text-[11px] text-indigo-300 font-semibold">
+                          Queued · Auto-starts when previous order completes
+                        </span>
+                      )}
                     </div>
                   </div>
 

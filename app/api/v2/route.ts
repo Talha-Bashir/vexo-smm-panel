@@ -4,6 +4,7 @@ import { db, ensureDatabase } from "@/lib/db";
 import { ensureAdminSchema } from "@/lib/admin";
 import { ensureProvidersSchema } from "@/lib/providers";
 import { dispatchOrderWithFailover } from "@/lib/order-dispatch";
+import { checkExistingActiveOrderOnLink, isProviderBalanceError, notifyAdminProviderLowFunds } from "@/lib/order-queue";
 import { getRizviServices, addRizviOrder, getRizviOrderStatus, requestRizviRefill, getRizviRefillStatus } from "@/lib/rizvi";
 import { getVexoRate, calculateVexoCharge } from "@/lib/pricing";
 import { getLiveUsdToPkrRate, calculateLivePricePkr, calculateLiveChargePkr, isPackageService } from "@/lib/exchange-rate";
@@ -343,12 +344,55 @@ export async function POST(request: Request) {
         });
       }
 
+      // Check if user already has an active order on this exact link
+      const linkCheck = await checkExistingActiveOrderOnLink(Number(user.id), link, vexoOrderId);
+      if (linkCheck.hasActiveOrder) {
+        await db.query(
+          `UPDATE vexo_orders
+           SET status = 'Scheduled',
+               failure_reason = $1,
+               updated_at = NOW()
+           WHERE id = $2`,
+          [`Scheduled: Waiting for prior active order on this link to complete`, vexoOrderId]
+        );
+
+        return NextResponse.json({
+          order: Number(vexoOrderId) || vexoOrderId,
+        });
+      }
+
       try {
         // Dispatch to cheapest provider with automatic multi-provider failover
         const dispatchResult = await dispatchOrderWithFailover(serviceId, link, quantity);
 
         if (!dispatchResult.success || !dispatchResult.orderId) {
           const reason = dispatchResult.error || "All upstream providers failed to accept the order.";
+
+          if (isProviderBalanceError(reason)) {
+            await db.query(
+              `UPDATE vexo_orders
+               SET status = 'Pending',
+                   failure_reason = $1,
+                   updated_at = NOW()
+               WHERE id = $2`,
+              [`Awaiting provider balance top-up: ${reason}`, vexoOrderId]
+            );
+
+            await notifyAdminProviderLowFunds({
+              orderId: vexoOrderId,
+              serviceName,
+              quantity,
+              chargePkr: Number(charge),
+              link,
+              error: reason,
+              providerName: dispatchResult.failoverAttempts?.[0]?.providerName,
+            });
+
+            return NextResponse.json({
+              order: Number(vexoOrderId) || vexoOrderId,
+            });
+          }
+
           await refundFailedOrder(vexoOrderId, reason);
           return NextResponse.json({ error: reason }, { status: 400 });
         }

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { ensureAdminSchema } from "@/lib/admin";
 import { ensureProvidersSchema } from "@/lib/providers";
 import { dispatchOrderWithFailover } from "@/lib/order-dispatch";
+import { checkExistingActiveOrderOnLink, isProviderBalanceError, notifyAdminProviderLowFunds } from "@/lib/order-queue";
 import {
   InsufficientWalletBalanceError,
   markOrderProviderSuccess,
@@ -438,6 +439,35 @@ export async function POST(request: Request) {
       }
     }
 
+    // Check if user already has an active order on this exact link
+    const linkCheck = await checkExistingActiveOrderOnLink(Number(user.id), link, vexoOrderId);
+    if (linkCheck.hasActiveOrder) {
+      console.log(`[Order Queue] Active order #${linkCheck.activeOrderId?.slice(0, 8)} found on link "${link}". Setting new order #${vexoOrderId.slice(0, 8)} to Scheduled.`);
+      await db.query(
+        `UPDATE vexo_orders
+         SET status = 'Scheduled',
+             failure_reason = $1,
+             updated_at = NOW()
+         WHERE id = $2`,
+        [`Scheduled: Waiting for prior active order on this link to complete`, vexoOrderId]
+      );
+
+      return NextResponse.json({
+        success: true,
+        orderId: vexoOrderId,
+        vexoOrderId,
+        rate,
+        charge,
+        status: "Scheduled",
+        balancePkr: reservation.balancePkr,
+        bonusBalancePkr: reservation.bonusBalancePkr,
+        totalAvailablePkr: reservation.totalAvailablePkr,
+        createdAt: reservation.order.created_at,
+        isScheduled: true,
+        message: `Order #${vexoOrderId.slice(0, 8)} placed and Scheduled! Because you already have an active order on this link, this order is queued and will automatically start once your active order completes.`,
+      });
+    }
+
     try {
       // Dispatch order to funded provider with automatic multi-provider failover and margin protection
       const dispatchResult = await dispatchOrderWithFailover(serviceId, link, numericQuantity, {
@@ -447,6 +477,45 @@ export async function POST(request: Request) {
 
       if (!dispatchResult.success || !dispatchResult.orderId) {
         const reason = dispatchResult.error || "All upstream providers failed to accept the order.";
+
+        // If provider has insufficient balance/funds: keep order in Pending and notify admin via bot
+        if (isProviderBalanceError(reason)) {
+          console.warn(`[Order Dispatch] Provider low funds for order #${vexoOrderId.slice(0, 8)}: ${reason}. Keeping in Pending status.`);
+          await db.query(
+            `UPDATE vexo_orders
+             SET status = 'Pending',
+                 failure_reason = $1,
+                 failover_attempts = $2,
+                 updated_at = NOW()
+             WHERE id = $3`,
+            [`Awaiting provider balance top-up: ${reason}`, JSON.stringify(dispatchResult.failoverAttempts || []), vexoOrderId]
+          );
+
+          await notifyAdminProviderLowFunds({
+            orderId: vexoOrderId,
+            serviceName,
+            quantity: numericQuantity,
+            chargePkr: Number(charge),
+            link,
+            error: reason,
+            providerName: dispatchResult.failoverAttempts?.[0]?.providerName,
+          });
+
+          return NextResponse.json({
+            success: true,
+            orderId: vexoOrderId,
+            vexoOrderId,
+            rate,
+            charge,
+            status: "Pending",
+            balancePkr: reservation.balancePkr,
+            bonusBalancePkr: reservation.bonusBalancePkr,
+            totalAvailablePkr: reservation.totalAvailablePkr,
+            createdAt: reservation.order.created_at,
+            message: `Order #${vexoOrderId.slice(0, 8)} placed successfully! Your order is queued in Pending and will begin processing shortly.`,
+          });
+        }
+
         await refundFailedOrder(vexoOrderId, reason);
 
         // Queue WhatsApp notification for failed/refunded order

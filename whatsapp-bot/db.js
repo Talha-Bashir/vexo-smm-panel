@@ -826,3 +826,370 @@ Aapke order ke liye *Free Refill Request* system me enter kar di gayi hai!${prov
 Drop check karke delivery jald complete ho jayegi.`
   };
 }
+
+/**
+ * -------------------------------------------------------------
+ * ADMIN QUERY & CONTROL FUNCTIONS FOR WHATSAPP BOT
+ * -------------------------------------------------------------
+ */
+
+/**
+ * Fetch current balances of all registered providers
+ */
+export async function getAdminProviderBalances() {
+  try {
+    const res = await pool.query(`
+      SELECT id, name, balance_usd, currency, is_active, last_sync_at
+      FROM vexo_providers
+      ORDER BY id ASC
+    `);
+    return res.rows;
+  } catch (err) {
+    console.error('[DB] getAdminProviderBalances error:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Fetch high-level order counts and latest 5 orders for Admin
+ */
+export async function getAdminOrderSummary() {
+  try {
+    const countsRes = await pool.query(`
+      SELECT
+        COUNT(*) as total_orders,
+        COUNT(*) FILTER (WHERE status = 'Pending') as pending,
+        COUNT(*) FILTER (WHERE status = 'Scheduled') as scheduled,
+        COUNT(*) FILTER (WHERE status IN ('In progress', 'inprogress', 'Processing')) as in_progress,
+        COUNT(*) FILTER (WHERE status = 'Completed') as completed,
+        COUNT(*) FILTER (WHERE status IN ('Cancelled', 'Canceled', 'Refunded')) as cancelled,
+        COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) as today_total,
+        COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE AND status = 'Completed') as today_completed
+      FROM vexo_orders
+    `);
+
+    const recentRes = await pool.query(`
+      SELECT id, service_name, quantity, status, charge_pkr, link, created_at
+      FROM vexo_orders
+      ORDER BY created_at DESC
+      LIMIT 5
+    `);
+
+    return {
+      counts: countsRes.rows[0],
+      recent: recentRes.rows
+    };
+  } catch (err) {
+    console.error('[DB] getAdminOrderSummary error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch all currently scheduled orders waiting for link queue
+ */
+export async function getAdminScheduledOrders() {
+  try {
+    const res = await pool.query(`
+      SELECT o.id, o.user_id, o.service_name, o.quantity, o.link, o.created_at, u.email, u.name as user_name
+      FROM vexo_orders o
+      LEFT JOIN vexo_users u ON o.user_id = u.id
+      WHERE o.status = 'Scheduled'
+      ORDER BY o.created_at ASC
+      LIMIT 10
+    `);
+    return res.rows;
+  } catch (err) {
+    console.error('[DB] getAdminScheduledOrders error:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Admin one-click refund of an order back into user's wallet
+ */
+export async function adminRefundOrder(orderQuery, adminReason = 'Admin Refund via WhatsApp') {
+  const cleanId = String(orderQuery || '').replace('#', '').trim();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const ordRes = await client.query(
+      `SELECT id, user_id, charge_pkr, status, service_name FROM vexo_orders WHERE id::text ILIKE $1 FOR UPDATE`,
+      [`${cleanId}%`]
+    );
+    if (ordRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { success: false, error: `Order "${orderQuery}" database mein nahi mila.` };
+    }
+
+    const ord = ordRes.rows[0];
+    if (ord.status === 'Cancelled' || ord.status === 'Refunded') {
+      await client.query('ROLLBACK');
+      return { success: false, error: `Order #${String(ord.id).slice(0, 8)} pehle se Cancelled / Refunded hai.` };
+    }
+
+    const refundAmount = Number(ord.charge_pkr || 0);
+
+    // Update order status
+    await client.query(
+      `UPDATE vexo_orders
+       SET status = 'Cancelled', failure_reason = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [adminReason, ord.id]
+    );
+
+    // Credit user wallet
+    if (refundAmount > 0) {
+      await client.query(
+        `INSERT INTO vexo_wallets (user_id, balance_pkr) VALUES ($1, 0)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [ord.user_id]
+      );
+
+      const walletRes = await client.query(
+        `UPDATE vexo_wallets
+         SET balance_pkr = balance_pkr + $1, updated_at = NOW()
+         WHERE user_id = $2
+         RETURNING balance_pkr`,
+        [refundAmount, ord.user_id]
+      );
+
+      await client.query(
+        `INSERT INTO vexo_wallet_transactions
+          (user_id, type, amount_pkr, reference_type, reference_id, description)
+         VALUES ($1, 'Refund', $2, 'order_refund', $3, $4)
+         ON CONFLICT (reference_type, reference_id) DO NOTHING`,
+        [ord.user_id, refundAmount, ord.id, adminReason]
+      );
+
+      await client.query('COMMIT');
+      return {
+        success: true,
+        orderId: String(ord.id).slice(0, 8),
+        serviceName: ord.service_name,
+        refundAmount,
+        newBalance: Number(walletRes.rows[0]?.balance_pkr || 0),
+        userId: ord.user_id
+      };
+    }
+
+    await client.query('COMMIT');
+    return {
+      success: true,
+      orderId: String(ord.id).slice(0, 8),
+      serviceName: ord.service_name,
+      refundAmount: 0,
+      userId: ord.user_id
+    };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    return { success: false, error: err.message };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Fetch detailed user record by email, whatsapp, or ID
+ */
+export async function getAdminUserDetails(query) {
+  const q = String(query || '').trim();
+  try {
+    const res = await pool.query(
+      `SELECT u.id, u.name, u.email, u.role, u.whatsapp, u.created_at,
+              COALESCE(w.balance_pkr, 0) as balance_pkr,
+              COALESCE(w.bonus_balance_pkr, 0) as bonus_balance_pkr,
+              (SELECT COUNT(*) FROM vexo_orders o WHERE o.user_id = u.id) as total_orders
+       FROM vexo_users u
+       LEFT JOIN vexo_wallets w ON u.id = w.user_id
+       WHERE u.email ILIKE $1 OR u.whatsapp ILIKE $1 OR u.id::text = $2
+       LIMIT 1`,
+      [`%${q}%`, q]
+    );
+    return res.rows[0] || null;
+  } catch (err) {
+    console.error('[DB] getAdminUserDetails error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Add balance directly to a user's wallet via WhatsApp command
+ */
+export async function adminAddUserBalance(query, amountPkr, adminNote = 'Admin Credit via WhatsApp') {
+  const amt = Number(amountPkr);
+  if (!amt || amt <= 0) {
+    return { success: false, error: 'Barah-e-karam valid positive amount likhein (maslan: 500).' };
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const userRes = await client.query(
+      `SELECT id, name, email FROM vexo_users WHERE email ILIKE $1 OR whatsapp ILIKE $1 OR id::text = $2 LIMIT 1`,
+      [`%${query}%`, query]
+    );
+
+    if (userRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { success: false, error: `User "${query}" system me nahi mila.` };
+    }
+
+    const user = userRes.rows[0];
+
+    await client.query(
+      `INSERT INTO vexo_wallets (user_id, balance_pkr) VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING`,
+      [user.id]
+    );
+
+    const walletRes = await client.query(
+      `UPDATE vexo_wallets
+       SET balance_pkr = balance_pkr + $1, updated_at = NOW()
+       WHERE user_id = $2
+       RETURNING balance_pkr`,
+      [amt, user.id]
+    );
+
+    await client.query(
+      `INSERT INTO vexo_wallet_transactions (user_id, type, amount_pkr, reference_type, reference_id, description)
+       VALUES ($1, 'Credit', $2, 'admin_deposit', $3, $4)`,
+      [user.id, amt, `admin_wa_${Date.now()}`, adminNote]
+    );
+
+    await client.query('COMMIT');
+    return {
+      success: true,
+      user,
+      addedAmount: amt,
+      newBalance: Number(walletRes.rows[0]?.balance_pkr || 0)
+    };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    return { success: false, error: err.message };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Overall panel statistics
+ */
+export async function getAdminStats() {
+  try {
+    const userCount = await pool.query(`SELECT COUNT(*) as count FROM vexo_users`);
+    const orderCount = await pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(charge_pkr), 0) as total_volume FROM vexo_orders`);
+    const todayStats = await pool.query(`
+      SELECT COUNT(*) as today_orders, COALESCE(SUM(charge_pkr), 0) as today_volume
+      FROM vexo_orders WHERE created_at >= CURRENT_DATE
+    `);
+    const pendingDeposits = await pool.query(`
+      SELECT COUNT(*) as count, COALESCE(SUM(amount_pkr), 0) as total_amount
+      FROM vexo_deposits WHERE status = 'Pending'
+    `);
+
+    return {
+      totalUsers: Number(userCount.rows[0]?.count || 0),
+      totalOrders: Number(orderCount.rows[0]?.count || 0),
+      totalVolumePkr: Number(orderCount.rows[0]?.total_volume || 0),
+      todayOrders: Number(todayStats.rows[0]?.today_orders || 0),
+      todayVolumePkr: Number(todayStats.rows[0]?.today_volume || 0),
+      pendingDepositsCount: Number(pendingDeposits.rows[0]?.count || 0),
+      pendingDepositsAmount: Number(pendingDeposits.rows[0]?.total_amount || 0),
+    };
+  } catch (err) {
+    console.error('[DB] getAdminStats error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Pending user deposits waiting for verification
+ */
+export async function getAdminPendingDeposits() {
+  try {
+    const res = await pool.query(`
+      SELECT d.id, d.method, d.amount_pkr, d.transaction_id, d.created_at, u.email, u.name
+      FROM vexo_deposits d
+      JOIN vexo_users u ON d.user_id = u.id
+      WHERE d.status = 'Pending'
+      ORDER BY d.created_at ASC
+      LIMIT 10
+    `);
+    return res.rows;
+  } catch (err) {
+    console.error('[DB] getAdminPendingDeposits error:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Dispatch scheduled or pending order directly from bot
+ */
+export async function dispatchOrderFromBot(orderQuery) {
+  const cleanId = String(orderQuery || '').replace('#', '').trim();
+  try {
+    const ordRes = await pool.query(
+      `SELECT id, user_id, service_id, link, quantity, status FROM vexo_orders WHERE id::text ILIKE $1 LIMIT 1`,
+      [`${cleanId}%`]
+    );
+    if (ordRes.rows.length === 0) {
+      return { success: false, error: `Order "${orderQuery}" nahi mila.` };
+    }
+    const ord = ordRes.rows[0];
+
+    const servRes = await pool.query(
+      `SELECT provider_id, provider_service_id FROM vexo_routed_services WHERE id = $1 LIMIT 1`,
+      [ord.service_id]
+    );
+
+    if (servRes.rows.length === 0) {
+      return { success: false, error: `Service mapping nahi mili.` };
+    }
+
+    const { provider_id, provider_service_id } = servRes.rows[0];
+    const provRes = await pool.query(
+      `SELECT api_url, api_key FROM vexo_providers WHERE id = $1 LIMIT 1`,
+      [provider_id]
+    );
+
+    if (provRes.rows.length === 0) {
+      return { success: false, error: `Provider ${provider_id} configuration nahi mili.` };
+    }
+
+    const { api_url, api_key } = provRes.rows[0];
+
+    const resp = await fetch(api_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        key: api_key,
+        action: 'add',
+        service: String(provider_service_id),
+        link: ord.link,
+        quantity: String(ord.quantity),
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const data = await resp.json();
+    if (data && data.order) {
+      await pool.query(
+        `UPDATE vexo_orders
+         SET provider_order_id = $1, provider_id = $2, status = 'Pending', failure_reason = NULL, updated_at = NOW()
+         WHERE id = $3`,
+        [String(data.order), provider_id, ord.id]
+      );
+      return {
+        success: true,
+        orderId: String(ord.id).slice(0, 8),
+        providerOrderId: data.order,
+        providerId: provider_id,
+      };
+    } else {
+      const errMsg = data?.error || 'Provider rejected order';
+      return { success: false, error: errMsg };
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}

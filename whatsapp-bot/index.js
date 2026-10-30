@@ -7,6 +7,7 @@ import makeWASocket, {
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
+import QRCode from 'qrcode';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -33,7 +34,16 @@ import {
   lookupOrder,
   processOrderSpeedUp,
   processOrderRefill,
-  sanitizeText
+  sanitizeText,
+  getAdminProviderBalances,
+  getAdminOrderSummary,
+  getAdminScheduledOrders,
+  adminRefundOrder,
+  getAdminUserDetails,
+  adminAddUserBalance,
+  getAdminStats,
+  getAdminPendingDeposits,
+  dispatchOrderFromBot
 } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -85,18 +95,36 @@ MAIN MENU REFERENCE:
 6 = Free Test Trial Services (1,000 Views / 50 Likes Free)
 7 = Language Switcher (English, Urdu, Bengali, Arabic)
 
+COMPREHENSIVE WEBSITE ISSUE RESOLUTION KNOWLEDGE BASE:
+1. ORDER DELAYS & QUEUED / SCHEDULED ORDERS:
+   - Normal services start within 1-30 minutes; high-retention services can take 1-2 hours.
+   - Smart Same-Link Queue: If a user enters multiple orders for the SAME link, subsequent orders automatically enter "Scheduled" status to prevent counter collisions or drops. As soon as the active order finishes, the queued order starts automatically!
+   - If user asks to speed up: Tell them to reply "speed up order <order_id>".
+2. DROP PROTECTION & REFILL:
+   - For services with Refill guarantee (30 to 365 days): User can click the "Refill" button on ${PANEL_URL}/dashboard?tab=orders, or reply "refill order <order_id>" on WhatsApp for instant automated refill.
+3. PRIVATE ACCOUNT / PROFILE:
+   - Accounts MUST be 100% PUBLIC before and during service delivery.
+   - If an order failed because the profile was private, the funds were automatically refunded to their website wallet balance. Tell user to set profile to public and place the order again.
+4. DEPOSIT / ADD FUNDS NOT SHOWING:
+   - Manual payments (SadaPay: 03197008275 Saeed Bashir, Easypaisa: 03176437013 Baigum Shazia Bashir) are verified in 5-15 minutes.
+   - User must submit TID and screenshot at ${PANEL_URL}/dashboard?tab=add-funds. If delayed past 20 minutes, tell them to send TID and screenshot here or reply 5.
+5. CANCELLATION & REFUND:
+   - Orders in processing upstream cannot be stopped mid-way.
+   - If an order fails, cancels, or is partial, 100% of the remaining amount is automatically refunded into their website wallet balance. Wallet balance never expires.
+6. 100% FREE TEST TRIAL:
+   - Users can test free views (up to 1,000 views) or likes by visiting ${PANEL_URL} -> New Order -> Category: "Free Test Trial" (No deposit required!).
+7. FORGOT PASSWORD & LOGIN:
+   - Tell user to click "Forgot Password" on ${PANEL_URL}/login, or reply 5 with registered email.
+8. LINK FORMAT:
+   - Followers: Profile link (e.g. instagram.com/username).
+   - Likes/Views: Direct post/video URL (e.g. tiktok.com/@user/video/123456).
+
 CRITICAL MULTILINGUAL & TONE RULES:
-1. Detect the user's language from their message and ALWAYS reply in their language!
-   - If user asks in English -> Reply in clean, friendly English.
-   - If user asks in Roman Urdu / Urdu -> Reply in simple, natural Roman Urdu.
-   - If user asks in Bengali -> Reply in Bengali.
-   - If user asks in Arabic -> Reply in Arabic.
-   - If user asks in another language -> Reply in their language!
-2. Do NOT use stiff, archaic, or overly formal phrases like "barah-e-karam" or "pyara naam". Speak like a modern, friendly human assistant.
-3. If the user mentions a number or asks about a service, guide them directly according to the menu above. NEVER say "It looks like you just sent a number".
-4. Always quote prices in the customer's currency (${userCurrency}).
-5. Strictly confidential: NEVER mention upstream providers, supplier names (e.g. SMM Flare, PAK SMM, Smooth SMM, Rizvi SMM, AM SMM), API keys, or URLs. Always brand as VEXARO SMM Panel.
-6. Maximum 2-3 sentences. Short, direct, and helpful.`;
+1. Detect user's language and ALWAYS reply in their language (clean English for English, natural Roman Urdu for Urdu/Hindi, Bengali for Bengali, Arabic for Arabic).
+2. Modern, friendly, helpful tone. Never say "It looks like you just sent a number".
+3. Always quote prices in the customer's currency (${userCurrency}).
+4. Strictly confidential: NEVER mention upstream providers, supplier names (e.g. SMM Flare, PAK SMM, Smooth SMM, Rizvi SMM, AM SMM), API keys, or URLs. Always brand as VEXARO SMM Panel.
+5. Maximum 2-3 sentences. Short, direct, and helpful.`;
 
   try {
     const inputContent = contextData
@@ -272,6 +300,17 @@ async function startBot() {
       console.log('(Note: WhatsApp QR codes auto-refresh every 25 seconds)');
       console.log('======================================================\n');
       qrcode.generate(qr, { small: true });
+
+      try {
+        await QRCode.toFile(path.join(__dirname, 'whatsapp-qr.png'), qr, { scale: 8, margin: 2 });
+        const brainDir = 'C:/Users/User/.gemini/antigravity/brain/7c6f9ceb-757b-4da1-8ed9-4b74a0a3848b';
+        if (fs.existsSync(brainDir)) {
+          await QRCode.toFile(path.join(brainDir, 'whatsapp-qr.png'), qr, { scale: 8, margin: 2 });
+        }
+        console.log('📸 QR Image saved to whatsapp-bot/whatsapp-qr.png');
+      } catch (e) {
+        console.warn('[QR Save Warning]:', e.message);
+      }
     }
 
     if (connection === 'close') {
@@ -350,12 +389,22 @@ async function startBot() {
       console.log(`📩 [${isFromMe ? 'Admin (fromMe)' : 'Incoming'}] Chat: +${senderPhone} -> "${text}"`);
 
       // ========================================================
-      // 0. ADMIN LIVE COMMANDS (/pause, /unpause, /ignore, /unignore, /status, /list, /help)
+      // 0. ADMIN LIVE COMMANDS (/balance, /orders, /scheduled, /dispatch, /refund, /user, /addbalance, /stats, /deposits, /pause, /resume, /status, /help)
       // Works from:
-      // A) The Bot's own phone (in any customer chat or "Message yourself")
-      // B) The Admin's registered WhatsApp phone number
+      // A) The Bot's own phone (in any customer chat or "Message yourself" - isFromMe)
+      // B) The Admin's registered WhatsApp phone numbers (03176437013, 03088180234, etc.)
       // ========================================================
-      const isAdminSender = isFromMe || senderPhone === cleanSupportPhone || senderPhone === '923088180234' || senderPhone.endsWith('3088180234');
+      const adminTargetPhones = [
+        '923176437013',
+        '923088180234',
+        cleanSupportPhone,
+        (process.env.ADMIN_WHATSAPP || '').replace(/\D/g, '').replace(/^0/, '92'),
+        (process.env.SUPPORT_WHATSAPP || '').replace(/\D/g, '').replace(/^0/, '92'),
+      ].filter(Boolean);
+
+      const isAdminSender =
+        isFromMe ||
+        adminTargetPhones.some((p) => senderPhone === p || senderPhone.endsWith(p.slice(-10)));
 
       if (cleanText.startsWith('/')) {
         if (!isAdminSender) {
@@ -373,9 +422,198 @@ async function startBot() {
         // If typed in a customer's chat without a number, target that customer!
         let targetRaw = parts[1] ? parts[1].replace(/\D/g, '').replace(/^0/, '92') : senderPhone;
 
+        // --- COMMAND: /balance or /balances ---
+        if (cmd === '/balance' || cmd === '/balances' || cmd === '/bal') {
+          const providers = await getAdminProviderBalances();
+          if (providers.length === 0) {
+            await sock.sendMessage(remoteJid, { text: `⚠️ Database me koi provider configure nahi mila.` });
+          } else {
+            let msg = `💰 *VEXARO SMM - Live Provider Balances:*\n\n`;
+            for (const p of providers) {
+              const bal = Number(p.balance_usd || 0);
+              let icon = '🟢';
+              if (bal <= 5) icon = '🚨 CRITICAL';
+              else if (bal <= 15) icon = '⚠️ LOW';
+              else icon = '✅ Normal';
+
+              msg += `🏢 *${p.name || p.id}*\n`;
+              msg += `• Balance: *$${bal.toFixed(2)} USD* (${icon})\n`;
+              msg += `• Status: ${p.is_active ? 'Active' : 'Disabled'}\n`;
+              if (p.last_sync_at) {
+                msg += `• Last Sync: ${new Date(p.last_sync_at).toLocaleTimeString()}\n`;
+              }
+              msg += `\n`;
+            }
+            msg += `━━━━━━━━━━━━━━━━━━━\n`;
+            msg += `👉 Agar kisi provider ka balance low hai, foran recharge karein taake customer orders delay na hon!`;
+            await sock.sendMessage(remoteJid, { text: msg });
+          }
+          continue;
+        }
+
+        // --- COMMAND: /orders ---
+        if (cmd === '/orders' || cmd === '/orderstats') {
+          const summary = await getAdminOrderSummary();
+          if (!summary) {
+            await sock.sendMessage(remoteJid, { text: `❌ Orders summary load nahi ho saki.` });
+          } else {
+            const c = summary.counts;
+            let msg = `📊 *VEXARO Orders Overview:*\n\n`;
+            msg += `📅 *Today's Total:* ${c.today_total} orders\n`;
+            msg += `✅ *Completed Today:* ${c.today_completed} orders\n`;
+            msg += `⏳ *Pending (Awaiting Provider):* ${c.pending}\n`;
+            msg += `🔗 *Scheduled (Queued on Link):* ${c.scheduled}\n`;
+            msg += `🚀 *In Progress / Processing:* ${c.in_progress}\n`;
+            msg += `❌ *Cancelled / Refunded:* ${c.cancelled}\n`;
+            msg += `📦 *Lifetime Total:* ${c.total_orders}\n\n`;
+
+            if (summary.recent.length > 0) {
+              msg += `━━━━━━━━━━━━━━━━━━━\n`;
+              msg += `🕒 *Recent 5 Orders:*\n`;
+              for (const r of summary.recent) {
+                const sId = String(r.id).slice(0, 8);
+                msg += `• *#${sId}* | ${r.status} | Qty: ${r.quantity} | Rs ${Number(r.charge_pkr).toFixed(0)}\n  _${r.service_name}_\n`;
+              }
+            }
+            await sock.sendMessage(remoteJid, { text: msg });
+          }
+          continue;
+        }
+
+        // --- COMMAND: /scheduled ---
+        if (cmd === '/scheduled' || cmd === '/queue') {
+          const list = await getAdminScheduledOrders();
+          if (list.length === 0) {
+            await sock.sendMessage(remoteJid, {
+              text: `✅ *Scheduled Orders Queue Empty!*\n\nKoi bhi order queue me Scheduled nahi hai. Tamam orders live dispatch ho chuke hain.`
+            });
+          } else {
+            let msg = `🔗 *Active Scheduled Orders Queue (${list.length}):*\n`;
+            msg += `_Same link par pehla order complete hote hi yeh automatically start honge._\n\n`;
+            for (const o of list) {
+              const sId = String(o.id).slice(0, 8);
+              msg += `📦 *#${sId}* (${o.user_name || o.email || `User ${o.user_id}`})\n`;
+              msg += `• Service: *${o.service_name}*\n`;
+              msg += `• Qty: *${o.quantity}*\n`;
+              msg += `• Link: ${o.link}\n`;
+              msg += `• Dispatch Now: */dispatch ${sId}*\n\n`;
+            }
+            await sock.sendMessage(remoteJid, { text: msg });
+          }
+          continue;
+        }
+
+        // --- COMMAND: /dispatch <order_id> ---
+        if (cmd === '/dispatch') {
+          const targetOrderId = parts[1];
+          if (!targetOrderId) {
+            await sock.sendMessage(remoteJid, { text: `❌ Format: */dispatch <order_id>*\nMisaal: */dispatch 2843c01*` });
+            continue;
+          }
+          await sock.sendMessage(remoteJid, { text: `⏳ Dispatching order #${targetOrderId} to upstream provider...` });
+          const res = await dispatchOrderFromBot(targetOrderId);
+          if (res.success) {
+            await sock.sendMessage(remoteJid, {
+              text: `🚀 *Order Dispatched Successfully!*\n\n• Order ID: *#${res.orderId}*\n• Provider Order ID: *${res.providerOrderId}*\n• Provider: *${res.providerId}*\n• Status: *Pending / In Progress*`
+            });
+          } else {
+            await sock.sendMessage(remoteJid, {
+              text: `❌ *Dispatch Failed:*\n${res.error}\n\nAgar provider ka balance low hai toh pehle provider account top-up karein.`
+            });
+          }
+          continue;
+        }
+
+        // --- COMMAND: /refund <order_id> ---
+        if (cmd === '/refund') {
+          const targetOrderId = parts[1];
+          if (!targetOrderId) {
+            await sock.sendMessage(remoteJid, { text: `❌ Format: */refund <order_id>*\nMisaal: */refund 2843c01*` });
+            continue;
+          }
+          const res = await adminRefundOrder(targetOrderId, 'Admin Refund via WhatsApp');
+          if (res.success) {
+            await sock.sendMessage(remoteJid, {
+              text: `💰 *Order Refunded Successfully!*\n\n• Order ID: *#${res.orderId}*\n• Service: ${res.serviceName}\n• Refunded Amount: *Rs ${res.refundAmount.toFixed(2)} PKR*\n• Customer User ID: *${res.userId}*\n• Customer New Balance: *Rs ${res.newBalance.toFixed(2)} PKR*\n• Order Status: *Cancelled*`
+            });
+          } else {
+            await sock.sendMessage(remoteJid, { text: `❌ Refund Error: ${res.error}` });
+          }
+          continue;
+        }
+
+        // --- COMMAND: /user <email / phone / id> ---
+        if (cmd === '/user' || cmd === '/customer') {
+          const query = parts[1];
+          if (!query) {
+            await sock.sendMessage(remoteJid, { text: `❌ Format: */user <email or phone or id>*\nMisaal: */user test@gmail.com* ya */user 03176437013*` });
+            continue;
+          }
+          const u = await getAdminUserDetails(query);
+          if (u) {
+            await sock.sendMessage(remoteJid, {
+              text: `👤 *Customer Account Details:*\n\n• ID: *${u.id}*\n• Name: *${u.name}*\n• Email: *${u.email}*\n• WhatsApp: *+${u.whatsapp || 'N/A'}*\n• Role: *${u.role}*\n• Real Balance: *Rs ${Number(u.balance_pkr).toFixed(2)} PKR*\n• Bonus Balance: *Rs ${Number(u.bonus_balance_pkr).toFixed(2)} PKR*\n• Total Orders: *${u.total_orders}*\n• Joined: ${new Date(u.created_at).toLocaleDateString()}`
+            });
+          } else {
+            await sock.sendMessage(remoteJid, { text: `❌ User "${query}" database me nahi mila.` });
+          }
+          continue;
+        }
+
+        // --- COMMAND: /addbalance <email or phone or id> <amount> ---
+        if (cmd === '/addbalance' || cmd === '/addfunds') {
+          const targetUser = parts[1];
+          const amount = parts[2];
+          if (!targetUser || !amount || isNaN(Number(amount))) {
+            await sock.sendMessage(remoteJid, { text: `❌ Format: */addbalance <email/phone/id> <amount>*\nMisaal: */addbalance 03176437013 500* ya */addbalance user@gmail.com 1000*` });
+            continue;
+          }
+          const res = await adminAddUserBalance(targetUser, Number(amount), 'Admin Credit via WhatsApp Bot');
+          if (res.success) {
+            await sock.sendMessage(remoteJid, {
+              text: `✅ *Funds Added Successfully!*\n\n• User: *${res.user.name}* (${res.user.email})\n• Amount Added: *Rs ${res.addedAmount.toFixed(2)} PKR*\n• New Wallet Balance: *Rs ${res.newBalance.toFixed(2)} PKR*\n• Transaction: Recorded in audit log.`
+            });
+          } else {
+            await sock.sendMessage(remoteJid, { text: `❌ Add Balance Error: ${res.error}` });
+          }
+          continue;
+        }
+
+        // --- COMMAND: /stats ---
+        if (cmd === '/stats' || cmd === '/metrics') {
+          const s = await getAdminStats();
+          if (s) {
+            await sock.sendMessage(remoteJid, {
+              text: `📈 *VEXARO Panel Live Statistics:*\n\n👥 *Total Users:* ${s.totalUsers.toLocaleString()}\n📦 *Total Orders:* ${s.totalOrders.toLocaleString()}\n💎 *Lifetime Volume:* Rs ${s.totalVolumePkr.toLocaleString()} PKR\n\n📅 *Today's Orders:* ${s.todayOrders.toLocaleString()}\n💰 *Today's Revenue:* Rs ${s.todayVolumePkr.toLocaleString()} PKR\n\n💳 *Pending Deposits:* ${s.pendingDepositsCount} requests (Rs ${s.pendingDepositsAmount.toLocaleString()} PKR)\n_Check pending deposits: */deposits*_`
+            });
+          } else {
+            await sock.sendMessage(remoteJid, { text: `❌ Statistics load nahi ho saki.` });
+          }
+          continue;
+        }
+
+        // --- COMMAND: /deposits ---
+        if (cmd === '/deposits') {
+          const list = await getAdminPendingDeposits();
+          if (list.length === 0) {
+            await sock.sendMessage(remoteJid, { text: `✅ Koi bhi pending deposit verification ke liye nahi hai. Sabhi approve ho chuke hain!` });
+          } else {
+            let msg = `💳 *Pending Deposit Requests (${list.length}):*\n\n`;
+            for (const d of list) {
+              msg += `• *Rs ${Number(d.amount_pkr).toFixed(0)} PKR* via *${d.method}*\n`;
+              msg += `  User: ${d.name} (${d.email})\n`;
+              msg += `  TID: \`${d.transaction_id}\`\n`;
+              msg += `  Date: ${new Date(d.created_at).toLocaleTimeString()}\n\n`;
+            }
+            msg += `👉 Website Admin Panel par jaa kar ek click se approve karein:\nhttps://vexarosmm.com/admin`;
+            await sock.sendMessage(remoteJid, { text: msg });
+          }
+          continue;
+        }
+
         if (cmd === '/pause') {
           // If typed without a number in self-chat
-          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234')) {
+          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234' || senderPhone === '923176437013')) {
             await sock.sendMessage(remoteJid, { text: `❌ Barah-e-meherbani number likhein, jaise: */pause 03001234567*` });
             continue;
           }
@@ -387,7 +625,7 @@ async function startBot() {
         }
 
         if (cmd === '/unpause' || cmd === '/resume') {
-          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234')) {
+          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234' || senderPhone === '923176437013')) {
             await sock.sendMessage(remoteJid, { text: `❌ Barah-e-meherbani number likhein, jaise: */resume 03001234567*` });
             continue;
           }
@@ -399,7 +637,7 @@ async function startBot() {
         }
 
         if (cmd === '/ignore' || cmd === '/block') {
-          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234')) {
+          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234' || senderPhone === '923176437013')) {
             await sock.sendMessage(remoteJid, { text: `❌ Barah-e-meherbani number likhein, jaise: */ignore 03001234567*` });
             continue;
           }
@@ -411,7 +649,7 @@ async function startBot() {
         }
 
         if (cmd === '/unignore' || cmd === '/unblock') {
-          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234')) {
+          if (!parts[1] && (senderPhone === cleanSupportPhone || senderPhone === '923088180234' || senderPhone === '923176437013')) {
             await sock.sendMessage(remoteJid, { text: `❌ Barah-e-meherbani number likhein, jaise: */unignore 03001234567*` });
             continue;
           }
@@ -431,7 +669,7 @@ async function startBot() {
           const ord = await lookupOrder(queryId);
           if (ord) {
             await sock.sendMessage(remoteJid, {
-              text: `📦 *Order #${ord.shortId} Details*\n\n• Service: *${ord.serviceName}*\n• Quantity: *${ord.quantity}*\n• Status: *${ord.status}*\n• Link: ${ord.link}\n• Charge: *Rs ${ord.chargePkr}*\n• Created: ${ord.createdAt}`
+              text: `📦 *Order #${ord.shortId} Details*\n\n• Service: *${ord.serviceName}*\n• Quantity: *${ord.quantity}*\n• Status: *${ord.status}*\n• Link: ${ord.link}\n• Charge: *Rs ${ord.chargePkr}*\n• Provider Order ID: ${ord.providerOrderId || 'N/A'}\n• Created: ${ord.createdAt}`
             });
           } else {
             await sock.sendMessage(remoteJid, { text: `❌ Order "${queryId}" database me nahi mila.` });
@@ -454,32 +692,37 @@ async function startBot() {
           continue;
         }
 
-        if (cmd === '/help') {
+        if (cmd === '/help' || cmd === '/commands') {
           await sock.sendMessage(remoteJid, {
-            text: `🛠️ *VEXARO Admin WhatsApp Commands:*
+            text: `👑 *VEXARO Admin WhatsApp Commands Suite:*
 
-1️⃣ */pause <number>*
-Bot ko 24 ghante ke liye pause kar dega (Aap customer se sukoon se baat kar sakein). Agar customer ki chat me likhenge to number likhne ki zaroorat nahi.
+💰 *PROVIDER & BALANCES:*
+• */balance* - Tamam providers (Pak SMM, Smooth, AM, SMMFlare, Rizvi) ka live balance check karein.
 
-2️⃣ */resume <number>* ya */unpause <number>*
-Bot ko us customer ke liye dobara active kar dega.
+📦 *ORDERS & QUEUE MANAGEMENT:*
+• */orders* - Aaj ke orders, completed, pending aur queue statistics.
+• */scheduled* - Same link par queued scheduled orders ki list.
+• */dispatch <order_id>* - Scheduled ya pending order ko provider par foran bhejein.
+• */status <order_id>* - Kisi bhi order ki live details check karein.
+• */refund <order_id>* - Order cancel karke customer wallet me 100% paise refund karein.
 
-3️⃣ */ignore <number>*
-Uss number ko permanently ignore/block kar dega (Bot use kabhi reply nahi karega).
+👤 *USER & WALLET MANAGEMENT:*
+• */user <email/phone/id>* - Customer profile, balance aur orders check karein.
+• */addbalance <email/phone> <amount>* - Direct customer wallet me balance add karein.
+• */deposits* - Pending manual deposit requests (SadaPay/Easypaisa).
+• */stats* - Panel total revenue, users aur lifetime statistics.
 
-4️⃣ */unignore <number>*
-Ignored number ko unblock karega.
-
-5️⃣ */status <order_id>*
-Kisi bhi order ki real-time status check karne ke liye (e.g. */status 125*).
-
-6️⃣ */list*
-Currently paused aur ignored numbers ki list dekhne ke liye.`
+🛠️ *BOT CHAT CONTROLS:*
+• */pause <number>* - Bot ko 24 ghante ke liye pause karein (human takeover).
+• */resume <number>* - Bot ko dobara active karein.
+• */ignore <number>* - Kisi number ko permanently block karein.
+• */unignore <number>* - Number unblock karein.
+• */list* - Currently paused numbers ki list.`
           });
           continue;
         }
 
-        await sock.sendMessage(remoteJid, { text: `❓ Unknown command "${cmd}". Tamam commands dekhne ke liye */help* likhein.` });
+        await sock.sendMessage(remoteJid, { text: `❓ Unknown command "${cmd}". Tamam admin commands dekhne ke liye */help* likhein.` });
         continue;
       }
 
@@ -584,7 +827,11 @@ _Feel free to chat in English or your native language_
             // While onboarding is unfinished, intents are checked before the stage handlers.
             // If an intent matches, the stage blocks below are skipped and the message
             // falls through to the intent sections (speed up, refill, status, cancel, menu, AI).
-            const INTENT_WORDS = ['speed up', 'speedup', 'fast karo', 'tez karo', 'jaldi karo', 'push order', 'order late', 'stuck', 'atki hui', 'refill', 'drop hua', 'cancel', 'status'];
+            const INTENT_WORDS = [
+              'speed up', 'speedup', 'fast karo', 'tez karo', 'jaldi karo', 'push order', 'order late', 'stuck', 'atki hui',
+              'refill', 'drop hua', 'kam ho gaye', 'gir gaye', 'cancel', 'status', 'private', 'public', 'deposit', 'paisa',
+              'add funds', 'balance nahi aya', 'scheduled', 'queue', 'link format', 'password', 'login', 'trial', 'free'
+            ];
             const QUESTION_WORDS = ['?', 'kya', 'kaise', 'kab', 'kahan', 'kitne', 'kyun', 'kyon', 'can ', 'how ', 'what ', 'why ', 'ho sakta', 'hoga'];
             const isMenuDigit = ['1', '2', '3', '4', '5', '6', '7'].includes(cleanText);
             const isGreetingWord = ['hi', 'hello', 'salam', 'aoa', 'assalam', 'hey', 'start', 'menu', 'help', 'info', 'hy', 'bot'].some((g) => cleanText === g || cleanText.startsWith(g + ' '));
@@ -876,6 +1123,148 @@ Aapka Order ID milte hi bot foran server check karke drop replenish/refill karna
           await sock.sendPresenceUpdate('paused', remoteJid);
           continue;
         }
+      }
+
+      // ========================================================
+      // 2.6 WEBSITE ISSUE RESOLUTION: PRIVATE ACCOUNT / PROFILE
+      // ========================================================
+      const isPrivateIssue =
+        cleanText.includes('private') ||
+        cleanText.includes('profile private') ||
+        cleanText.includes('account private') ||
+        cleanText.includes('private tha');
+
+      if (isPrivateIssue && !isGreeting) {
+        const privateMsg =
+`🔒 *VEXARO Solution: Private Account Issue*
+
+• *Rule:* Social media algorithms aur hamare high-speed delivery servers sirf *PUBLIC* accounts aur posts par deliver karte hain.
+• *Refund:* Agar aapka account private tha aur order fail hua, toh uska 100% balance automatically aapke website wallet me wapas *Refund* ho chuka hai!
+• *Solution:*
+1. Apne Instagram / TikTok / Facebook account settings me jaa kar profile ko *Public* karein.
+2. Website par login karein: ${PANEL_URL}/dashboard
+3. Dobara New Order submit karein, delivery foran start ho jayegi!`;
+
+        await sock.sendMessage(remoteJid, { text: privateMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // ========================================================
+      // 2.7 WEBSITE ISSUE RESOLUTION: DEPOSIT / ADD FUNDS NOT CREDITED
+      // ========================================================
+      const isDepositIssue =
+        cleanText.includes('balance nahi aya') ||
+        cleanText.includes('paisa nahi aya') ||
+        cleanText.includes('paise nahi aye') ||
+        cleanText.includes('deposit pending') ||
+        cleanText.includes('balance add nahi hua') ||
+        cleanText.includes('funds nahi aye') ||
+        cleanText.includes('tid check');
+
+      if (isDepositIssue && !isGreeting) {
+        const depositMsg =
+`💳 *VEXARO Solution: Deposit Verification & Add Funds*
+
+• *Official Accounts:*
+📱 *SadaPay:* ${SADAPAY_NO} (${SADAPAY_NAME})
+📱 *Easypaisa:* ${EASYPAISA_NO} (${EASYPAISA_NAME})
+
+⏱️ *Verification Time:*
+Manual deposits hamari finance team 5 se 15 minute ke andar verify karke approve kar deti hai.
+
+👉 *Agar 15 minute se zyada ho gaye hain:*
+1. Make sure aapne sahi TID aur receipt screenshot submit kiya hai yahan: ${PANEL_URL}/dashboard?tab=add-funds
+2. Aap apna Transaction ID (TID) aur payment screenshot direct yahan WhatsApp par send karein, ya *5* likhein taake live agent foran credit kar sake!`;
+
+        await sock.sendMessage(remoteJid, { text: depositMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // ========================================================
+      // 2.8 WEBSITE ISSUE RESOLUTION: SCHEDULED / SAME-LINK QUEUE
+      // ========================================================
+      const isQueueIssue =
+        cleanText.includes('scheduled') ||
+        cleanText.includes('queue') ||
+        cleanText.includes('same link') ||
+        cleanText.includes('atki hui hai') ||
+        cleanText.includes('pehle wala order');
+
+      if (isQueueIssue && !isGreeting && !cleanText.startsWith('/')) {
+        const queueMsg =
+`🔗 *VEXARO Solution: Scheduled Order Queue System*
+
+🎯 *Scheduled Status Kya Hai?*
+Jab aap ek hi link ya video par ek order chalte waqt doosra naya order lagate hain, toh hamara smart queue system doosre order ko *Scheduled* me hold kar deta hai!
+
+✨ *Fayda:*
+Is se dono orders apas me clash nahi hote, koi drop nahi aata aur counter 100% accurate deliver hota hai.
+
+✅ *Action:*
+Pehla order complete hote hi queued order automatically *In Progress* me chala jata hai! Aapko kuch karne ki zaroorat nahi hai. Real-time track karein: ${PANEL_URL}/dashboard?tab=orders`;
+
+        await sock.sendMessage(remoteJid, { text: queueMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // ========================================================
+      // 2.9 WEBSITE ISSUE RESOLUTION: LINK FORMAT HELP
+      // ========================================================
+      const isLinkIssue =
+        cleanText.includes('link format') ||
+        cleanText.includes('galat link') ||
+        cleanText.includes('link kaisa') ||
+        cleanText.includes('link error') ||
+        cleanText.includes('invalid link');
+
+      if (isLinkIssue && !isGreeting) {
+        const linkMsg =
+`🔗 *VEXARO Guide: Durust Link Enter Karne Ka Tareeqa*
+
+1. 👥 *Followers / Subscribers ke liye:*
+   Hamesha direct profile link enter karein:
+   • Instagram: https://instagram.com/username
+   • TikTok: https://tiktok.com/@username
+   • YouTube: Channel link
+
+2. ❤️ *Likes / Views / Comments / Shares ke liye:*
+   Hamesha post ya video ka direct link enter karein:
+   • Instagram Post: https://instagram.com/p/CODE/
+   • Instagram Reel: https://instagram.com/reel/CODE/
+   • TikTok Video: https://tiktok.com/@user/video/123456
+   • YouTube Video: https://youtube.com/watch?v=VIDEO_ID
+
+⚠️ *Important:* 24-hour Story link ya private account link use na karein!`;
+
+        await sock.sendMessage(remoteJid, { text: linkMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
+      }
+
+      // ========================================================
+      // 2.10 WEBSITE ISSUE RESOLUTION: PASSWORD / LOGIN RECOVERY
+      // ========================================================
+      const isLoginIssue =
+        cleanText.includes('password bhool') ||
+        cleanText.includes('login nahi ho raha') ||
+        cleanText.includes('login issue') ||
+        cleanText.includes('reset password') ||
+        cleanText.includes('account login');
+
+      if (isLoginIssue && !isGreeting) {
+        const loginMsg =
+`🔑 *VEXARO Guide: Password & Login Recovery*
+
+1. Website login page par jayein: ${PANEL_URL}/login
+2. *Forgot Password* par click karke apna registered email enter karein. Reset link aapke inbox/spam folder me aa jayega.
+3. Agar email par link na mile, toh *5* likh kar reply karein aur apna registered email/username batayein. Hamara admin foran aapka password reset kar dega!`;
+
+        await sock.sendMessage(remoteJid, { text: loginMsg });
+        await sock.sendPresenceUpdate('paused', remoteJid);
+        continue;
       }
 
       // ========================================================

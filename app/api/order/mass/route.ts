@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { ensureAdminSchema } from "@/lib/admin";
 import { ensureProvidersSchema } from "@/lib/providers";
 import { dispatchOrderWithFailover } from "@/lib/order-dispatch";
+import { checkExistingActiveOrderOnLink, isProviderBalanceError, notifyAdminProviderLowFunds } from "@/lib/order-queue";
 import {
   ensureWalletSchema,
   getUserWallet,
@@ -47,7 +48,7 @@ interface OrderExecutionResult {
   link: string;
   quantity: number;
   chargePkr: number;
-  status: "Success" | "Failed";
+  status: "Success" | "Failed" | "Scheduled" | "Pending";
   orderId?: string;
   vexoOrderId?: string;
   error?: string;
@@ -347,12 +348,73 @@ export async function POST(request: Request) {
 
       const vexoOrderId = String(reservation.order.id);
 
+      // Check if user already has an active order on this exact link
+      const linkCheck = await checkExistingActiveOrderOnLink(Number(user.id), item.link, vexoOrderId);
+      if (linkCheck.hasActiveOrder) {
+        await db.query(
+          `UPDATE vexo_orders
+           SET status = 'Scheduled',
+               failure_reason = $1,
+               updated_at = NOW()
+           WHERE id = $2`,
+          [`Scheduled: Waiting for prior active order on this link to complete`, vexoOrderId]
+        );
+
+        executionResults.push({
+          lineNumber: item.lineNumber,
+          serviceId: item.serviceId,
+          serviceName: item.serviceName || "Service",
+          link: item.link,
+          quantity: item.quantity,
+          chargePkr: item.charge,
+          status: "Scheduled",
+          vexoOrderId,
+        });
+        successfulCount++;
+        continue;
+      }
+
       // Dispatch to upstream provider with automatic multi-provider failover
       try {
         const dispatchResult = await dispatchOrderWithFailover(item.serviceId, item.link, item.quantity);
 
         if (!dispatchResult.success || !dispatchResult.orderId) {
           const reason = dispatchResult.error || "All upstream providers failed to accept the order.";
+
+          if (isProviderBalanceError(reason)) {
+            await db.query(
+              `UPDATE vexo_orders
+               SET status = 'Pending',
+                   failure_reason = $1,
+                   updated_at = NOW()
+               WHERE id = $2`,
+              [`Awaiting provider balance top-up: ${reason}`, vexoOrderId]
+            );
+
+            await notifyAdminProviderLowFunds({
+              orderId: vexoOrderId,
+              serviceName: item.serviceName || String(item.serviceId),
+              quantity: item.quantity,
+              chargePkr: Number(item.charge),
+              link: item.link,
+              error: reason,
+              providerName: dispatchResult.failoverAttempts?.[0]?.providerName,
+            });
+
+            executionResults.push({
+              lineNumber: item.lineNumber,
+              serviceId: item.serviceId,
+              serviceName: item.serviceName || "Service",
+              link: item.link,
+              quantity: item.quantity,
+              chargePkr: item.charge,
+              status: "Pending",
+              vexoOrderId,
+            });
+            successfulCount++;
+            continue;
+          }
+
           await refundFailedOrder(vexoOrderId, reason);
           executionResults.push({
             lineNumber: item.lineNumber,

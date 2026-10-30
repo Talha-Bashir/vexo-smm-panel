@@ -2715,7 +2715,7 @@ function Orders({
         />
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-11 rounded-xl border border-white/10 bg-[#0b1418] px-4 text-sm">
           <option value="">All statuses</option>
-          {["Pending", "Processing", "In progress", "Completed", "Partial", "Cancelled", "Failed"].map((x) => (
+          {["Pending", "Scheduled", "Processing", "In progress", "Completed", "Partial", "Cancelled", "Failed"].map((x) => (
             <option key={x}>{x}</option>
           ))}
         </select>
@@ -2856,7 +2856,7 @@ function Orders({
                 onChange={(e) => update(o.id, e.target.value)}
                 className="flex-1 h-9 rounded-lg border border-white/10 bg-[#0b1418] px-2.5 text-xs font-bold text-white outline-none focus:border-[#baff00]"
               >
-                {["Pending", "Processing", "In progress", "Completed", "Partial", "Canceled", "Refunded"].map((s) => (
+                {["Pending", "Scheduled", "Processing", "In progress", "Completed", "Partial", "Canceled", "Refunded"].map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
@@ -2938,10 +2938,20 @@ function Orders({
                 <td className="px-5 py-4">
                   <div className="flex flex-col gap-1">
                     <Badge>{o.status}</Badge>
-                    {o.providerOrderId ? (
+                    {o.status === "Scheduled" ? (
+                      <span className="text-[10px] text-indigo-300 font-mono flex items-center gap-1" title="Queued behind active order on same link. Auto-dispatches once active order finishes.">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                        Queued on Link
+                      </span>
+                    ) : o.providerOrderId ? (
                       <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1" title="Provider API managed: Status automatically updates from service provider">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         Auto-Synced
+                      </span>
+                    ) : o.status === "Pending" ? (
+                      <span className="text-[10px] text-amber-300 font-mono flex items-center gap-1" title="Order placed but waiting for provider balance top-up or manual dispatch">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                        Awaiting Provider
                       </span>
                     ) : (
                       <span className="text-[10px] text-slate-500 font-mono">Manual Order</span>
@@ -2962,6 +2972,35 @@ function Orders({
                     >
                       🔍 Details
                     </button>
+
+                    {api && (o.status === "Scheduled" || (o.status === "Pending" && !o.providerOrderId)) && (
+                      <button
+                        type="button"
+                        disabled={syncingOrderId === o.id}
+                        onClick={async () => {
+                          if (!confirm(`Dispatch order #${String(o.id).slice(0, 8)} to provider now?`)) return;
+                          setSyncingOrderId(o.id);
+                          try {
+                            const res = await api("/api/admin/orders", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ action: "dispatch_scheduled", orderId: o.id }),
+                            });
+                            alert(res.message || "Order dispatched successfully!");
+                            reload();
+                          } catch (err: any) {
+                            alert("Dispatch error: " + (err.message || "Failed"));
+                          } finally {
+                            setSyncingOrderId(null);
+                          }
+                        }}
+                        className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1.5 text-xs font-bold text-indigo-300 hover:bg-indigo-500/20 disabled:opacity-50 transition cursor-pointer flex items-center gap-1"
+                        title="Force-dispatch this queued or pending order to upstream provider API immediately"
+                      >
+                        <span>🚀</span>
+                        <span>Dispatch</span>
+                      </button>
+                    )}
 
                     {api && o.providerOrderId && (
                       <button
@@ -3010,6 +3049,7 @@ function Orders({
                       title="Manual Override: Status is normally updated automatically from the service provider"
                     >
                       <option>Pending</option>
+                      <option>Scheduled</option>
                       <option>Processing</option>
                       <option>In progress</option>
                       <option>Completed</option>

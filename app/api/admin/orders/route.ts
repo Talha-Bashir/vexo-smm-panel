@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/admin-guard";
 import { ensureAdminSchema, logAdminActivity } from "@/lib/admin";
 import { syncOrders } from "@/lib/order-sync";
+import { triggerNextScheduledOrderForLink, dispatchScheduledOrder } from "@/lib/order-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +138,23 @@ export async function PATCH(req: Request) {
       });
     }
 
+    // 0.1 Manual Dispatch for Scheduled or Pending Order
+    if (b?.action === "dispatch_scheduled" || b?.action === "dispatch_now" || b?.action === "retry_dispatch") {
+      const ordRes = await db.query(
+        `SELECT id, user_id, service_id, service_name, link, quantity, whatsapp FROM vexo_orders WHERE id = $1`,
+        [orderId]
+      );
+      if (!ordRes.rows[0]) {
+        return NextResponse.json({ success: false, error: "Order not found." }, { status: 404 });
+      }
+      const dispatched = await dispatchScheduledOrder(ordRes.rows[0]);
+      if (dispatched) {
+        return NextResponse.json({ success: true, message: `Order #${String(orderId).slice(0, 8)} successfully dispatched to provider!` });
+      } else {
+        return NextResponse.json({ success: false, error: "Dispatch failed. Please check provider balance or provider logs." }, { status: 400 });
+      }
+    }
+
     // 1. One-click Order Refund to User Wallet
     if (b?.action === "refund") {
       await c.query("BEGIN");
@@ -175,6 +193,12 @@ export async function PATCH(req: Request) {
       );
 
       await c.query("COMMIT");
+
+      // Trigger next queued order on this link if available
+      if (ord.link) {
+        triggerNextScheduledOrderForLink(Number(ord.user_id), String(ord.link)).catch(() => {});
+      }
+
       return NextResponse.json({
         success: true,
         message: `Order #${orderId} refunded (₨${refundAmount.toFixed(2)} credited back to user wallet).`,
@@ -186,6 +210,7 @@ export async function PATCH(req: Request) {
     const status = String(b?.status || "").trim();
     const allowed = [
       "Pending",
+      "Scheduled",
       "Processing",
       "In progress",
       "Completed",
@@ -213,6 +238,15 @@ export async function PATCH(req: Request) {
     }
 
     await logAdminActivity(+g.user!.id, "order_status_change", "order", orderId, { status: normalizedStatus });
+
+    // If order was marked Completed, Cancelled, or Refunded, trigger any queued scheduled orders on this link
+    if (["completed", "cancelled", "canceled", "refunded"].includes(normalizedStatus.toLowerCase())) {
+      const ordLinkRes = await db.query(`SELECT user_id, link FROM vexo_orders WHERE id = $1`, [orderId]);
+      if (ordLinkRes.rows[0]?.link) {
+        triggerNextScheduledOrderForLink(Number(ordLinkRes.rows[0].user_id), String(ordLinkRes.rows[0].link)).catch(() => {});
+      }
+    }
+
     return NextResponse.json({ success: true, message: `Order #${orderId} status set to ${normalizedStatus}.` });
   } catch (e) {
     await c.query("ROLLBACK").catch(() => {});
