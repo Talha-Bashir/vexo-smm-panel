@@ -59,7 +59,7 @@ function buildReengagementEmailHtml(name: string): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your 1,000 Free Views are waiting on VEXARO SMM</title>
+  <title>Welcome to VEXARO SMM — Wholesale Social Media Services</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0b0f19;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f1f5f9;">
   <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#0b0f19;padding:30px 15px;">
@@ -71,7 +71,7 @@ function buildReengagementEmailHtml(name: string): string {
           <tr>
             <td style="padding:32px 32px 20px 32px;text-align:center;border-bottom:1px solid #1e293b;">
               <span style="display:inline-block;padding:4px 12px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:999px;font-size:11px;font-weight:800;color:#818cf8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
-                🎁 1-Time Free Test Trial
+                🚀 Wholesale SMM Services
               </span>
               <h1 style="margin:0;font-size:24px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">
                 VEXARO <span style="color:#6366f1;">SMM</span>
@@ -83,22 +83,23 @@ function buildReengagementEmailHtml(name: string): string {
           <tr>
             <td style="padding:32px;">
               <h2 style="margin:0 0 12px 0;font-size:20px;font-weight:800;color:#ffffff;">
-                Hey ${safeName}, your free trial is ready! 👋
+                Hey ${safeName}, start boosting your accounts today! 👋
               </h2>
               <p style="margin:0 0 20px 0;font-size:14px;line-height:1.6;color:#94a3b8;">
-                We noticed you created your VEXARO account but haven’t tested our delivery speed yet. You have an exclusive <strong>1-Time Free Test Trial</strong> waiting on your dashboard — completely free with zero deposit required!
+                We noticed you created your VEXARO account. Scale your TikTok, Instagram, YouTube, and Facebook accounts with Pakistan's cheapest wholesale rates and instant delivery!
               </p>
 
-              <!-- Trial Options Card -->
+              <!-- Features Card -->
               <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#0d131f;border:1px solid #1e293b;border-radius:16px;margin:20px 0;padding:16px;">
                 <tr>
                   <td>
                     <p style="margin:0 0 10px 0;font-size:12px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:0.5px;">
-                      Choose Your Free Package:
+                      Why Creators Choose VEXARO:
                     </p>
                     <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#cbd5e1;">
-                      <li><strong style="color:#ffffff;">1,000 Free Views</strong> on TikTok or Instagram Reels</li>
-                      <li><strong style="color:#ffffff;">50 Free Likes</strong> on TikTok or Instagram Posts</li>
+                      <li><strong style="color:#ffffff;">Wholesale Rates:</strong> Views, Likes & Followers starting from a few rupees</li>
+                      <li><strong style="color:#ffffff;">Deposit Bonuses:</strong> 5% to 10% extra balance on deposits of Rs 5,000+</li>
+                      <li><strong style="color:#ffffff;">Automated Payments:</strong> Instant top-up via SadaPay, Easypaisa & Binance</li>
                     </ul>
                   </td>
                 </tr>
@@ -108,9 +109,9 @@ function buildReengagementEmailHtml(name: string): string {
               <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
                 <tr>
                   <td style="font-size:12px;color:#94a3b8;line-height:1.8;">
-                    ⚡ <strong>100% Free (₨ 0.00):</strong> No credit card or deposit needed to test.<br />
-                    🔒 <strong>Zero Passwords:</strong> Just paste your public post link.<br />
-                    🚀 <strong>Instant Start:</strong> Automated delivery begins in 0–15 minutes.
+                    ⚡ <strong>Automated Dispatch:</strong> Orders begin processing in 0–15 minutes.<br />
+                    🔒 <strong>Zero Passwords:</strong> Just paste your public profile or post link.<br />
+                    🛡️ <strong>Refill Guarantee:</strong> Non-drop services backed with 30-day drop protection.
                   </td>
                 </tr>
               </table>
@@ -118,12 +119,12 @@ function buildReengagementEmailHtml(name: string): string {
               <!-- CTA Button -->
               <div style="text-align:center;margin:30px 0 20px 0;">
                 <a href="https://vexarosmm.com/login" target="_blank" style="display:inline-block;background:linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:14px 32px;border-radius:14px;box-shadow:0 8px 24px rgba(99,102,241,0.35);">
-                  Claim Free Trial Now →
+                  Explore Services & Order Now →
                 </a>
               </div>
 
               <p style="text-align:center;font-size:11px;color:#64748b;margin:0;">
-                Takes under 30 seconds: Sign in, paste your link, and watch the count rise!
+                Sign in, choose your service, and scale your social presence in seconds!
               </p>
             </td>
           </tr>
@@ -177,22 +178,17 @@ export async function GET(request: Request) {
   try {
     // Find inactive users:
     // 1. Registered > 24 hours ago
-    // 2. Never claimed free trial
-    // 3. Never placed an order
-    // 4. Have not been reengaged in the last 7 days (or reengaged_at is null)
-    // 5. Reengagement count < 3
+    // 2. Never placed an order
+    // 3. Have not been reengaged in the last 7 days (or reengaged_at is null)
+    // 4. Reengagement count < 3
     const candidates = await db.query(`
       SELECT u.id, u.name, u.email, u.created_at, COALESCE(u.reengagement_count, 0) as reengagement_count
       FROM vexo_users u
       WHERE u.created_at < NOW() - INTERVAL '24 hours'
-        AND (u.free_trial_claimed IS NOT TRUE)
         AND (u.reengaged_at IS NULL OR u.reengaged_at < NOW() - INTERVAL '7 days')
         AND COALESCE(u.reengagement_count, 0) < 3
         AND NOT EXISTS (
           SELECT 1 FROM vexo_orders o WHERE o.user_id = u.id
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM vexo_free_trial_claims c WHERE c.user_id = u.id
         )
         AND u.email IS NOT NULL AND u.email != ''
       ORDER BY u.created_at DESC
@@ -215,7 +211,7 @@ export async function GET(request: Request) {
           body: JSON.stringify({
             from: fromEmail,
             to: user.email,
-            subject: "🎁 Your 1,000 Free Views are waiting on VEXARO SMM!",
+            subject: "🚀 Scale your social media presence with VEXARO SMM wholesale rates!",
             html,
           }),
         });

@@ -6,7 +6,6 @@ import { SubscriptionsPage } from "./subscriptions";
 import BonusCelebrationModal from "@/components/bonus-celebration-modal";
 import RedeemCouponModal from "@/components/redeem-coupon-modal";
 import CurrencySelectModal from "@/components/currency-select-modal";
-import { FreeTrialOnboardingModal } from "@/components/free-trial-onboarding-modal";
 import { Social3DIcon } from "@/components/social-3d-icon";
 
 type RizviService = {
@@ -543,22 +542,6 @@ export default function Home() {
   const [currencyRates, setCurrencyRates] = useState<Record<string, number>>({});
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [freeTrialClaimed, setFreeTrialClaimed] = useState(false);
-  const [showFreeTrialOnboarding, setShowFreeTrialOnboarding] = useState(false);
-
-  // Auto-prompt first-time users with Free Test Trial Onboarding Modal
-  useEffect(() => {
-    if (currentUser && !freeTrialClaimed && !loadingServices) {
-      try {
-        const dismissed = sessionStorage.getItem("vexo_dismissed_trial_modal");
-        if (!dismissed) {
-          setShowFreeTrialOnboarding(true);
-        }
-      } catch {
-        setShowFreeTrialOnboarding(true);
-      }
-    }
-  }, [currentUser, freeTrialClaimed, loadingServices]);
   const [announcements, setAnnouncements] = useState<VexoAnnouncement[]>([]);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const announcementsRef = useRef<HTMLDivElement>(null);
@@ -846,7 +829,6 @@ export default function Home() {
       if (data.binanceUsdtAddress) setBinanceUsdtAddress(String(data.binanceUsdtAddress));
       if (data.binanceNetwork) setBinanceNetwork(String(data.binanceNetwork));
       if (data.liveUsdRate) setLiveForexUsdRate(Number(data.liveUsdRate));
-      if (data.freeTrialClaimed !== undefined) setFreeTrialClaimed(Boolean(data.freeTrialClaimed));
       setDeposits(Array.isArray(data.deposits) ? data.deposits : []);
 
       // Check if user has an active bonus to celebrate (both newly registered and existing registered users)
@@ -1981,41 +1963,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* 1-Time Free Test Trial Banner */}
-          {!freeTrialClaimed && (
-            <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-[#111827] to-indigo-950/40 p-4 text-xs shadow-lg">
-              <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-lg font-bold text-indigo-400 border border-indigo-500/30">
-                  🎁
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-black text-white text-sm">
-                      1-Time Free Test Trial: <span className="text-indigo-400">TikTok &amp; Instagram Views / Likes</span>
-                    </p>
-                    <span className="rounded-full bg-indigo-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shrink-0">
-                      100% Free
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 leading-relaxed mt-1">
-                    Test our instant server delivery with up to <strong className="text-white">1,000 Free Views</strong> or <strong className="text-white">50 Free Likes</strong> on TikTok or Instagram. 1 trial per user!
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowFreeTrialOnboarding(true);
-                  }}
-                  className="w-full sm:w-auto text-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 hover:from-indigo-400 hover:to-blue-500 transition cursor-pointer"
-                >
-                  Claim Free Trial ➔
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Low Balance Alert Nudge */}
           {walletBalancePkr < 100 && activePage !== "Add Funds" && !dismissedLowBalance && (
             <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
@@ -2091,7 +2038,6 @@ export default function Home() {
               onOrderCreated={handleOrderCreated}
               walletBalancePkr={walletBalancePkr}
               bonusBalancePkr={bonusBalancePkr}
-              freeTrialClaimed={freeTrialClaimed}
               selectedCurrency={selectedCurrency}
               currencyRates={currencyRates}
               navigate={navigate}
@@ -2306,23 +2252,6 @@ export default function Home() {
           selectedCurrency={selectedCurrency}
           onSelectCurrency={(code) => setSelectedCurrency(code)}
           rates={currencyRates}
-        />
-      )}
-
-      {/* 1-Time Free Test Trial Onboarding Modal */}
-      {showFreeTrialOnboarding && !freeTrialClaimed && (
-        <FreeTrialOnboardingModal
-          isOpen={showFreeTrialOnboarding}
-          onClose={() => setShowFreeTrialOnboarding(false)}
-          services={services}
-          userName={currentUser?.name || "Creator"}
-          onOrderCreated={(order) => {
-            handleOrderCreated(order);
-            setFreeTrialClaimed(true);
-          }}
-          onNavigateOrders={() => {
-            setActivePage("Orders");
-          }}
         />
       )}
     </main>
@@ -3720,7 +3649,6 @@ function NewOrder({
   onOrderCreated,
   walletBalancePkr,
   bonusBalancePkr = 0,
-  freeTrialClaimed = false,
   selectedCurrency,
   currencyRates,
   navigate,
@@ -3734,7 +3662,6 @@ function NewOrder({
   onOrderCreated: (order: VexoOrder) => void;
   walletBalancePkr: number;
   bonusBalancePkr?: number;
-  freeTrialClaimed?: boolean;
   selectedCurrency: string;
   currencyRates: Record<string, number>;
   navigate: (page: string) => void;
@@ -3840,7 +3767,6 @@ function NewOrder({
   // Platform list definitions with clean floating icons
   const platformList = useMemo(() => [
     { name: "All", label: "All Platforms", icon: "all" },
-    { name: "🎁 Free Trial", label: "🎁 Free Test Trial", icon: "spark" },
     { name: "Favorites", label: "⭐ Bookmarks", icon: "star-3d" },
     { name: "Subscriptions", label: "App Subscriptions", icon: "subscriptions" },
     { name: "Website", label: "Website", icon: "website" },
@@ -3860,7 +3786,6 @@ function NewOrder({
   const platformCounts = useMemo(() => {
     const counts: Record<string, number> = {
       All: services.length,
-      "🎁 Free Trial": services.filter((s) => s.category?.includes("Free Test Trial") || Number(s.price) === 0).length,
       Favorites: favorites.filter((id) => services.some((s) => s.id === id)).length,
     };
     for (const s of services) {
@@ -3874,9 +3799,6 @@ function NewOrder({
   const servicesByPlatform = useMemo(() => {
     if (platform === "All") return services;
     if (platform === "Favorites") return services.filter((s) => favorites.includes(s.id));
-    if (platform === "🎁 Free Trial" || platform === "Free Trial") {
-      return services.filter((s) => s.category?.includes("Free Test Trial") || Number(s.price) === 0);
-    }
     return services.filter((s) => s.platform?.toLowerCase() === platform.toLowerCase());
   }, [services, platform, favorites]);
 
@@ -4077,25 +3999,16 @@ function NewOrder({
     }
   }, [service?.id, isPackage]);
 
-  const isFreeTrial =
-    Boolean(service?.category?.includes("Free Test Trial")) ||
-    Number(service?.price) === 0;
-
-  const isViewsTrial = isFreeTrial && /view/i.test(`${service?.name} ${service?.category}`);
-  const isLikesTrial = isFreeTrial && /like/i.test(`${service?.name} ${service?.category}`);
-
   // Float-safe exact charge calculation
   const numericQuantity = Math.max(0, Number(quantity) || 0);
   const charge =
-    isFreeTrial
-      ? 0
-      : service && numericQuantity > 0
-        ? isPackage
-          ? Math.round((Number(service.price) * numericQuantity + Number.EPSILON) * 100) / 100
-          : Math.round(((Number(service.price) / 1000) * numericQuantity + Number.EPSILON) * 100) / 100
-        : 0;
+    service && numericQuantity > 0
+      ? isPackage
+        ? Math.round((Number(service.price) * numericQuantity + Number.EPSILON) * 100) / 100
+        : Math.round(((Number(service.price) / 1000) * numericQuantity + Number.EPSILON) * 100) / 100
+      : 0;
   const totalAvailable = walletBalancePkr + bonusBalancePkr;
-  const isInsufficient = isFreeTrial ? false : totalAvailable < charge;
+  const isInsufficient = totalAvailable < charge;
 
   async function placeOrder() {
     setOrderMessage("");
@@ -4103,11 +4016,6 @@ function NewOrder({
 
     if (!service) {
       setOrderError("Please select a service first.");
-      return;
-    }
-
-    if (isFreeTrial && freeTrialClaimed) {
-      setOrderError("You have already claimed your 1-time free test trial. To order more followers, views, or likes, please add funds to your wallet.");
       return;
     }
 
@@ -4122,18 +4030,8 @@ function NewOrder({
       return;
     }
 
-    if (isViewsTrial && qty > 1000) {
-      setOrderError("Maximum views allowed for the free test trial is 1,000.");
-      return;
-    }
-
-    if (isLikesTrial && qty > 50) {
-      setOrderError("Maximum likes allowed for the free test trial is 50.");
-      return;
-    }
-
     const min = Number(service.min);
-    const max = isViewsTrial ? 1000 : isLikesTrial ? 50 : Number(service.max);
+    const max = Number(service.max);
     if (qty < min || qty > max) {
       setOrderError(`Quantity must be between ${min.toLocaleString()} and ${max.toLocaleString()}.`);
       return;
@@ -4853,12 +4751,7 @@ function NewOrder({
 
             {!isPackage && service && (
               <div className="flex items-center gap-2">
-                {(isViewsTrial
-                  ? ["100", "500", "1000"]
-                  : isLikesTrial
-                    ? ["10", "25", "50"]
-                    : ["500", "1000", "5000"]
-                ).map((preset) => (
+                {["500", "1000", "5000"].map((preset) => (
                   <button
                     key={preset}
                     type="button"
@@ -4870,10 +4763,10 @@ function NewOrder({
                 ))}
                 <button
                   type="button"
-                  onClick={() => setQuantity(String(isViewsTrial ? 1000 : isLikesTrial ? 50 : service.max))}
+                  onClick={() => setQuantity(String(service.max))}
                   className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 hover:border-white/30 hover:text-white transition cursor-pointer"
                 >
-                  Max ({isViewsTrial ? "1,000" : isLikesTrial ? "50" : Number(service.max).toLocaleString()})
+                  Max ({Number(service.max).toLocaleString()})
                 </button>
               </div>
             )}
@@ -4883,16 +4776,6 @@ function NewOrder({
         {/* 7. Inline Order Summary & Place Order CTA */}
         <div className="pt-6 border-t border-white/[0.08] space-y-4">
           <div className="rounded-xl bg-white/[0.04] border border-white/10 p-4 space-y-2 text-xs text-slate-300">
-            {isFreeTrial && (
-              <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                <span className="flex items-center gap-1.5 font-bold text-[#baff00]">
-                  <span>🎁</span> 1-Time Free Test Trial
-                </span>
-                <span className="rounded-full bg-[#baff00] px-2 py-0.5 text-[10px] font-black uppercase text-black">
-                  Zero Deposit
-                </span>
-              </div>
-            )}
             <div className="flex justify-between">
               <span className="text-slate-400">Available Balance</span>
               <span className="font-semibold text-white">₨{totalAvailable.toFixed(2)}</span>
@@ -4900,23 +4783,16 @@ function NewOrder({
             <div className="flex justify-between">
               <span className="text-slate-400">Rate</span>
               <span className="font-semibold text-white">
-                {service ? (isFreeTrial ? "₨0.00 (Free Trial)" : `₨${Number(service.price).toFixed(2)} / ${isPackage ? "pkg" : "1k"}`) : "—"}
+                {service ? `₨${Number(service.price).toFixed(2)} / ${isPackage ? "pkg" : "1k"}` : "—"}
               </span>
             </div>
             <div className="flex justify-between pt-2 border-t border-white/5 text-sm">
               <span className="font-bold text-white">Total Charge</span>
               <span className="font-extrabold text-[#baff00] text-base">
-                {isFreeTrial ? "₨0.00 (FREE)" : `₨${charge.toFixed(2)}`}
+                ₨{charge.toFixed(2)}
               </span>
             </div>
           </div>
-
-          {isFreeTrial && freeTrialClaimed && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-center gap-2">
-              <span>⚠️</span>
-              <span>You have already claimed your 1-time free test trial. Please choose standard services and add funds to your wallet.</span>
-            </div>
-          )}
 
           {orderError && (
             <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
@@ -4933,18 +4809,14 @@ function NewOrder({
           <button
             type="button"
             onClick={placeOrder}
-            disabled={placingOrder || isInsufficient || (isFreeTrial && freeTrialClaimed)}
+            disabled={placingOrder || isInsufficient}
             className="w-full rounded-xl py-3.5 text-sm sm:text-base font-black bg-[#baff00] text-[#07100f] shadow-[0_4px_20px_rgba(186,255,0,0.25)] hover:bg-[#d2ff5a] disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer flex items-center justify-center gap-2"
           >
             {placingOrder
               ? "Placing Order..."
-              : isFreeTrial
-                ? freeTrialClaimed
-                  ? "Free Trial Already Claimed (1-Time Limit)"
-                  : "🎁 Claim Free Test Order (₨ 0.00)"
-                : isInsufficient
-                  ? "Insufficient Balance"
-                  : "Place Order Now"}
+              : isInsufficient
+                ? "Insufficient Balance"
+                : "Place Order Now"}
           </button>
 
           {isInsufficient && (
@@ -7950,7 +7822,7 @@ function ReferAndEarnPage({
           </span>
           <a
             href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-              `🚀 Boost your Instagram, TikTok, YouTube & Facebook with Pakistan's #1 Cheapest SMM Panel — VEXARO!\n\n⚡ Instant Followers, Views, Likes & Watchtime\n💳 Automated JazzCash, Easypaisa & SadaPay deposits\n🎁 Free TikTok & Instagram test trial included!\n\nRegister via my official link now:\n${referralLink}`
+              `🚀 Boost your Instagram, TikTok, YouTube & Facebook with Pakistan's #1 Cheapest SMM Panel — VEXARO!\n\n⚡ Instant Followers, Views, Likes & Watchtime\n💳 Automated JazzCash, Easypaisa & SadaPay deposits\n\nRegister via my official link now:\n${referralLink}`
             )}`}
             target="_blank"
             rel="noopener noreferrer"

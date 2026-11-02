@@ -29,7 +29,6 @@ import {
   detectLanguageSwitch,
   convertPkrToCurrency,
   getCheapestServices,
-  getFreeTrialServices,
   searchServices,
   lookupOrder,
   processOrderSpeedUp,
@@ -92,8 +91,7 @@ MAIN MENU REFERENCE:
 3 = Deposit Bonus Offers (5% to 10% extra on Rs 5,000+)
 4 = Live Website Services & Rates Catalog
 5 = Human Support Helpline (+92 308 8180234)
-6 = Free Test Trial Services (1,000 Views / 50 Likes Free)
-7 = Language Switcher (English, Urdu, Bengali, Arabic)
+6 = Language Switcher (English, Urdu, Bengali, Arabic)
 
 COMPREHENSIVE WEBSITE ISSUE RESOLUTION KNOWLEDGE BASE:
 1. ORDER DELAYS & QUEUED / SCHEDULED ORDERS:
@@ -111,8 +109,8 @@ COMPREHENSIVE WEBSITE ISSUE RESOLUTION KNOWLEDGE BASE:
 5. CANCELLATION & REFUND:
    - Orders in processing upstream cannot be stopped mid-way.
    - If an order fails, cancels, or is partial, 100% of the remaining amount is automatically refunded into their website wallet balance. Wallet balance never expires.
-6. 100% FREE TEST TRIAL:
-   - Users can test free views (up to 1,000 views) or likes by visiting ${PANEL_URL} -> New Order -> Category: "Free Test Trial" (No deposit required!).
+6. FREE TRIAL SERVICES:
+   - Free test trial services have been discontinued/removed. VEXARO offers the cheapest wholesale services starting at just a few rupees per 1,000. Guide users to check cheap services by replying 4.
 7. FORGOT PASSWORD & LOGIN:
    - Tell user to click "Forgot Password" on ${PANEL_URL}/login, or reply 5 with registered email.
 8. LINK FORMAT:
@@ -228,7 +226,7 @@ function startNotificationWorker(sock) {
     } catch (pollErr) {
       console.warn('🔔 [Notification Dispatcher Warning]:', pollErr.message);
     }
-  }, 20000);
+  }, 7000);
 }
 
 /**
@@ -999,8 +997,7 @@ ${cheapText}
 *3* 🎁 - Deposit Bonus Offers
 *4* 🌐 - Website Services & Rates
 *5* 👤 - Human Support
-*6* ✨ - Free Test Trial Services
-*7* 🌐 - Change Language / Zaban`
+*6* 🌐 - Change Language / Zaban`
           : `🎉 *Welcome to ${PANEL_NAME}, ${customer.name}!*
 
 Your profile is ready!
@@ -1021,8 +1018,7 @@ ${cheapText}
 *3* 🎁 - Deposit Bonus Offers
 *4* 🌐 - Website Services & Rates
 *5* 👤 - Human Support
-*6* ✨ - Free Test Trial Services
-*7* 🌐 - Change Language / Zaban`;
+*6* 🌐 - Change Language / Zaban`;
 
         await sock.sendMessage(remoteJid, { text: completedMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);
@@ -1356,8 +1352,7 @@ Main aapki kya madad kar sakta hoon?
 *3* 🎁 - Special Bonus Offers
 *4* 🌐 - Website Services & Rates (${customer.currency || 'PKR'})
 *5* 👤 - Admin / Human Support se Baat Karein
-*6* ✨ - Free Test Trial Services (1,000 Views / 50 Likes Free)
-*7* 🌐 - Change Language / Zaban (English, اردو, বাংলা, العربية)
+*6* 🌐 - Change Language / Zaban (English, اردو, বাংলা, العربية)
 
 _Aap apna koi bhi sawal apni zuban me seedha pooch sakte hain!_`;
 
@@ -1547,35 +1542,23 @@ _(Note: Admin ke reply aane tak bot ko temporarily pause kar diya gaya hai taake
       }
 
       // ========================================================
-      // 9. OPTION 6: FREE TEST TRIAL SERVICES (SEPARATE FROM CHEAP SERVICES)
+      // 9. FREE TRIAL INQUIRY (DISCONTINUED NOTICE)
       // ========================================================
-      if (
-        cleanText === '6' ||
-        cleanText === '6.' ||
-        cleanText === '#6' ||
-        cleanText === 'option 6' ||
+      const isTrialInquiry =
         cleanText.includes('trial') ||
         cleanText.includes('free test') ||
         cleanText.includes('free service') ||
-        cleanText.includes('muft')
-      ) {
-        const trials = await getFreeTrialServices(customer?.currency);
-        const trialList = trials.map((t) => `✨ *${t.name}* (100% Free)`).join('\n');
+        cleanText.includes('muft service');
 
+      if (isTrialInquiry) {
         const trialMsg =
-`🎁 *${PANEL_NAME} 100% Free Test Trial Services:*
+`ℹ️ *${PANEL_NAME} - Notice:*
 
-Hum naye customers ko speed test karne ke liye FREE services dete hain bina kisi payment ke:
+Assalam-o-Alaikum! Free test trial services ab officially khatam kar di gayi hain.
+Lekin hamari website par intahai wholesale aur sasti services mojood hain (rates start from just Rs 5 - Rs 10 per 1,000)!
 
-${trialList || '• TikTok Views [Free Test Trial - Max 1,000 Views]\n• Instagram Views [Free Test Trial - Max 1,000 Views]\n• Instagram Likes [Free Test Trial - Max 50 Likes]'}
-
-━━━━━━━━━━━━━━━━━━
-📝 *Free Trial Lagane Ka Tareeqa:*
-1. Website par visit karein: ${PANEL_URL}
-2. Login ya Sign Up karein.
-3. *New Order* page par jayein -> Category: *Free Test Trial* select karein.
-4. Apna post ya video link enter karein aur submit karein.
-_Order automatically 1-5 minutes me start ho jayega!_`;
+👉 Live cheapest services check karne ke liye *4* likhein ya website visit karein:
+${PANEL_URL}/services`;
 
         await sock.sendMessage(remoteJid, { text: trialMsg });
         await sock.sendPresenceUpdate('paused', remoteJid);
@@ -1583,9 +1566,13 @@ _Order automatically 1-5 minutes me start ho jayega!_`;
       }
 
       // ========================================================
-      // 10. OPTION 7: LANGUAGE SELECTION / ZABAN BADLEIN
+      // 10. OPTION 6 / 7: LANGUAGE SELECTION / ZABAN BADLEIN
       // ========================================================
       if (
+        cleanText === '6' ||
+        cleanText === '6.' ||
+        cleanText === '#6' ||
+        cleanText === 'option 6' ||
         cleanText === '7' ||
         cleanText === '7.' ||
         cleanText === '#7' ||

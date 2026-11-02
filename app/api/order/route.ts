@@ -104,114 +104,16 @@ export async function POST(request: Request) {
 
       isFreeTrial =
         category.includes("Free Test Trial") ||
-        String(routed.service_group_key || "").startsWith("free_trial_") ||
-        (Number(routed.custom_rate_pkr) === 0 && Number(routed.rate_pkr) === 0 && Number(routed.base_rate_usd) === 0);
+        String(routed.service_group_key || "").startsWith("free_trial_");
 
       if (isFreeTrial) {
-        // 0. Verified Email Provider Check (Block tempmail users from claiming free trial)
-        const userEmail = String(user.email || "").toLowerCase();
-        const emailDomainCheck = isAllowedEmailDomain(userEmail);
-        if (!emailDomainCheck.valid) {
-          return NextResponse.json({
-            success: false,
-            error: "The 1-time free test trial is strictly reserved for verified accounts (Gmail, Yahoo, Outlook, iCloud).",
-          }, { status: 403 });
-        }
+        return NextResponse.json({
+          success: false,
+          error: "Free test trial services have been discontinued. Please choose a standard service and deposit funds to your wallet.",
+        }, { status: 400 });
+      }
 
-        // 1. Strict 1-Time Rule: Check if user already claimed free trial
-        const userClaim = await db.query(
-          `SELECT id FROM vexo_free_trial_claims WHERE user_id = $1 LIMIT 1`,
-          [user.id]
-        );
-        if (userClaim.rows.length > 0) {
-          return NextResponse.json({
-            success: false,
-            error: "You have already claimed your 1-time free test trial. To order more followers, views, or likes, please add funds to your wallet.",
-          }, { status: 400 });
-        }
-
-        // 2. Target Link Lockout: The same video or profile link CANNOT receive free trial twice!
-        const cleanLinkTarget = sanitizedLink.replace(/[\?#].*$/, "").replace(/\/+$/, "").toLowerCase();
-        if (cleanLinkTarget.length >= 10) {
-          const linkClaim = await db.query(
-            `SELECT id FROM vexo_free_trial_claims 
-             WHERE LOWER(link) = LOWER($1) 
-                OR LOWER(link) LIKE $2 
-                OR $3 LIKE ('%' || LOWER(link) || '%')
-             LIMIT 1`,
-            [sanitizedLink, `%${cleanLinkTarget}%`, cleanLinkTarget]
-          );
-          if (linkClaim.rows.length > 0) {
-            return NextResponse.json({
-              success: false,
-              error: "This video or profile link has already received the 1-time free test trial. To boost this link further, please add funds to your wallet.",
-            }, { status: 400 });
-          }
-        }
-
-        // 3. Multi-account prevention: check client IP and fingerprint
-        const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
-        if (clientIp && clientIp !== "127.0.0.1" && clientIp !== "::1") {
-          const ipClaim = await db.query(
-            `SELECT id FROM vexo_free_trial_claims WHERE client_ip = $1 LIMIT 1`,
-            [clientIp]
-          );
-          if (ipClaim.rows.length > 0) {
-            return NextResponse.json({
-              success: false,
-              error: "The 1-time free test trial has already been claimed from this internet connection / network. Please add funds to your wallet to continue.",
-            }, { status: 400 });
-          }
-        }
-
-        const deviceFingerprint = String(body.deviceFingerprint || "").trim();
-        if (deviceFingerprint) {
-          const fpClaim = await db.query(
-            `SELECT id FROM vexo_free_trial_claims WHERE device_fingerprint = $1 LIMIT 1`,
-            [deviceFingerprint]
-          );
-          if (fpClaim.rows.length > 0) {
-            return NextResponse.json({
-              success: false,
-              error: "The 1-time free test trial has already been claimed on this device. Please add funds to your wallet to continue.",
-            }, { status: 400 });
-          }
-        }
-
-        // 3. Strict Quantity Validation
-        // For views (services 1271, 1783): max 1000
-        // For likes (services 1419, 470): max 50
-        const isViews = /view/i.test(`${serviceName} ${category}`);
-        const isLikes = /like/i.test(`${serviceName} ${category}`);
-
-        if (isViews && numericQuantity > 1000) {
-          return NextResponse.json({
-            success: false,
-            error: "Maximum free views allowed is 1,000 for the test trial.",
-          }, { status: 400 });
-        }
-        if (isLikes && numericQuantity > 50) {
-          return NextResponse.json({
-            success: false,
-            error: "Maximum free likes allowed is 50 for the test trial.",
-          }, { status: 400 });
-        }
-
-        min = Number(routed.min || (isViews ? 100 : 10));
-        max = isViews ? 1000 : (isLikes ? 50 : Number(routed.max || 1000));
-        if (numericQuantity < min) {
-          return NextResponse.json({
-            success: false,
-            error: `Minimum quantity for this free trial is ${min}.`,
-          }, { status: 400 });
-        }
-
-        rate = 0;
-        charge = 0;
-        effectiveBaseUsd = 0;
-        preferredProviderId = routed.active_provider_id || "smooth_smm";
-      } else {
-        effectiveBaseUsd = Number(routed.base_rate_usd || 0);
+      effectiveBaseUsd = Number(routed.base_rate_usd || 0);
 
         if (routed.auto_route !== false) {
           const balances = await getCachedProviderBalances();
@@ -244,7 +146,6 @@ export async function POST(request: Request) {
         max = Number(routed.max || 100000);
         const isPkg = isPackageService(undefined, min, max);
         charge = calculateLiveChargePkr(rate, numericQuantity, isPkg);
-      }
     } else {
       // Legacy catalog fallback
       const servicesResponse = await getRizviServices();
@@ -564,36 +465,6 @@ export async function POST(request: Request) {
            WHERE id = $5`,
           [dispatchResult.providerId || null, JSON.stringify(dispatchResult.failoverAttempts), costPkr, costUsd, vexoOrderId]
         );
-
-        if (isFreeTrial) {
-          try {
-            const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
-            const deviceFingerprint = String(body.deviceFingerprint || "").trim();
-            await db.query(
-              `INSERT INTO vexo_free_trial_claims
-               (user_id, order_id, service_id, service_name, platform, remote_service_id, quantity, link, client_ip, device_fingerprint)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-              [
-                user.id,
-                vexoOrderId,
-                serviceId,
-                serviceName,
-                platform,
-                dispatchResult.remoteServiceId || "",
-                numericQuantity,
-                sanitizedLink,
-                clientIp,
-                deviceFingerprint || null,
-              ]
-            );
-            await db.query(
-              `UPDATE vexo_users SET free_trial_claimed = TRUE, free_trial_claimed_at = NOW() WHERE id = $1`,
-              [user.id]
-            );
-          } catch (ftErr) {
-            console.error("Could not record free trial claim:", ftErr);
-          }
-        }
 
         // Award 5% referral commission if user was invited by another user
         try {

@@ -14,34 +14,17 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Authentication required." }, { status: 401 });
     }
 
-    const [wallet, settings, liveUsdRate, freeTrialClaim] = await Promise.all([
+    const [wallet, settings, liveUsdRate] = await Promise.all([
       getUserWallet(Number(user.id)),
       getAllPlatformSettings(),
       getLiveForexUsdRate(),
-      db
-        .query(
-          `SELECT id, service_name, quantity, created_at
-           FROM vexo_free_trial_claims
-           WHERE user_id = $1
-           LIMIT 1`,
-          [Number(user.id)]
-        )
-        .then((res) => res.rows[0] || null)
-        .catch(() => null),
     ]);
 
     return NextResponse.json({
       success: true,
       ...wallet,
-      freeTrialClaimed: Boolean(freeTrialClaim),
-      freeTrialClaim: freeTrialClaim
-        ? {
-            id: String(freeTrialClaim.id),
-            serviceName: freeTrialClaim.service_name,
-            quantity: Number(freeTrialClaim.quantity),
-            claimedAt: freeTrialClaim.created_at,
-          }
-        : null,
+      freeTrialClaimed: true,
+      freeTrialClaim: null,
       sadaPayNumber: settings.sadapay_number || "03197008275",
       sadaPayTitle: settings.sadapay_title || "Saeed Bashir",
       binanceUid: settings.binance_uid || "1069021883",

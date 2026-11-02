@@ -938,31 +938,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ---------------- 3B. FREE TEST TRIAL PROMO ---------------- */}
-        <section className="w-full border-b border-slate-800 bg-gradient-to-r from-[#0d1527] via-[#111827] to-[#0d1527] py-[clamp(2rem,5vw,3.5rem)]">
-          <div className="mx-auto max-w-5xl px-[clamp(1rem,4vw,2.5rem)] text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400">
-              <span>🎁</span>
-              <span>1-Time Free Test Trial — Zero Deposit Needed</span>
-            </div>
-            <h2 className="mt-4 text-fluid-h2 font-black tracking-tight text-white">
-              Get <span className="text-indigo-400">Free Views or Likes</span> for TikTok &amp; Instagram
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm sm:text-base font-medium leading-relaxed text-slate-300">
-              Test our real high-speed servers before depositing a single rupee. Claim up to <strong>1,000 Free Views</strong> or <strong>50 Free Likes</strong> on TikTok or Instagram (powered by smoothsmm). 100% free, 1-time trial per account!
-            </p>
-            <div className="mt-6 flex justify-center">
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:scale-105"
-              >
-                <span>Claim Free Test Services</span>
-                <Icon name="arrowRight" size={16} />
-              </Link>
-            </div>
-          </div>
-        </section>
-
         {/* ---------------- 4. SUPPORTED PLATFORMS MARQUEE (SEAMLESS INFINITE TRACK) ---------------- */}
         <section className="w-full overflow-hidden border-b border-slate-800 bg-[#0a0e17] py-6">
           <div className="mb-3 text-center">

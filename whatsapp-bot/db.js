@@ -404,35 +404,10 @@ export async function getCheapestServices(platform = null, limit = 5, targetCurr
 }
 
 /**
- * Fetch 100% Free Test Trial services
+ * Free Test Trial services (Discontinued)
  */
-export async function getFreeTrialServices(targetCurrency = 'PKR') {
-  try {
-    const res = await pool.query(
-      `SELECT id, name, platform, category, COALESCE(custom_rate_pkr, rate_pkr) as rate, min, max
-       FROM vexo_routed_services
-       WHERE enabled = true AND (
-         COALESCE(custom_rate_pkr, rate_pkr) <= 0.05 OR
-         LOWER(name) LIKE '%trial%' OR
-         LOWER(name) LIKE '%free test%'
-       )
-       ORDER BY COALESCE(custom_rate_pkr, rate_pkr) ASC
-       LIMIT 4`
-    );
-
-    return res.rows.map(r => ({
-      id: r.id,
-      name: sanitizeText(r.name),
-      platform: r.platform,
-      category: r.category,
-      rateConverted: '0.00 (100% Free)',
-      min: r.min,
-      max: r.max,
-    }));
-  } catch (err) {
-    console.error('[DB] getFreeTrialServices error:', err.message);
-    return [];
-  }
+export async function getFreeTrialServices() {
+  return [];
 }
 
 /**
@@ -627,9 +602,7 @@ Server queue ne ise *High Priority* mark kar diya hai taake order jaldi se jaldi
 /**
  * Ensures notification and bot control tables exist in PostgreSQL
  */
-let notificationTablesInitialized = false;
 export async function ensureNotificationAndControlTables() {
-  if (notificationTablesInitialized) return;
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vexo_whatsapp_notifications (
@@ -654,7 +627,6 @@ export async function ensureNotificationAndControlTables() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
-    notificationTablesInitialized = true;
   } catch (err) {
     console.warn('[DB Tables Init Warning]:', err.message);
   }

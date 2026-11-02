@@ -5,7 +5,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://vexarosmm.com";
 
 export const metadata: Metadata = {
   title: "TikTok SMM Panel – Buy Followers & Views",
-  description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Free views & likes test trial.",
+  description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and 24/7 automated support.",
   keywords: [
     "smm panel",
     "best smm panel",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "TikTok SMM Panel – Buy Followers & Views",
-    description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Free views & likes test trial.",
+    description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and 24/7 automated support.",
     url: "https://vexarosmm.com/tiktok-services",
     siteName: "VEXARO SMM Services",
     type: "website",
@@ -44,7 +44,7 @@ const jsonLd = {
         url: SITE_URL,
       },
       serviceType: "TikTok Services",
-      description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and Free views & likes test trial.",
+      description: "Buy TikTok followers, likes, shares and views in Pakistan with Easypaisa, JazzCash & SadaPay at wholesale prices. Instant delivery and 24/7 automated support.",
       areaServed: ["Worldwide", "Pakistan"],
     },
     {
