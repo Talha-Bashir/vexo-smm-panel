@@ -1829,8 +1829,8 @@ function Users({
 
       {/* Wholesale & Custom Pricing Modal */}
       {wholesaleUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
+          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh]">
             <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
               <div>
                 <div className="flex items-center gap-2">
@@ -2438,8 +2438,8 @@ function DepositsAdmin({
 
       {/* Deposit Approval Confirmation & Bonus Rate Modal */}
       {approvingDeposit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="relative max-h-[90vh] max-w-lg w-full overflow-hidden rounded-3xl border border-[#baff00]/30 bg-[#111a1d] p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto overscroll-contain">
+          <div className="relative max-h-[94vh] sm:max-h-[90vh] max-w-lg w-full overflow-hidden rounded-3xl border border-[#baff00]/30 bg-[#111a1d] p-4 sm:p-6 shadow-2xl space-y-5 my-2 sm:my-auto">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/15 text-lg font-black text-[#baff00]">
@@ -2636,8 +2636,8 @@ function DepositsAdmin({
 
       {/* Proof Screenshot Modal */}
       {previewScreenshot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="relative max-h-[90vh] max-w-2xl w-full overflow-hidden rounded-3xl border border-white/10 bg-[#111a1d] p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto overscroll-contain">
+          <div className="relative max-h-[94vh] sm:max-h-[90vh] max-w-2xl w-full overflow-hidden rounded-3xl border border-white/10 bg-[#111a1d] p-4 sm:p-5 shadow-2xl my-2 sm:my-auto">
             <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <span>🖼️</span>
@@ -3113,8 +3113,8 @@ function Orders({
 
       {/* COMPREHENSIVE ORDER & TARGET API DETAILS MODAL */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[#071013] p-6 shadow-2xl text-left">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[#071013] p-4 sm:p-6 shadow-2xl text-left my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
               <div>
                 <h3 className="text-lg font-black text-white flex items-center gap-2">
@@ -4259,6 +4259,18 @@ function Services({
   const [savingNew, setSavingNew] = useState(false);
   const [editingFullService, setEditingFullService] = useState<any | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Prevent background scrolling and keep modal fixed in view on mobile
+  useEffect(() => {
+    if (editingFullService || isAddingService) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [editingFullService, isAddingService]);
   const [newServiceForm, setNewServiceForm] = useState({
     name: "",
     platform: "Instagram",
@@ -4955,8 +4967,8 @@ function Services({
 
       {/* 4. Comprehensive Add New Service Modal */}
       {isAddingService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
+          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh]">
             <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
               <div>
                 <div className="flex items-center gap-2">
@@ -5269,8 +5281,8 @@ function Services({
 
       {/* 5. Comprehensive Edit Existing Service Modal */}
       {editingFullService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
+          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh]">
             <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
               <div>
                 <div className="flex items-center gap-2">
@@ -6340,8 +6352,8 @@ function SubAdminsView({
 
       {/* 3. Modal: Add New Sub-Admin */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-5 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-xl max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#0d171a] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-5 backdrop-blur-sm overflow-y-auto overscroll-contain">
+          <div className="w-full max-w-xl max-h-[94vh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#0d171a] shadow-2xl overflow-hidden my-2 sm:my-auto animate-in zoom-in-95 duration-150">
             {/* Header (Sticky) */}
             <div className="flex items-center justify-between border-b border-white/10 p-5 sm:p-6 pb-4 shrink-0 bg-[#0d171a]">
               <div>
@@ -6628,8 +6640,8 @@ function SubAdminsView({
 
       {/* 4. Modal: Edit Permissions */}
       {editPermissionsTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-5 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#0d171a] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-5 backdrop-blur-sm overflow-y-auto overscroll-contain">
+          <div className="w-full max-w-lg max-h-[94vh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#0d171a] shadow-2xl overflow-hidden my-2 sm:my-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-white/10 p-5 sm:p-6 pb-4 shrink-0 bg-[#0d171a]">
               <div>
                 <h3 className="text-lg font-black text-white">Edit Permissions</h3>
@@ -8556,8 +8568,8 @@ function CouponsAdmin({
 
       {/* Create Coupon Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#111a1d] p-6 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
+          <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#111a1d] p-5 sm:p-7 shadow-2xl my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div>
                 <h3 className="text-lg font-black text-white flex items-center gap-2">

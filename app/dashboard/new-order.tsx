@@ -1060,7 +1060,7 @@ export default function NewOrder({
                 ₨{Number(walletBalancePkr || 0).toFixed(2)}
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                (~$${((walletBalancePkr || 0) / (currencyRates?.USD ? 1 / currencyRates.USD : 278)).toFixed(2)} USD)
+                (~${((walletBalancePkr || 0) / (currencyRates?.USD && currencyRates.USD > 1 ? currencyRates.USD : 278)).toFixed(2)} USD)
               </span>
             </div>
           </div>

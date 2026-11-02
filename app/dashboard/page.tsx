@@ -4779,7 +4779,7 @@ function AddFundsPage({
                 ₨{Number(walletBalancePkr || 0).toFixed(2)}
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                (~$${((walletBalancePkr || 0) / (rates?.USD ? 1 / rates.USD : 278)).toFixed(2)} USD)
+                (~${((walletBalancePkr || 0) / (rates?.USD && rates.USD > 1 ? rates.USD : 278)).toFixed(2)} USD)
               </span>
             </div>
           </div>
@@ -6816,8 +6816,8 @@ function ReferAndEarnPage({
 
       {/* WITHDRAWAL MODAL */}
       {showWithdrawModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#111a1d] p-7 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto overscroll-contain">
+          <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#111a1d] p-5 sm:p-7 shadow-2xl my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowWithdrawModal(false)}
               className="absolute right-5 top-5 text-slate-400 hover:text-white"
