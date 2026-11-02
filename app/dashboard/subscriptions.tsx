@@ -29,6 +29,79 @@ export interface ToolProduct {
   productSlug?: string;
   isPartnerBot?: boolean;
   isUnderMaintenance?: boolean;
+  rawDescription?: string;
+  requirements?: string[];
+  importantRules?: string[];
+  replacementPolicy?: string;
+}
+
+function decodeHtml(str: string): string {
+  return (str || "")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function parseBotDescription(raw: string) {
+  const clean = decodeHtml(raw || "");
+  if (!clean) return { summary: "", features: [] as string[], requirements: [] as string[], importantRules: [] as string[], replacementPolicy: "" };
+
+  const featIdx = clean.search(/(?:✨\s*Key Features|Key Features:|Features:)/i);
+  const reqIdx = clean.search(/(?:⚙️\s*Activation Requirements|Activation Requirements:|Requirements:)/i);
+  const impIdx = clean.search(/(?:Important:\s*Read Before Opening|Important:|⚠️\s*Important)/i);
+  const repIdx = clean.search(/(?:Replacement Policy|Warranty Policy)/i);
+
+  let summary = clean;
+  const markers = [featIdx, reqIdx, impIdx, repIdx].filter((x) => x > 0);
+  if (markers.length > 0) {
+    const firstMarker = Math.min(...markers);
+    if (firstMarker > 0) {
+      summary = clean.slice(0, firstMarker).trim();
+    }
+  }
+
+  let features: string[] = [];
+  if (featIdx !== -1) {
+    const endFeat = Math.min(...[reqIdx, impIdx, repIdx].filter((x) => x > featIdx));
+    const featBlock = clean.slice(featIdx, endFeat === Infinity ? clean.length : endFeat);
+    features = featBlock
+      .replace(/✨\s*Key Features:?/i, "")
+      .split(/(?=[✅🤖☁️👥🎁💳•])/)
+      .map((s) => s.replace(/^[✅🤖☁️👥🎁💳•\s]+/, "").trim())
+      .filter((s) => s.length > 2);
+  }
+
+  let requirements: string[] = [];
+  if (reqIdx !== -1) {
+    const endReq = Math.min(...[impIdx, repIdx].filter((x) => x > reqIdx));
+    const reqBlock = clean.slice(reqIdx, endReq === Infinity ? clean.length : endReq);
+    requirements = reqBlock
+      .replace(/⚙️\s*Activation Requirements:?/i, "")
+      .split(/(?=(?:\d+[-.)]|\n-|\n•))/)
+      .map((s) => s.replace(/^(?:\d+[-.)\s]*|\s*[-•]\s*)/, "").trim())
+      .filter((s) => s.length > 2);
+  }
+
+  let importantRules: string[] = [];
+  if (impIdx !== -1) {
+    const endImp = repIdx > impIdx ? repIdx : clean.length;
+    const impBlock = clean.slice(impIdx, endImp);
+    importantRules = impBlock
+      .replace(/(?:Important:\s*Read Before Opening|Important:|⚠️\s*Important:?)/i, "")
+      .split(/(?=(?:\s+-\s+|[\r\n]+[-•]\s*))/)
+      .map((s) => s.replace(/^[-•\s]+/, "").trim())
+      .filter((s) => s.length > 3);
+  }
+
+  let replacementPolicy = "";
+  if (repIdx !== -1) {
+    const repBlock = clean.slice(repIdx);
+    replacementPolicy = repBlock.replace(/^(?:Replacement Policy|Warranty Policy)[:\s-]*/i, "").trim();
+  }
+
+  return { summary, features, requirements, importantRules, replacementPolicy };
 }
 
 export interface UserSubscription {
@@ -95,6 +168,7 @@ export function SubscriptionsPage({
   const [stockCounts, setStockCounts] = useState<{ inStock: number; outOfStock: number }>({ inStock: 0, outOfStock: 0 });
   const [isBotUnderMaintenance, setIsBotUnderMaintenance] = useState<boolean>(false);
   const [botMaintenanceMessage, setBotMaintenanceMessage] = useState<string>("We are maintaining our services, please come back later.");
+  const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setMounted(true);
@@ -108,11 +182,14 @@ export function SubscriptionsPage({
     return () => clearInterval(interval);
   }, []);
 
-  // Lock scroll and handle Escape key when purchase modal is open
+  // Lock scroll on desktop and handle Escape key when purchase modal is open
   useEffect(() => {
     if (!purchasingTool) return;
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!isMobile) {
+      document.body.style.overflow = "hidden";
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -122,7 +199,9 @@ export function SubscriptionsPage({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = prevOverflow;
+      if (!isMobile) {
+        document.body.style.overflow = prevOverflow;
+      }
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [purchasingTool]);
@@ -563,22 +642,92 @@ export function SubscriptionsPage({
                       </div>
 
                       {/* Tool Title & Description */}
-                      <h3 className="text-base font-black text-white group-hover:text-[#baff00] transition-colors">
-                        {tool.name}
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-400 leading-relaxed">
-                        {tool.shortDesc}
-                      </p>
+                      {(() => {
+                        const parsed = parseBotDescription(tool.rawDescription || tool.shortDesc || "");
+                        const summaryText = parsed.summary || tool.shortDesc;
+                        const featuresList = (parsed.features && parsed.features.length > 0) ? parsed.features : tool.features;
+                        const reqs = (tool.requirements && tool.requirements.length > 0) ? tool.requirements : parsed.requirements;
+                        const rules = (tool.importantRules && tool.importantRules.length > 0) ? tool.importantRules : parsed.importantRules;
+                        const hasExtraGuide = reqs.length > 0 || rules.length > 0;
+                        const isExpanded = Boolean(expandedDetails[tool.id]);
 
-                      {/* Features Bullet List */}
-                      <div className="mt-4 space-y-1.5 border-t border-white/5 pt-3">
-                        {tool.features.map((feat, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-xs text-slate-300">
-                            <span className="text-[#baff00] font-black text-[11px] mt-0.5">✓</span>
-                            <span>{feat}</span>
-                          </div>
-                        ))}
-                      </div>
+                        return (
+                          <>
+                            <h3 className="text-base font-black text-white group-hover:text-[#baff00] transition-colors">
+                              {tool.name}
+                            </h3>
+                            <p className="mt-1.5 text-xs text-slate-300/90 leading-relaxed font-normal">
+                              {summaryText}
+                            </p>
+
+                            {/* Features Bullet List */}
+                            <div className="mt-4 space-y-2 border-t border-white/5 pt-3">
+                              {featuresList.slice(0, 4).map((feat, idx) => (
+                                <div key={idx} className="flex items-start gap-2 text-xs text-slate-200">
+                                  <span className="text-[#baff00] font-black text-[11px] mt-0.5 shrink-0">✓</span>
+                                  <span className="leading-snug">{feat}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Expandable Activation & Requirements Guide */}
+                            {hasExtraGuide && (
+                              <div className="mt-3 pt-2.5 border-t border-white/5">
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedDetails((prev) => ({ ...prev, [tool.id]: !prev[tool.id] }))}
+                                  className="w-full flex items-center justify-between text-[11px] font-bold text-slate-400 hover:text-[#baff00] transition py-1 cursor-pointer"
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <span>⚙️</span>
+                                    <span>Activation Guide &amp; Rules</span>
+                                    <span className="rounded-full bg-white/10 px-1.5 py-0.2 text-[9px] text-[#cfff62]">
+                                      {reqs.length + rules.length}
+                                    </span>
+                                  </span>
+                                  <span className="text-xs font-mono">{isExpanded ? "▲ Hide" : "▼ View"}</span>
+                                </button>
+
+                                {isExpanded && (
+                                  <div className="mt-2 space-y-2.5 rounded-xl border border-white/10 bg-[#060d0f] p-3 text-xs animate-in fade-in duration-150">
+                                    {reqs.length > 0 && (
+                                      <div>
+                                        <span className="text-[10px] uppercase font-bold text-[#baff00] block mb-1">
+                                          ⚙️ Steps to Activate:
+                                        </span>
+                                        <div className="space-y-1 text-slate-300 text-[11px]">
+                                          {reqs.map((step, sIdx) => (
+                                            <div key={sIdx} className="flex items-start gap-1.5">
+                                              <span className="text-[#baff00] font-mono font-bold">{sIdx + 1}.</span>
+                                              <span>{step}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {rules.length > 0 && (
+                                      <div className="pt-2 border-t border-white/5">
+                                        <span className="text-[10px] uppercase font-bold text-amber-400 block mb-1">
+                                          ⚠️ Important Instructions:
+                                        </span>
+                                        <div className="space-y-1 text-amber-200/90 text-[11px]">
+                                          {rules.map((rule, rIdx) => (
+                                            <div key={rIdx} className="flex items-start gap-1.5">
+                                              <span className="text-amber-400 shrink-0">•</span>
+                                              <span>{rule}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* Pricing & Purchase Area */}
@@ -876,26 +1025,27 @@ export function SubscriptionsPage({
       {/* PURCHASE CONFIRMATION MODAL */}
       {mounted && purchasingTool && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 sm:p-6 backdrop-blur-md overflow-y-auto"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-md overflow-hidden animate-in fade-in duration-150"
           onClick={(e) => {
             if (e.target === e.currentTarget) setPurchasingTool(null);
           }}
         >
           <div
-            className="relative w-full max-w-lg rounded-3xl border border-white/20 bg-[#0e1719] p-6 sm:p-8 text-white shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(186,255,0,0.1)] my-auto"
+            className="relative w-full max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/20 bg-[#0e1719] text-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             {purchaseSuccess ? (
-              <div className="text-center space-y-4">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#baff00]/20 text-3xl shadow-[0_0_20px_rgba(186,255,0,0.3)]">
-                  🎉
-                </div>
-                <h3 className="text-xl font-black text-white">
-                  Subscription Activated Successfully!
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Your access to <strong className="text-[#baff00]">{purchasingTool.name}</strong> is now live.
-                </p>
+              <div className="flex flex-col h-full overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4 text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#baff00]/20 text-3xl shadow-[0_0_20px_rgba(186,255,0,0.3)]">
+                    🎉
+                  </div>
+                  <h3 className="text-xl font-black text-white">
+                    Subscription Activated Successfully!
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Your access to <strong className="text-[#baff00]">{purchasingTool.name}</strong> is now live.
+                  </p>
 
                 <div className="rounded-xl border border-white/10 bg-[#060c0d] p-4 text-left space-y-3 text-xs">
                   {(() => {
@@ -996,57 +1146,63 @@ export function SubscriptionsPage({
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 pt-1">
+                </div>
+                <div className="shrink-0 p-4 sm:p-5 border-t border-white/10 bg-[#070e10]">
                   <button
                     type="button"
                     onClick={() => {
                       setPurchasingTool(null);
                       setActiveTab("my_subs");
                     }}
-                    className="w-full rounded-xl bg-[#baff00] py-3 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition shadow-[0_4px_14px_rgba(186,255,0,0.25)]"
+                    className="w-full rounded-xl bg-[#baff00] py-3 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] transition shadow-[0_4px_14px_rgba(186,255,0,0.25)] cursor-pointer"
                   >
                     View in My Subscriptions →
                   </button>
                 </div>
               </div>
             ) : (
-              <div>
-                <div className="flex items-start justify-between border-b border-white/10 pb-4">
+              <div className="flex flex-col h-full overflow-hidden">
+                {/* Fixed Header */}
+                <div className="shrink-0 flex items-start justify-between border-b border-white/10 bg-[#0a1214] p-4 sm:p-5">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#baff00]">
                       ⚡ Instant Wallet Checkout
                     </span>
-                    <h3 className="mt-1 text-xl font-black text-white">{purchasingTool.name}</h3>
+                    <h3 className="mt-0.5 text-lg sm:text-xl font-black text-white line-clamp-1">{purchasingTool.name}</h3>
                     <span className="text-xs text-slate-400">{purchasingTool.categoryLabel}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setPurchasingTool(null)}
-                    className="rounded-xl border border-white/10 p-2 text-slate-400 hover:text-white hover:border-white/30 transition"
+                    className="rounded-xl border border-white/10 p-2 text-slate-400 hover:text-white hover:border-white/30 transition cursor-pointer"
                     title="Close"
                   >
                     ✕
                   </button>
                 </div>
 
-                <div className="mt-4 space-y-4">
-                  {/* Selected Plan Details & Duration Switcher */}
-                  {(() => {
-                    const plans = purchasingTool.plans || [];
-                    const defaultPlan = plans[0] || { duration: "1 Month", pricePkr: 0, priceUsd: 0, durationDays: 30 };
-                    const currentDuration = selectedPlans[purchasingTool.id] || defaultPlan.duration;
-                    const plan = plans.find((p) => p.duration === currentDuration) || defaultPlan;
-                    const isPlanOutOfStock = plan.inStock === false || (plan.stockCount !== undefined && plan.stockCount <= 0);
-                    const safeBalance = Number(walletBalancePkr) || 0;
-                    const safePrice = Number(plan.pricePkr) || 0;
-                    const priceUsd = plan.priceUsd ?? (safePrice > 0 ? Number((safePrice / 278).toFixed(2)) : 0);
-                    const qty = Math.max(1, purchaseQuantity || 1);
-                    const totalSafePrice = safePrice * qty;
-                    const totalUsd = priceUsd * qty;
-                    const canAfford = safeBalance >= totalSafePrice;
+                {/* Selected Plan Details & Duration Switcher */}
+                {(() => {
+                  const parsedModal = parseBotDescription(purchasingTool.rawDescription || purchasingTool.shortDesc || "");
+                  const modalReqs = (purchasingTool.requirements && purchasingTool.requirements.length > 0) ? purchasingTool.requirements : parsedModal.requirements;
+                  const modalRules = (purchasingTool.importantRules && purchasingTool.importantRules.length > 0) ? purchasingTool.importantRules : parsedModal.importantRules;
+                  const plans = purchasingTool.plans || [];
+                  const defaultPlan = plans[0] || { duration: "1 Month", pricePkr: 0, priceUsd: 0, durationDays: 30 };
+                  const currentDuration = selectedPlans[purchasingTool.id] || defaultPlan.duration;
+                  const plan = plans.find((p) => p.duration === currentDuration) || defaultPlan;
+                  const isPlanOutOfStock = plan.inStock === false || (plan.stockCount !== undefined && plan.stockCount <= 0);
+                  const safeBalance = Number(walletBalancePkr) || 0;
+                  const safePrice = Number(plan.pricePkr) || 0;
+                  const priceUsd = plan.priceUsd ?? (safePrice > 0 ? Number((safePrice / 278).toFixed(2)) : 0);
+                  const qty = Math.max(1, purchaseQuantity || 1);
+                  const totalSafePrice = safePrice * qty;
+                  const totalUsd = priceUsd * qty;
+                  const canAfford = safeBalance >= totalSafePrice;
 
-                    return (
-                      <>
+                  return (
+                    <>
+                      {/* Scrollable Form Body */}
+                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
                         {/* Duration switcher if multiple plans exist */}
                         {plans.length > 1 && (
                           <div>
@@ -1072,6 +1228,38 @@ export function SubscriptionsPage({
                                 );
                               })}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Important Activation Instructions Box */}
+                        {(modalReqs.length > 0 || modalRules.length > 0) && (
+                          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-2 text-xs">
+                            <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                              <span>⚠️</span>
+                              <span>Must-Read Activation Rules Before Purchase</span>
+                            </div>
+                            {modalReqs.length > 0 && (
+                              <div className="space-y-1 text-slate-200 text-[11px]">
+                                <strong className="text-[#baff00] block text-[10px] uppercase tracking-wider">Required Steps:</strong>
+                                {modalReqs.map((step, idx) => (
+                                  <div key={idx} className="flex items-start gap-1.5">
+                                    <span className="text-[#baff00] font-mono font-bold shrink-0">{idx + 1}.</span>
+                                    <span>{step}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {modalRules.length > 0 && (
+                              <div className="space-y-1 text-amber-200/90 text-[11px] pt-1.5 border-t border-amber-500/20">
+                                <strong className="text-amber-400 block text-[10px] uppercase tracking-wider">Crucial Caveats:</strong>
+                                {modalRules.map((rule, idx) => (
+                                  <div key={idx} className="flex items-start gap-1.5">
+                                    <span className="text-amber-400 shrink-0">•</span>
+                                    <span>{rule}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1227,57 +1415,58 @@ export function SubscriptionsPage({
                           </div>
                         )}
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+                      </div>
+
+                      {/* Sticky Footer Action Buttons */}
+                      <div className="shrink-0 p-4 sm:p-5 border-t border-white/10 bg-[#070e10] flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPurchasingTool(null)}
+                          className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+
+                        {isPlanOutOfStock ? (
                           <button
                             type="button"
-                            onClick={() => setPurchasingTool(null)}
-                            className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition"
+                            disabled
+                            className="rounded-xl bg-white/5 px-5 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed border border-white/5 flex items-center gap-1.5"
                           >
-                            Cancel
+                            <span>Sold Out (Auto-restocks)</span>
                           </button>
-
-                          {isPlanOutOfStock ? (
-                            <button
-                              type="button"
-                              disabled
-                              className="rounded-xl bg-white/5 px-5 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed border border-white/5 flex items-center gap-1.5"
-                            >
-                              <span>Sold Out (Auto-restocks)</span>
-                            </button>
-                          ) : canAfford ? (
-                            <button
-                              type="button"
-                              onClick={handleConfirmPurchase}
-                              disabled={isSubmitting}
-                              className="rounded-xl bg-[#baff00] px-5 py-2.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition shadow-[0_4px_14px_rgba(186,255,0,0.25)] flex items-center gap-1.5"
-                            >
-                              {isSubmitting ? (
-                                <>
-                                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                  <span>Activating...</span>
-                                </>
-                              ) : (
-                                <span>Confirm &amp; Pay ₨{totalSafePrice.toLocaleString()} (${totalUsd.toFixed(2)})</span>
-                              )}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPurchasingTool(null);
-                                navigate("Add Funds");
-                              }}
-                              className="rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-[0_4px_14px_rgba(251,191,36,0.25)]"
-                            >
-                              Add Funds to Wallet (₨{(totalSafePrice - safeBalance).toLocaleString()} needed)
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
+                        ) : canAfford ? (
+                          <button
+                            type="button"
+                            onClick={handleConfirmPurchase}
+                            disabled={isSubmitting}
+                            className="rounded-xl bg-[#baff00] px-5 py-2.5 text-xs font-black text-[#07100f] hover:bg-[#d2ff5a] disabled:opacity-50 transition shadow-[0_4px_14px_rgba(186,255,0,0.25)] flex items-center gap-1.5 cursor-pointer"
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                <span>Activating...</span>
+                              </>
+                            ) : (
+                              <span>Confirm &amp; Pay ₨{totalSafePrice.toLocaleString()} (${totalUsd.toFixed(2)})</span>
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPurchasingTool(null);
+                              navigate("Add Funds");
+                            }}
+                            className="rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black text-[#07100f] hover:bg-amber-300 transition shadow-[0_4px_14px_rgba(251,191,36,0.25)] cursor-pointer"
+                          >
+                            Add Funds to Wallet (₨{(totalSafePrice - safeBalance).toLocaleString()} needed)
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>

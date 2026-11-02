@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MassOrderPage } from "./mass-order";
 import { SubscriptionsPage } from "./subscriptions";
 import NewOrder from "./new-order";
@@ -6815,9 +6816,17 @@ function ReferAndEarnPage({
       </div>
 
       {/* WITHDRAWAL MODAL */}
-      {showWithdrawModal && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto overscroll-contain">
-          <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#111a1d] p-5 sm:p-7 shadow-2xl my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto">
+      {typeof document !== "undefined" && showWithdrawModal && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-hidden animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowWithdrawModal(false);
+          }}
+        >
+          <div
+            className="relative w-full max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#111a1d] p-5 sm:p-7 shadow-2xl overflow-y-auto overscroll-contain animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setShowWithdrawModal(false)}
               className="absolute right-5 top-5 text-slate-400 hover:text-white"
@@ -6945,7 +6954,8 @@ function ReferAndEarnPage({
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

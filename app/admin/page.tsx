@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import React, { memo } from "react";
+import { createPortal } from "react-dom";
 import { SeoManagementView } from "@/components/admin-seo-management";
 import { PlatformSettingsView } from "@/components/admin-platform-settings";
 import { BlogCmsAdmin } from "@/components/admin-blog-cms";
@@ -48,6 +49,42 @@ const tabs: Tab[] = [
 ];
 
 const card = "rounded-2xl border border-white/10 bg-[#111a1d]";
+
+function AdminModalPortal({
+  children,
+  isOpen,
+  onClose,
+  maxWidth = "max-w-3xl",
+}: {
+  children: React.ReactNode;
+  isOpen: boolean;
+  onClose: () => void;
+  maxWidth?: string;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm overflow-hidden animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className={`w-full ${maxWidth} max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 function money(n: number) {
   return `₨${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
@@ -1828,10 +1865,14 @@ function Users({
       </div>
 
       {/* Wholesale & Custom Pricing Modal */}
-      {wholesaleUser && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
+      <AdminModalPortal
+        isOpen={Boolean(wholesaleUser)}
+        onClose={() => setWholesaleUser(null)}
+        maxWidth="max-w-2xl"
+      >
+        {wholesaleUser && (
+          <>
+            <div className="shrink-0 flex items-center justify-between border-b border-white/10 p-4 sm:p-5 bg-[#0b1418]">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-purple-300">
@@ -1974,7 +2015,7 @@ function Users({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-white/10 p-4 bg-[#0b1418]">
+            <div className="shrink-0 flex items-center justify-end gap-3 border-t border-white/10 p-4 bg-[#0b1418]">
               <button
                 type="button"
                 onClick={() => setWholesaleUser(null)}
@@ -1991,9 +2032,9 @@ function Users({
                 {savingWholesale ? "Saving..." : "Save Wholesale Pricing"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AdminModalPortal>
     </section>
   );
 }
@@ -2437,9 +2478,13 @@ function DepositsAdmin({
       </div>
 
       {/* Deposit Approval Confirmation & Bonus Rate Modal */}
-      {approvingDeposit && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto overscroll-contain">
-          <div className="relative max-h-[94vh] sm:max-h-[90vh] max-w-lg w-full overflow-hidden rounded-3xl border border-[#baff00]/30 bg-[#111a1d] p-4 sm:p-6 shadow-2xl space-y-5 my-2 sm:my-auto">
+      <AdminModalPortal
+        isOpen={Boolean(approvingDeposit)}
+        onClose={() => setApprovingDeposit(null)}
+        maxWidth="max-w-lg"
+      >
+        {approvingDeposit && (
+          <div className="p-4 sm:p-6 space-y-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#baff00]/15 text-lg font-black text-[#baff00]">
@@ -2631,13 +2676,17 @@ function DepositsAdmin({
               })()}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AdminModalPortal>
 
       {/* Proof Screenshot Modal */}
-      {previewScreenshot && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto overscroll-contain">
-          <div className="relative max-h-[94vh] sm:max-h-[90vh] max-w-2xl w-full overflow-hidden rounded-3xl border border-white/10 bg-[#111a1d] p-4 sm:p-5 shadow-2xl my-2 sm:my-auto">
+      <AdminModalPortal
+        isOpen={Boolean(previewScreenshot)}
+        onClose={() => setPreviewScreenshot(null)}
+        maxWidth="max-w-2xl"
+      >
+        {previewScreenshot && (
+          <div className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <span>🖼️</span>
@@ -2663,8 +2712,8 @@ function DepositsAdmin({
               💡 Upon approval or rejection, the screenshot binary is automatically purged from the database for storage optimization and privacy.
             </p>
           </div>
-        </div>
-      )}
+        )}
+      </AdminModalPortal>
 
       {/* Security Footer Note */}
       <div className="border-t border-white/10 bg-[#0b1418] p-4 text-[11px] text-slate-400 flex items-center gap-2">
@@ -3112,9 +3161,13 @@ function Orders({
       </div>
 
       {/* COMPREHENSIVE ORDER & TARGET API DETAILS MODAL */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[#071013] p-4 sm:p-6 shadow-2xl text-left my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto">
+      <AdminModalPortal
+        isOpen={Boolean(selectedOrder)}
+        onClose={() => setSelectedOrder(null)}
+        maxWidth="max-w-2xl"
+      >
+        {selectedOrder && (
+          <div className="p-4 sm:p-6 text-left flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
               <div>
                 <h3 className="text-lg font-black text-white flex items-center gap-2">
@@ -3359,8 +3412,8 @@ function Orders({
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AdminModalPortal>
     </section>
   );
 }
@@ -4260,17 +4313,7 @@ function Services({
   const [editingFullService, setEditingFullService] = useState<any | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Prevent background scrolling and keep modal fixed in view on mobile
-  useEffect(() => {
-    if (editingFullService || isAddingService) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [editingFullService, isAddingService]);
+
   const [newServiceForm, setNewServiceForm] = useState({
     name: "",
     platform: "Instagram",
@@ -4966,17 +5009,21 @@ function Services({
       </section>
 
       {/* 4. Comprehensive Add New Service Modal */}
-      {isAddingService && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
-          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
+      <AdminModalPortal
+        isOpen={Boolean(isAddingService)}
+        onClose={() => setIsAddingService(false)}
+        maxWidth="max-w-3xl"
+      >
+        {isAddingService && (
+          <>
+            <div className="shrink-0 flex items-center justify-between border-b border-white/10 p-4 sm:p-5 bg-[#0b1418]">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-black uppercase">
                     New Catalog Service
                   </span>
                 </div>
-                <h3 className="mt-1 font-black text-lg text-white">
+                <h3 className="mt-1 font-black text-base sm:text-lg text-white">
                   ➕ Add New Service
                 </h3>
               </div>
@@ -4989,7 +5036,7 @@ function Services({
               </button>
             </div>
 
-            <form onSubmit={handleCreateService} className="overflow-y-auto p-6 space-y-5 flex-1">
+            <form id="create-service-form" onSubmit={handleCreateService} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
               {/* Row 1: Name & Platform */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -5257,33 +5304,39 @@ function Services({
                 />
               </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingService(false)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingNew}
-                  className="rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg transition disabled:opacity-50 cursor-pointer"
-                >
-                  {savingNew ? "Creating..." : "✓ Create Service"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+
+            {/* Sticky Footer */}
+            <div className="shrink-0 flex items-center justify-end gap-3 p-4 sm:p-5 border-t border-white/10 bg-[#0b1418]">
+              <button
+                type="button"
+                onClick={() => setIsAddingService(false)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="create-service-form"
+                disabled={savingNew}
+                className="rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg transition disabled:opacity-50 cursor-pointer"
+              >
+                {savingNew ? "Creating..." : "✓ Create Service"}
+              </button>
+            </div>
+          </>
+        )}
+      </AdminModalPortal>
 
       {/* 5. Comprehensive Edit Existing Service Modal */}
-      {editingFullService && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
-          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden flex flex-col my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-white/10 p-5 bg-[#0b1418]">
+      <AdminModalPortal
+        isOpen={Boolean(editingFullService)}
+        onClose={() => setEditingFullService(null)}
+        maxWidth="max-w-3xl"
+      >
+        {editingFullService && (
+          <>
+            <div className="shrink-0 flex items-center justify-between border-b border-white/10 p-4 sm:p-5 bg-[#0b1418]">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-black uppercase text-white">
@@ -5293,7 +5346,7 @@ function Services({
                     ID #{editingFullService.service || editingFullService.id}
                   </span>
                 </div>
-                <h3 className="mt-1 font-black text-lg text-white line-clamp-1">
+                <h3 className="mt-1 font-black text-base sm:text-lg text-white line-clamp-1">
                   ✏️ Edit Service: {editingFullService.name}
                 </h3>
               </div>
@@ -5306,7 +5359,7 @@ function Services({
               </button>
             </div>
 
-            <form onSubmit={handleUpdateFullService} className="overflow-y-auto p-6 space-y-5 flex-1">
+            <form id="edit-service-form" onSubmit={handleUpdateFullService} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
               {/* Row 1: Name & Platform */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -5647,27 +5700,29 @@ function Services({
                 />
               </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setEditingFullService(null)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingEdit}
-                  className="rounded-xl bg-[#baff00] hover:bg-[#d2ff5a] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-[#07100f] shadow-lg transition disabled:opacity-50 cursor-pointer"
-                >
-                  {savingEdit ? "Saving..." : "✓ Save Changes"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+
+            {/* Sticky Footer */}
+            <div className="shrink-0 flex items-center justify-end gap-3 p-4 sm:p-5 border-t border-white/10 bg-[#0b1418]">
+              <button
+                type="button"
+                onClick={() => setEditingFullService(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/10 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-service-form"
+                disabled={savingEdit}
+                className="rounded-xl bg-[#baff00] hover:bg-[#d2ff5a] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-[#07100f] shadow-lg transition disabled:opacity-50 cursor-pointer"
+              >
+                {savingEdit ? "Saving..." : "✓ Save Changes"}
+              </button>
+            </div>
+          </>
+        )}
+      </AdminModalPortal>
     </div>
   );
 }
@@ -6351,9 +6406,13 @@ function SubAdminsView({
       </div>
 
       {/* 3. Modal: Add New Sub-Admin */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-5 backdrop-blur-sm overflow-y-auto overscroll-contain">
-          <div className="w-full max-w-xl max-h-[94vh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#0d171a] shadow-2xl overflow-hidden my-2 sm:my-auto animate-in zoom-in-95 duration-150">
+      <AdminModalPortal
+        isOpen={Boolean(showAddModal)}
+        onClose={() => setShowAddModal(false)}
+        maxWidth="max-w-xl"
+      >
+        {showAddModal && (
+          <>
             {/* Header (Sticky) */}
             <div className="flex items-center justify-between border-b border-white/10 p-5 sm:p-6 pb-4 shrink-0 bg-[#0d171a]">
               <div>
@@ -6634,14 +6693,18 @@ function SubAdminsView({
                   : "Create Sub-Admin →"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AdminModalPortal>
 
       {/* 4. Modal: Edit Permissions */}
-      {editPermissionsTarget && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 p-2 sm:p-5 backdrop-blur-sm overflow-y-auto overscroll-contain">
-          <div className="w-full max-w-lg max-h-[94vh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#0d171a] shadow-2xl overflow-hidden my-2 sm:my-auto animate-in zoom-in-95 duration-150">
+      <AdminModalPortal
+        isOpen={Boolean(editPermissionsTarget)}
+        onClose={() => setEditPermissionsTarget(null)}
+        maxWidth="max-w-lg"
+      >
+        {editPermissionsTarget && (
+          <>
             <div className="flex items-center justify-between border-b border-white/10 p-5 sm:p-6 pb-4 shrink-0 bg-[#0d171a]">
               <div>
                 <h3 className="text-lg font-black text-white">Edit Permissions</h3>
@@ -6754,14 +6817,18 @@ function SubAdminsView({
                 {busy ? "Saving..." : "Save Changes"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AdminModalPortal>
 
       {/* 5. Modal: Reset Password */}
-      {resetPasswordTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0d171a] p-6 shadow-2xl">
+      <AdminModalPortal
+        isOpen={Boolean(resetPasswordTarget)}
+        onClose={() => setResetPasswordTarget(null)}
+        maxWidth="max-w-md"
+      >
+        {resetPasswordTarget && (
+          <div className="p-6">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
                 <h3 className="text-lg font-black text-white">Reset Staff Password</h3>
@@ -6810,8 +6877,8 @@ function SubAdminsView({
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </AdminModalPortal>
     </div>
   );
 }
@@ -8567,9 +8634,13 @@ function CouponsAdmin({
       </section>
 
       {/* Create Coupon Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto overscroll-contain">
-          <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#111a1d] p-5 sm:p-7 shadow-2xl my-2 sm:my-auto max-h-[94vh] sm:max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+      <AdminModalPortal
+        isOpen={Boolean(showCreateModal)}
+        onClose={() => setShowCreateModal(false)}
+        maxWidth="max-w-lg"
+      >
+        {showCreateModal && (
+          <div className="p-5 sm:p-7 flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div>
                 <h3 className="text-lg font-black text-white flex items-center gap-2">
@@ -8744,8 +8815,8 @@ function CouponsAdmin({
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </AdminModalPortal>
     </div>
   );
 }

@@ -40,6 +40,79 @@ export interface ToolProduct {
   productSlug?: string;
   isPartnerBot?: boolean;
   isUnderMaintenance?: boolean;
+  rawDescription?: string;
+  requirements?: string[];
+  importantRules?: string[];
+  replacementPolicy?: string;
+}
+
+function decodeHtml(str: string): string {
+  return (str || "")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function parseBotDescription(raw: string) {
+  const clean = decodeHtml(raw || "");
+  if (!clean) return { summary: "", features: [] as string[], requirements: [] as string[], importantRules: [] as string[], replacementPolicy: "" };
+
+  const featIdx = clean.search(/(?:✨\s*Key Features|Key Features:|Features:)/i);
+  const reqIdx = clean.search(/(?:⚙️\s*Activation Requirements|Activation Requirements:|Requirements:)/i);
+  const impIdx = clean.search(/(?:Important:\s*Read Before Opening|Important:|⚠️\s*Important)/i);
+  const repIdx = clean.search(/(?:Replacement Policy|Warranty Policy)/i);
+
+  let summary = clean;
+  const markers = [featIdx, reqIdx, impIdx, repIdx].filter((x) => x > 0);
+  if (markers.length > 0) {
+    const firstMarker = Math.min(...markers);
+    if (firstMarker > 0) {
+      summary = clean.slice(0, firstMarker).trim();
+    }
+  }
+
+  let features: string[] = [];
+  if (featIdx !== -1) {
+    const endFeat = Math.min(...[reqIdx, impIdx, repIdx].filter((x) => x > featIdx));
+    const featBlock = clean.slice(featIdx, endFeat === Infinity ? clean.length : endFeat);
+    features = featBlock
+      .replace(/✨\s*Key Features:?/i, "")
+      .split(/(?=[✅🤖☁️👥🎁💳•])/)
+      .map((s) => s.replace(/^[✅🤖☁️👥🎁💳•\s]+/, "").trim())
+      .filter((s) => s.length > 2);
+  }
+
+  let requirements: string[] = [];
+  if (reqIdx !== -1) {
+    const endReq = Math.min(...[impIdx, repIdx].filter((x) => x > reqIdx));
+    const reqBlock = clean.slice(reqIdx, endReq === Infinity ? clean.length : endReq);
+    requirements = reqBlock
+      .replace(/⚙️\s*Activation Requirements:?/i, "")
+      .split(/(?=(?:\d+[-.)]|\n-|\n•))/)
+      .map((s) => s.replace(/^(?:\d+[-.)\s]*|\s*[-•]\s*)/, "").trim())
+      .filter((s) => s.length > 2);
+  }
+
+  let importantRules: string[] = [];
+  if (impIdx !== -1) {
+    const endImp = repIdx > impIdx ? repIdx : clean.length;
+    const impBlock = clean.slice(impIdx, endImp);
+    importantRules = impBlock
+      .replace(/(?:Important:\s*Read Before Opening|Important:|⚠️\s*Important:?)/i, "")
+      .split(/(?=(?:\s+-\s+|[\r\n]+[-•]\s*))/)
+      .map((s) => s.replace(/^[-•\s]+/, "").trim())
+      .filter((s) => s.length > 3);
+  }
+
+  let replacementPolicy = "";
+  if (repIdx !== -1) {
+    const repBlock = clean.slice(repIdx);
+    replacementPolicy = repBlock.replace(/^(?:Replacement Policy|Warranty Policy)[:\s-]*/i, "").trim();
+  }
+
+  return { summary, features, requirements, importantRules, replacementPolicy };
 }
 
 const TOOLS_CATALOG: ToolProduct[] = [
@@ -528,6 +601,13 @@ export async function GET() {
                     ? `${rawStockCount} in Stock`
                     : "Instant"));
 
+        const parsed = parseBotDescription(p.description || "");
+        const customFeatures = parsed.features.length > 0 ? parsed.features : [
+          `Delivery format: ${deliveryLabel}`,
+          `Duration: ${p.durationDays || 30} Days`,
+          p.warranty?.enabled ? `Warranty: ${p.warranty.days} Days Replacement` : "Instant Automated Delivery",
+        ];
+
         return {
           id: p.slug,
           productSlug: p.slug,
@@ -536,15 +616,12 @@ export async function GET() {
           categoryLabel: cat.categoryLabel,
           icon: cat.icon,
           badge: stockBadge,
-          shortDesc: p.description || `Instant ${deliveryLabel} delivery from bot inventory. Active duration: ${p.durationDays || 30} days.`,
-          features: [
-            `Delivery format: ${deliveryLabel}`,
-            `Duration: ${p.durationDays || 30} Days`,
-            p.warranty?.enabled ? `Warranty: ${p.warranty.days} Days Replacement` : "Instant Automated Delivery",
-            isBotUnderMaintenance
-              ? "Status: We are maintaining our services, please come back later."
-              : (p.stock ? (rawInStock ? `Stock Available: ${rawStockCount} in inventory` : "Currently Out of Stock (Auto-restocks when bot is replenished)") : "In Stock")
-          ],
+          shortDesc: parsed.summary || p.description || `Instant ${deliveryLabel} delivery from bot inventory. Active duration: ${p.durationDays || 30} days.`,
+          features: customFeatures,
+          requirements: parsed.requirements,
+          importantRules: parsed.importantRules,
+          replacementPolicy: parsed.replacementPolicy,
+          rawDescription: p.description || "",
           deliveryType: p.deliveryType,
           isPartnerBot: true,
           isUnderMaintenance: isBotUnderMaintenance,
