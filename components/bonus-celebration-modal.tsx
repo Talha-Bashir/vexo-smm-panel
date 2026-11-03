@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 interface BonusCelebrationModalProps {
   isOpen: boolean;
@@ -45,6 +46,15 @@ export default function BonusCelebrationModal({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // 1. Play synthesized party popper sound & fanfare chime (Web Audio API)
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -224,10 +234,10 @@ export default function BonusCelebrationModal({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto overscroll-contain animate-in fade-in duration-200 min-h-full">
       {/* Confetti Celebration Particle Canvas */}
       <canvas
         ref={canvasRef}
@@ -343,6 +353,7 @@ export default function BonusCelebrationModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

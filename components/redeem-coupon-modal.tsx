@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface RedeemCouponModalProps {
   isOpen: boolean;
@@ -15,6 +16,20 @@ export default function RedeemCouponModal({
 }: RedeemCouponModalProps) {
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
   const [error, setError] = useState("");
 
   if (!isOpen) return null;
@@ -52,9 +67,11 @@ export default function RedeemCouponModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-3xl border border-[#baff00]/30 bg-[#111a1d] p-6 sm:p-7 shadow-[0_0_50px_rgba(0,0,0,0.8),0_0_30px_rgba(186,255,0,0.15)] animate-in zoom-in-95 duration-200">
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-md overflow-y-auto overscroll-contain animate-in fade-in duration-200 min-h-full">
+      <div className="relative my-auto w-full max-w-md rounded-3xl border border-[#baff00]/30 bg-[#111a1d] p-6 sm:p-7 shadow-[0_0_50px_rgba(0,0,0,0.8),0_0_30px_rgba(186,255,0,0.15)] animate-in zoom-in-95 duration-200">
         {/* Close Button */}
         <button
           type="button"
@@ -136,6 +153,7 @@ export default function RedeemCouponModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

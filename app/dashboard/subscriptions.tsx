@@ -37,11 +37,17 @@ export interface ToolProduct {
 
 function decodeHtml(str: string): string {
   return (str || "")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/p>/gi, " ")
+    .replace(/<[^>]*>/g, "")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .trim();
 }
 
 function parseBotDescription(raw: string) {
@@ -155,6 +161,15 @@ export function SubscriptionsPage({
 
   // Purchase modal state
   const [purchasingTool, setPurchasingTool] = useState<ToolProduct | null>(null);
+
+  useEffect(() => {
+    if (!purchasingTool) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [purchasingTool]);
   const [purchaseQuantity, setPurchaseQuantity] = useState<number>(1);
   const [deliveryContact, setDeliveryContact] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -1025,13 +1040,13 @@ export function SubscriptionsPage({
       {/* PURCHASE CONFIRMATION MODAL */}
       {mounted && purchasingTool && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-md overflow-hidden animate-in fade-in duration-150"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-md overflow-y-auto overscroll-contain animate-in fade-in duration-150 min-h-full"
           onClick={(e) => {
             if (e.target === e.currentTarget) setPurchasingTool(null);
           }}
         >
           <div
-            className="relative w-full max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/20 bg-[#0e1719] text-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+            className="relative my-auto w-full max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/20 bg-[#0e1719] text-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             {purchaseSuccess ? (

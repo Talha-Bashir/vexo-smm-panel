@@ -763,6 +763,7 @@ export async function POST(req: Request) {
             const matchInStock = Boolean(match.stock ? (match.stock.inStock && (match.stock.count == null || match.stock.count > 0)) : true);
             const matchCount = match.stock?.count != null ? Number(match.stock.count) : (matchInStock ? 1 : 0);
 
+            const parsedMatch = parseBotDescription(match.description || "");
             catalogItem = {
               id: match.slug,
               productSlug: match.slug,
@@ -770,13 +771,17 @@ export async function POST(req: Request) {
               category: cat.category,
               categoryLabel: cat.categoryLabel,
               icon: cat.icon,
-              shortDesc: match.description || match.name,
-              features: [
+              shortDesc: parsedMatch.summary || match.name,
+              features: parsedMatch.features.length > 0 ? parsedMatch.features : [
                 `Delivery: ${match.deliveryType}`,
                 `Duration: ${match.durationDays || 30} Days`,
               ],
+              requirements: parsedMatch.requirements,
+              importantRules: parsedMatch.importantRules,
+              replacementPolicy: parsedMatch.replacementPolicy,
               deliveryType: match.deliveryType,
               isPartnerBot: true,
+              rawDescription: match.description || "",
               plans: [
                 {
                   duration: `${match.durationDays || 30} Days`,

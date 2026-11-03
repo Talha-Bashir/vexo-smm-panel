@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 
 export interface CurrencyItem {
   code: string;
@@ -60,6 +61,20 @@ export default function CurrencySelectModal({
   rates = {},
 }: CurrencySelectModalProps) {
   const [search, setSearch] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -88,7 +103,7 @@ export default function CurrencySelectModal({
     );
   }, [search]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const handleSelect = (code: string) => {
     onSelectCurrency(code);
@@ -98,14 +113,14 @@ export default function CurrencySelectModal({
     onClose();
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-md overflow-y-auto overscroll-contain animate-in fade-in duration-200 min-h-full"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-lg rounded-3xl border border-white/15 bg-[#0f191b] p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_40px_rgba(186,255,0,0.1)] flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+      <div className="relative my-auto w-full max-w-lg rounded-3xl border border-white/15 bg-[#0f191b] p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_40px_rgba(186,255,0,0.1)] flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
         {/* Close Button */}
         <button
           type="button"
@@ -276,6 +291,7 @@ export default function CurrencySelectModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -134,6 +134,9 @@ function formatServiceDescription(desc?: string): string {
     .replace(/<[^>]*>/g, "")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .trim();
@@ -1456,36 +1459,41 @@ export default function NewOrder({
           </div>
         </div>
 
-        {/* 6. DESCRIPTION CARD */}
-        {service && (
-          <div className="space-y-1.5">
-            <label className="text-xs sm:text-sm font-bold text-slate-200">
-              Description
-            </label>
-            <div className="rounded-xl border border-white/10 bg-[#0a111a] p-4 sm:p-5 space-y-3 text-xs text-slate-300 font-sans leading-relaxed">
-              <div className="space-y-1 text-slate-200">
-                <p>- Location: <span className="font-semibold text-white">{specs.location}</span></p>
-                <p>- Quality: <span className="font-semibold text-white">{specs.quality}</span></p>
-                <p>- Start Time: <span className="font-semibold text-white">{specs.startTime}</span></p>
-                <p>- Speed: <span className="font-semibold text-white">{specs.speed}</span></p>
-                <p>- Refill: <span className="font-semibold text-white">{specs.refill}</span></p>
-                <p>- Example Link: <span className="font-mono text-slate-300 text-[11px]">{specs.exampleLink}</span></p>
-              </div>
+        {/* 6. DESCRIPTION CARD - Unified single clean description */}
+        {service && (() => {
+          const cleanDesc = formatServiceDescription(service.description);
+          return (
+            <div className="space-y-1.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-200">
+                Description
+              </label>
+              <div className="rounded-xl border border-white/10 bg-[#0a111a] p-4 sm:p-5 text-xs text-slate-300 font-sans leading-relaxed">
+                {cleanDesc ? (
+                  <div className="whitespace-pre-line text-xs text-slate-300 leading-relaxed font-sans">
+                    {cleanDesc}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-1 text-slate-200">
+                      <p>- Location: <span className="font-semibold text-white">{specs.location}</span></p>
+                      <p>- Quality: <span className="font-semibold text-white">{specs.quality}</span></p>
+                      <p>- Start Time: <span className="font-semibold text-white">{specs.startTime}</span></p>
+                      <p>- Speed: <span className="font-semibold text-white">{specs.speed}</span></p>
+                      <p>- Refill: <span className="font-semibold text-white">{specs.refill}</span></p>
+                      <p>- Example Link: <span className="font-mono text-slate-300 text-[11px]">{specs.exampleLink}</span></p>
+                    </div>
 
-              <div className="pt-2 border-t border-white/5 space-y-1">
-                <p className="font-bold text-slate-200">Important:</p>
-                <p className="text-[11px] text-slate-400">• In case of high demand for the service, there may be changes in speed and start time.</p>
-                <p className="text-[11px] text-slate-400">• Do not place the second order on the same link before your order is completed in the system.</p>
+                    <div className="pt-2 border-t border-white/5 space-y-1">
+                      <p className="font-bold text-slate-200">Important:</p>
+                      <p className="text-[11px] text-slate-400">• In case of high demand for the service, there may be changes in speed and start time.</p>
+                      <p className="text-[11px] text-slate-400">• Do not place the second order on the same link before your order is completed in the system.</p>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {service.description && (
-                <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 leading-normal">
-                  {formatServiceDescription(service.description)}
-                </div>
-              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 7. LINK INPUT */}
         <div className="space-y-1.5">

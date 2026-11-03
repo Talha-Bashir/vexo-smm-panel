@@ -547,10 +547,9 @@ div[data-nextjs-dialog-overlay] {
     -webkit-backdrop-filter: none !important;
   }
 
-  /* 3. Hardware accelerated smooth touch scrolling */
+  /* 3. Smooth touch scrolling on mobile without creating containing block traps */
   body, html {
     -webkit-overflow-scrolling: touch;
-    transform: translateZ(0);
   }
 
   /* 4. Tame heavy box shadows on cards on mobile */

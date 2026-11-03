@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const alt = "VEXARO SMM Panel – Affordable Social Media Marketing Services";
 export const size = {
   width: 1200,

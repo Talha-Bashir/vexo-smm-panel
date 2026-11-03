@@ -6318,6 +6318,15 @@ function ReferAndEarnPage({
 
   // Withdrawal modal state
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
+  useEffect(() => {
+    if (!showWithdrawModal) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [showWithdrawModal]);
   const [withdrawAmountPkr, setWithdrawAmountPkr] = useState("");
   const [withdrawMethod, setWithdrawMethod] = useState("Easypaisa");
   const [withdrawAccountNumber, setWithdrawAccountNumber] = useState("");
@@ -6818,13 +6827,13 @@ function ReferAndEarnPage({
       {/* WITHDRAWAL MODAL */}
       {typeof document !== "undefined" && showWithdrawModal && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-hidden animate-in fade-in duration-150"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in duration-150 min-h-full"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowWithdrawModal(false);
           }}
         >
           <div
-            className="relative w-full max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#111a1d] p-5 sm:p-7 shadow-2xl overflow-y-auto overscroll-contain animate-in zoom-in-95 duration-150"
+            className="relative my-auto w-full max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-[#111a1d] p-5 sm:p-7 shadow-2xl overflow-y-auto overscroll-contain animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             <button

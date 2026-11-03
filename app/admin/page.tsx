@@ -66,17 +66,26 @@ function AdminModalPortal({
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
   if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm overflow-hidden animate-in fade-in duration-150"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto overscroll-contain animate-in fade-in duration-150 min-h-full"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className={`w-full ${maxWidth} max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150`}
+        className={`relative my-auto w-full ${maxWidth} max-h-[92dvh] sm:max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl border border-white/10 bg-[#111a1d] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
