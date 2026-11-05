@@ -4322,7 +4322,6 @@ function Services({
   const [editingFullService, setEditingFullService] = useState<any | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
-
   const [newServiceForm, setNewServiceForm] = useState({
     name: "",
     platform: "Instagram",
@@ -4341,6 +4340,36 @@ function Services({
     enabled: true,
     description: "",
   });
+
+  // Existing categories per platform for quick selection in Add / Edit Service modal
+  const existingCategoriesForNewService = useMemo(() => {
+    const plat = (newServiceForm.platform || "").toLowerCase();
+    const map = new Map<string, number>();
+    for (const s of services) {
+      if ((s.platform || "").toLowerCase() === plat && s.category) {
+        const c = s.category.trim();
+        map.set(c, (map.get(c) || 0) + 1);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [services, newServiceForm.platform]);
+
+  const existingCategoriesForEditService = useMemo(() => {
+    if (!editingFullService) return [];
+    const plat = (editingFullService.platform || "").toLowerCase();
+    const map = new Map<string, number>();
+    for (const s of services) {
+      if ((s.platform || "").toLowerCase() === plat && s.category) {
+        const c = s.category.trim();
+        map.set(c, (map.get(c) || 0) + 1);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [services, editingFullService?.platform]);
 
   const providerStats = useMemo(() => {
     const list = [
@@ -5087,17 +5116,52 @@ function Services({
               {/* Row 2: Category & Active Provider */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Category Name *
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Category Name *
+                    </label>
+                    {existingCategoriesForNewService.length > 0 && (
+                      <span className="text-[10px] text-emerald-400 font-semibold">
+                        {existingCategoriesForNewService.length} existing categories
+                      </span>
+                    )}
+                  </div>
+
+                  {existingCategoriesForNewService.length > 0 && (
+                    <div className="mb-2">
+                      <select
+                        value={existingCategoriesForNewService.some(c => c.name === newServiceForm.category) ? newServiceForm.category : ""}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setNewServiceForm({ ...newServiceForm, category: e.target.value });
+                          }
+                        }}
+                        className="w-full h-8 rounded-lg border border-emerald-500/30 bg-[#121d20] px-2.5 text-[11px] text-emerald-300 font-medium outline-none focus:border-[#baff00]/50 cursor-pointer"
+                      >
+                        <option value="">📁 Pick Existing Category ({newServiceForm.platform})</option>
+                        {existingCategoriesForNewService.map((cat) => (
+                          <option key={cat.name} value={cat.name}>
+                            {cat.name} ({cat.count} service{cat.count !== 1 ? "s" : ""})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <input
                     type="text"
                     required
+                    list="new-service-category-datalist"
                     value={newServiceForm.category}
                     onChange={(e) => setNewServiceForm({ ...newServiceForm, category: e.target.value })}
-                    placeholder="e.g. Instagram Followers — Guaranteed"
+                    placeholder="Select from above or type new category name"
                     className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50"
                   />
+                  <datalist id="new-service-category-datalist">
+                    {existingCategoriesForNewService.map((cat) => (
+                      <option key={cat.name} value={cat.name} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div>
@@ -5409,16 +5473,52 @@ function Services({
               {/* Row 2: Category & Active Provider */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Category Name *
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Category Name *
+                    </label>
+                    {existingCategoriesForEditService.length > 0 && (
+                      <span className="text-[10px] text-emerald-400 font-semibold">
+                        {existingCategoriesForEditService.length} existing categories
+                      </span>
+                    )}
+                  </div>
+
+                  {existingCategoriesForEditService.length > 0 && (
+                    <div className="mb-2">
+                      <select
+                        value={existingCategoriesForEditService.some(c => c.name === editingFullService.category) ? editingFullService.category : ""}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setEditingFullService({ ...editingFullService, category: e.target.value });
+                          }
+                        }}
+                        className="w-full h-8 rounded-lg border border-emerald-500/30 bg-[#121d20] px-2.5 text-[11px] text-emerald-300 font-medium outline-none focus:border-[#baff00]/50 cursor-pointer"
+                      >
+                        <option value="">📁 Pick Existing Category ({editingFullService.platform})</option>
+                        {existingCategoriesForEditService.map((cat) => (
+                          <option key={cat.name} value={cat.name}>
+                            {cat.name} ({cat.count} service{cat.count !== 1 ? "s" : ""})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <input
                     type="text"
                     required
+                    list="edit-service-category-datalist"
                     value={editingFullService.category || ""}
                     onChange={(e) => setEditingFullService({ ...editingFullService, category: e.target.value })}
+                    placeholder="Select from above or type category name"
                     className="w-full h-10 rounded-xl border border-white/10 bg-[#0b1418] px-3.5 text-xs text-white outline-none focus:border-[#baff00]/50"
                   />
+                  <datalist id="edit-service-category-datalist">
+                    {existingCategoriesForEditService.map((cat) => (
+                      <option key={cat.name} value={cat.name} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div>

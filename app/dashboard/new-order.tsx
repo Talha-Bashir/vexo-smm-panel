@@ -742,13 +742,13 @@ export default function NewOrder({
     return categories.filter((c) => c.name.toLowerCase().includes(q));
   }, [categories, categorySearch]);
 
-  // Services in current active category
+  // Services in current active category (from the selected platform so ALL services in this category are accessible)
   const servicesInActiveCategory = useMemo(() => {
-    if (!activeCategory) return servicesByAction;
-    return servicesByAction.filter(
+    if (!activeCategory) return servicesByPlatform;
+    return servicesByPlatform.filter(
       (s) => (s.category || `${s.platform || "Other"} Services`).trim() === activeCategory
     );
-  }, [servicesByAction, activeCategory]);
+  }, [servicesByPlatform, activeCategory]);
 
   // Filtered services for inline service dropdown search
   const filteredServicesInCategory = useMemo(() => {
