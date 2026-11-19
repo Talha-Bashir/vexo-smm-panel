@@ -1,10 +1,15 @@
 import { Pool } from "pg";
 
-const connectionString = process.env.DATABASE_URL;
+const rawConnectionString =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_PRISMA_URL;
 
-if (!connectionString) {
-  throw new Error("DATABASE_URL is missing from .env.local");
+if (!rawConnectionString) {
+  throw new Error("DATABASE_URL (or POSTGRES_URL) is missing from environment variables");
 }
+
+const connectionString = rawConnectionString.replace(/[?&]channel_binding=require/g, "");
 
 export const db = new Pool({
   connectionString,

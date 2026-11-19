@@ -64,6 +64,7 @@ public/*.srt
 public/mouth_frame.jpg
 scripts/tutorial/
 database/database_exports/
+database/backups/
 INSTALL.txt
 CLAUDE.md
 
