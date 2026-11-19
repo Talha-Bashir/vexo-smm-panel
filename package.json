@@ -9,6 +9,7 @@
     "lint": "eslint",
     "clean": "powershell -Command \"Remove-Item -Recurse -Force .next, tsconfig.tsbuildinfo -ErrorAction SilentlyContinue; exit 0\"",
     "reset-password": "node scripts/reset-password.js",
+    "restore-backup": "node scripts/restore-from-backup.js",
     "sync-orders": "node scripts/sync-orders.js",
     "sync-providers": "node scripts/sync-providers.js"
   },
