@@ -10,11 +10,11 @@ export interface CurrencyItem {
   flag: string;
 }
 
-export const POPULAR_CURRENCIES = ["PKR", "USD", "AED", "SAR", "INR", "EUR", "GBP"];
+export const POPULAR_CURRENCIES = ["USD", "PKR", "AED", "SAR", "INR", "EUR", "GBP"];
 
 export const ALL_CURRENCIES: CurrencyItem[] = [
-  { code: "PKR", name: "Pakistani Rupee", symbol: "₨", flag: "🇵🇰" },
   { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
+  { code: "PKR", name: "Pakistani Rupee", symbol: "₨", flag: "🇵🇰" },
   { code: "AED", name: "UAE Dirham", symbol: "د.إ", flag: "🇦🇪" },
   { code: "SAR", name: "Saudi Riyal", symbol: "﷼", flag: "🇸🇦" },
   { code: "INR", name: "Indian Rupee", symbol: "₹", flag: "🇮🇳" },

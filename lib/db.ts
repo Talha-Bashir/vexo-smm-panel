@@ -57,6 +57,29 @@ export async function ensureDatabase() {
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS free_trial_claimed_at TIMESTAMPTZ;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS reengaged_at TIMESTAMPTZ;
         ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS reengagement_count INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS last_ip VARCHAR(64);
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS last_country VARCHAR(10);
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS last_city VARCHAR(100);
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS signup_ip VARCHAR(64);
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS signup_country VARCHAR(10);
+        ALTER TABLE vexo_users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
+
+        CREATE TABLE IF NOT EXISTS vexo_visitor_logs (
+          id BIGSERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES vexo_users(id) ON DELETE SET NULL,
+          user_email VARCHAR(255),
+          ip_address VARCHAR(64) NOT NULL,
+          country VARCHAR(10),
+          city VARCHAR(100),
+          path TEXT,
+          method VARCHAR(10) DEFAULT 'GET',
+          user_agent TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS vexo_visitor_logs_ip_idx ON vexo_visitor_logs(ip_address);
+        CREATE INDEX IF NOT EXISTS vexo_visitor_logs_country_idx ON vexo_visitor_logs(country);
+        CREATE INDEX IF NOT EXISTS vexo_visitor_logs_user_idx ON vexo_visitor_logs(user_id);
+        CREATE INDEX IF NOT EXISTS vexo_visitor_logs_created_idx ON vexo_visitor_logs(created_at DESC);
 
         CREATE TABLE IF NOT EXISTS vexo_email_verifications (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

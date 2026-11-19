@@ -449,8 +449,8 @@ function convertRizviService(item: RizviService): Service {
 const DEFAULT_WALLET_BALANCE_PKR = 0.00;
 
 const CURRENCY_OPTIONS = [
-  ["PKR", "Pakistani Rupee", "₨", "🇵🇰"],
   ["USD", "US Dollar", "$", "🇺🇸"],
+  ["PKR", "Pakistani Rupee", "₨", "🇵🇰"],
   ["AED", "UAE Dirham", "د.إ", "🇦🇪"],
   ["SAR", "Saudi Riyal", "﷼", "🇸🇦"],
   ["INR", "Indian Rupee", "₹", "🇮🇳"],
@@ -540,7 +540,7 @@ export default function Home() {
   const [binanceNetwork, setBinanceNetwork] = useState("BSC BNB Smart Chain (BEP20)");
   const [liveForexUsdRate, setLiveForexUsdRate] = useState(278.0);
   const [deposits, setDeposits] = useState<VexoDeposit[]>([]);
-  const [selectedCurrency, setSelectedCurrency] = useState("PKR");
+  const [selectedCurrency, setSelectedCurrency] = useState("USD");
   const [currencyRates, setCurrencyRates] = useState<Record<string, number>>({});
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState("");

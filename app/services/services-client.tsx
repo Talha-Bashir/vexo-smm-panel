@@ -40,9 +40,26 @@ export function ServicesCatalogClient() {
   const [displayCount, setDisplayCount] = useState(60);
   const [platform, setPlatform] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [currency, setCurrency] = useState<"PKR" | "USD">("PKR");
+  const [currency, setCurrency] = useState<"PKR" | "USD">("USD");
   const [usdRate, setUsdRate] = useState(278);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Load saved currency preference
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("vexo_currency");
+      if (saved === "PKR" || saved === "USD") {
+        setCurrency(saved);
+      }
+    } catch {}
+  }, []);
+
+  function handleSelectCurrency(c: "PKR" | "USD") {
+    setCurrency(c);
+    try {
+      localStorage.setItem("vexo_currency", c);
+    } catch {}
+  }
 
   // Debounce search keystrokes to prevent UI thread lockup on typing
   useEffect(() => {
@@ -141,21 +158,21 @@ export function ServicesCatalogClient() {
             <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-xs font-bold">
               <button
                 type="button"
-                onClick={() => setCurrency("PKR")}
-                className={`rounded-lg px-2.5 py-1 transition cursor-pointer ${
-                  currency === "PKR" ? "bg-[#baff00] text-[#07100f]" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                PKR (₨)
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrency("USD")}
+                onClick={() => handleSelectCurrency("USD")}
                 className={`rounded-lg px-2.5 py-1 transition cursor-pointer ${
                   currency === "USD" ? "bg-[#baff00] text-[#07100f]" : "text-slate-400 hover:text-white"
                 }`}
               >
                 USD ($)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectCurrency("PKR")}
+                className={`rounded-lg px-2.5 py-1 transition cursor-pointer ${
+                  currency === "PKR" ? "bg-[#baff00] text-[#07100f]" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                PKR (₨)
               </button>
             </div>
 

@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { GlobalSupportWidget } from "@/components/global-support-widget";
 import { MaintenanceScreen } from "@/components/maintenance-screen";
 import { getRequestUser } from "@/lib/request-user";
+import { recordVisit } from "@/lib/geo";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -374,6 +375,21 @@ export default async function RootLayout({
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/admin");
+
+  // Record page visit with client IP and country
+  if (
+    !pathname.startsWith("/_next") &&
+    !pathname.startsWith("/api/") &&
+    !pathname.includes(".")
+  ) {
+    recordVisit({
+      userId: user?.id,
+      userEmail: user?.email,
+      request: headerList,
+      path: pathname || "/",
+      method: "GET",
+    }).catch(() => undefined);
+  }
 
   // Determine whether to display the full maintenance screen
   const showMaintenanceScreen = isMaintenance && !isAdmin && !isStaffRoute;

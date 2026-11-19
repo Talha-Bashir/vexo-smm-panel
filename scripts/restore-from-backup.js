@@ -55,6 +55,12 @@ async function initSchema(client) {
       free_trial_claimed_at TIMESTAMPTZ,
       reengaged_at TIMESTAMPTZ,
       reengagement_count INTEGER NOT NULL DEFAULT 0,
+      last_ip VARCHAR(64),
+      last_country VARCHAR(10),
+      last_city VARCHAR(100),
+      signup_ip VARCHAR(64),
+      signup_country VARCHAR(10),
+      last_active_at TIMESTAMPTZ,
       custom_discount_percent NUMERIC(5,2) DEFAULT 0,
       custom_rates JSONB DEFAULT '{}'
     );

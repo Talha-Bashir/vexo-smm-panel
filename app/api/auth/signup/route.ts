@@ -5,6 +5,7 @@ import { createSession, hashPassword } from "@/lib/auth";
 import { getCorsHeaders, handleCorsPreflight } from "@/lib/cors";
 import { verifyBotProtection } from "@/lib/bot-protection";
 import { redeemCoupon } from "@/lib/coupons";
+import { extractClientInfo, recordVisit } from "@/lib/geo";
 
 function generateReferralCode() {
   return "VX" + crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -109,16 +110,26 @@ export async function POST(request: Request) {
     const referralCode = generateReferralCode();
     const apiKey = generateApiKey();
     const passwordHash = await hashPassword(password);
+    const geo = extractClientInfo(request);
 
     const result = await db.query(
-      `INSERT INTO vexo_users(name, email, password_hash, referral_code, referred_by, api_key)
-       VALUES($1, $2, $3, $4, $5, $6)
+      `INSERT INTO vexo_users(name, email, password_hash, referral_code, referred_by, api_key, signup_ip, signup_country, last_ip, last_country, last_city, last_active_at)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8, $7, $8, $9, NOW())
        RETURNING id, name, email, referral_code, api_key`,
-      [name, email, passwordHash, referralCode, referredBy, apiKey]
+      [name, email, passwordHash, referralCode, referredBy, apiKey, geo.ip, geo.country, geo.city]
     );
 
     const newUser = result.rows[0];
     await createSession(newUser.id);
+
+    // Record visitor log
+    await recordVisit({
+      userId: newUser.id,
+      userEmail: newUser.email,
+      request,
+      path: "/signup",
+      method: "POST",
+    });
 
     // If user provided a promo coupon code, redeem it atomically
     let couponResult = null;

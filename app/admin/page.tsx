@@ -1542,12 +1542,15 @@ function Users({
               u.id,
               u.name,
               u.email,
-              u.balance || 0,
+              u.lastCountry || "",
+              u.lastCity || "",
+              u.lastIp || "",
+              u.balancePkr || u.balance || 0,
               u.orderCount || 0,
               u.depositCount || 0,
               u.createdAt ? new Date(u.createdAt).toISOString() : "",
             ]);
-            downloadCsv("vexaro_users_export.csv", ["ID", "Name", "Email", "Balance PKR", "Orders", "Deposits", "Created At"], rows);
+            downloadCsv("vexaro_users_export.csv", ["ID", "Name", "Email", "Country", "City", "Last IP", "Balance PKR", "Orders", "Deposits", "Created At"], rows);
           }}
           className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
         >
@@ -1569,6 +1572,13 @@ function Users({
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-white text-sm truncate">{u.name}</p>
                   <p className="text-[10px] text-slate-400 font-mono truncate">ID #{u.id} • {u.email}</p>
+                  {(u.lastCountry || u.lastIp) && (
+                    <p className="text-[10px] text-cyan-400 font-mono truncate flex items-center gap-1">
+                      <span>🌐 {u.lastCountry || "Unknown"}</span>
+                      {u.lastCity && <span>• {u.lastCity}</span>}
+                      {u.lastIp && <span className="text-slate-500">({u.lastIp})</span>}
+                    </p>
+                  )}
                   {u.whatsapp ? (
             <p className="text-[10px] text-slate-400 font-mono truncate">WhatsApp: {u.whatsapp}</p>
           ) : null}
@@ -1707,6 +1717,13 @@ function Users({
                 <td className="px-5 py-4">
                   <b>{u.name}</b>
                   <p className="text-xs text-slate-500 font-mono">ID #{u.id} • {u.email}</p>
+                  {(u.lastCountry || u.lastIp) && (
+                    <p className="mt-0.5 text-[11px] text-cyan-400 font-mono flex items-center gap-1.5">
+                      <span>🌐 {u.lastCountry || "Unknown"}</span>
+                      {u.lastCity && <span className="text-slate-300">• {u.lastCity}</span>}
+                      {u.lastIp && <span className="text-slate-500 font-mono">({u.lastIp})</span>}
+                    </p>
+                  )}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {Number(u.customDiscountPercent || 0) > 0 && (
                       <span className="rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">

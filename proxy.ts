@@ -34,6 +34,17 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", p);
 
+  // Forward client IP and Geo information from edge/platform headers
+  const forwarded = request.headers.get("x-forwarded-for");
+  const realIp = request.headers.get("x-real-ip");
+  const clientIp = (forwarded ? forwarded.split(",")[0].trim() : realIp) || "127.0.0.1";
+  const country = request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry") || "";
+  const city = request.headers.get("x-vercel-ip-city") || "";
+
+  requestHeaders.set("x-client-ip", clientIp);
+  if (country) requestHeaders.set("x-client-country", country);
+  if (city) requestHeaders.set("x-client-city", city);
+
   const response = NextResponse.next({
     request: {
       headers: requestHeaders,

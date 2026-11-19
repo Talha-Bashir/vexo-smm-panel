@@ -3,6 +3,7 @@ import { db, ensureDatabase } from "@/lib/db";
 import { createSession, verifyPassword } from "@/lib/auth";
 import { getCorsHeaders, handleCorsPreflight } from "@/lib/cors";
 import { verifyAnyCaptcha } from "@/lib/captcha";
+import { recordVisit } from "@/lib/geo";
 
 export async function OPTIONS(request: Request) {
   return handleCorsPreflight(request.headers.get("origin"));
@@ -65,6 +66,15 @@ export async function POST(request: Request) {
     }
 
     await createSession(u.id);
+
+    // Record user IP, country, and login session
+    await recordVisit({
+      userId: u.id,
+      userEmail: u.email,
+      request,
+      path: "/login",
+      method: "POST",
+    });
 
     return NextResponse.json(
       {
