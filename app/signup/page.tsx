@@ -278,7 +278,7 @@ export default function SignupPage() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md min-w-0 items-center justify-center">
         <div className="w-full max-w-full rounded-3xl bg-[#111827] p-5 shadow-2xl border border-slate-800 sm:p-8">
           <div className="text-center">
-            <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(99,102,241,0.25)] border border-indigo-500/30">
+            <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(186,255,0,0.35)] border border-[#baff00]/40">
               <img src="/logo.png" alt="VEXARO SMM Registration" className="h-full w-full object-cover" />
             </div>
             <h1 className="mt-5 text-2xl font-black tracking-tight sm:text-3xl">
@@ -294,12 +294,12 @@ export default function SignupPage() {
           {step === "verify" ? (
             /* ================= STEP 2: EMAIL CODE VERIFICATION ================= */
             <div className="mt-6 space-y-5">
-              <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400 mb-2.5">
+              <div className="rounded-2xl border border-[#baff00]/30 bg-[#baff00]/10 p-4 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#baff00]/20 text-[#baff00] mb-2.5">
                   <Icon name="mail" size={24} />
                 </div>
                 <p className="text-xs font-bold text-white">We sent a verification code to:</p>
-                <p className="font-mono text-sm font-black text-indigo-400 mt-0.5">{email}</p>
+                <p className="font-mono text-sm font-black text-[#baff00] mt-0.5">{email}</p>
                 <p className="text-[11px] text-slate-400 mt-2">
                   Please check your inbox (and Spam/Junk folder). The code is valid for 15 minutes.
                 </p>
@@ -315,17 +315,17 @@ export default function SignupPage() {
                     Resend default test sender (<code className="bg-black/30 px-1 py-0.5 rounded text-amber-300">onboarding@resend.dev</code>) only delivers live emails to your account owner email (<strong className="text-white">talhabashir012@gmail.com</strong>).
                   </p>
                   <p className="text-[11px] text-amber-200/90">
-                    To deliver live emails to any customer, verify your domain at <a href="https://resend.com/domains" target="_blank" rel="noreferrer" className="underline text-white font-bold hover:text-indigo-400">resend.com/domains</a>.
+                    To deliver live emails to any customer, verify your domain at <a href="https://resend.com/domains" target="_blank" rel="noreferrer" className="underline text-white font-bold hover:text-[#baff00]">resend.com/domains</a>.
                   </p>
                   <div className="flex items-center justify-between border-t border-amber-400/20 pt-2.5">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-amber-400 block">Your Verification Code:</span>
-                      <span className="font-mono text-xl font-black text-indigo-400 tracking-widest">{simulatedCode}</span>
+                      <span className="font-mono text-xl font-black text-[#baff00] tracking-widest">{simulatedCode}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setVerificationCode(simulatedCode)}
-                      className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 transition cursor-pointer"
+                      className="rounded-lg bg-gradient-to-r from-[#baff00] to-lime-400 px-3 py-1.5 text-xs font-black text-black hover:from-lime-300 hover:to-lime-400 transition cursor-pointer"
                     >
                       Fill Code ↵
                     </button>
@@ -335,7 +335,7 @@ export default function SignupPage() {
 
               <form onSubmit={handleVerifyCode} className="space-y-4">
                 <div>
-                  <label htmlFor="vexaro-email-code" className="mb-1.5 block text-center text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label htmlFor="vexaro-email-code" className="mb-1.5 block text-center text-xs font-bold uppercase tracking-wider text-slate-300">
                     6-Digit Security Code
                   </label>
                   <input
@@ -350,7 +350,7 @@ export default function SignupPage() {
                     autoComplete="one-time-code"
                     autoFocus
                     required
-                    className="w-full rounded-2xl border-2 border-indigo-500/50 bg-[#0d131f] px-4 py-3.5 text-center font-mono text-3xl font-extrabold tracking-[0.5em] text-indigo-400 placeholder:tracking-widest placeholder:text-slate-600 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 outline-none transition shadow-[0_0_25px_rgba(99,102,241,0.1)]"
+                    className="w-full rounded-2xl border-2 border-[#baff00]/50 bg-[#0d131f] px-4 py-3.5 text-center font-mono text-3xl font-extrabold tracking-[0.5em] text-[#baff00] placeholder:tracking-widest placeholder:text-slate-600 focus:border-[#baff00] focus:ring-4 focus:ring-[#baff00]/20 outline-none transition shadow-[0_0_25px_rgba(186,255,0,0.1)]"
                   />
                 </div>
 
@@ -363,7 +363,7 @@ export default function SignupPage() {
                 <button
                   type="submit"
                   disabled={loading || verificationCode.length !== 6}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-3.5 text-sm font-bold text-white transition hover:from-indigo-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50 shadow-lg shadow-indigo-500/25"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#baff00] via-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 px-4 py-3.5 text-sm font-black text-black transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_0_25px_rgba(186,255,0,0.35)] cursor-pointer"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
@@ -393,7 +393,7 @@ export default function SignupPage() {
                   onClick={handleResendCode}
                   disabled={resendCooldown > 0 || loading}
                   className={`font-semibold transition ${
-                    resendCooldown > 0 ? "text-slate-500 cursor-not-allowed" : "text-indigo-400 hover:underline"
+                    resendCooldown > 0 ? "text-slate-500 cursor-not-allowed" : "text-[#baff00] hover:underline"
                   }`}
                 >
                   {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
@@ -404,7 +404,7 @@ export default function SignupPage() {
             /* ================= STEP 1: REGISTRATION DETAILS & CAPTCHA ================= */
             <>
               {/* Free Test Trial Feature Notice */}
-              <div className="mt-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-indigo-300 flex items-start gap-2.5">
+              <div className="mt-4 rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 p-3 text-xs text-lime-300 flex items-start gap-2.5">
                 <span className="mt-0.5 shrink-0 text-base">✨</span>
                 <div>
                   <strong className="text-white block font-bold">1-Time Free Test Trial Available</strong>
@@ -413,7 +413,7 @@ export default function SignupPage() {
               </div>
 
               {hasReferralParam && (
-                <div className="mt-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3 text-center text-xs text-indigo-300">
+                <div className="mt-3 rounded-xl border border-[#baff00]/30 bg-[#baff00]/10 p-3 text-center text-xs text-[#baff00]">
                   🎁 You were invited with referral code: <span className="font-bold text-white">{referralCode}</span>
                 </div>
               )}
@@ -429,7 +429,7 @@ export default function SignupPage() {
 
               <form onSubmit={handleSendCode} method="POST" action="/api/auth/signup/send-code" className="mt-6 space-y-4">
                 <div>
-                  <label htmlFor="vexaro-signup-name" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label htmlFor="vexaro-signup-name" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
                     Full Name
                   </label>
                   <input
@@ -441,12 +441,12 @@ export default function SignupPage() {
                     placeholder="e.g. Talha Khan"
                     autoComplete="name"
                     required
-                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="vexaro-signup-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label htmlFor="vexaro-signup-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
                     Your Real Email Address (Code Sent Here)
                   </label>
                   <input
@@ -458,14 +458,14 @@ export default function SignupPage() {
                     placeholder="you@gmail.com"
                     autoComplete="email"
                     required
-                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25"
                   />
                   <p className="mt-1 text-[11px] text-slate-500 flex items-center gap-1">
                     <span className="text-emerald-400 font-semibold">✓ Verified only:</span> Gmail, Yahoo, Outlook, Hotmail, iCloud. (Temp-mail blocked)
                   </p>
                 </div>
                 <div>
-                  <label htmlFor="vexaro-signup-whatsapp" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label htmlFor="vexaro-signup-whatsapp" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
                     WhatsApp Number
                   </label>
                   <input
@@ -477,12 +477,12 @@ export default function SignupPage() {
                     placeholder="e.g. 03001234567"
                     autoComplete="tel"
                     required
-                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="vexaro-signup-password" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label htmlFor="vexaro-signup-password" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
                     Create Password
                   </label>
                   <div className="relative">
@@ -495,7 +495,7 @@ export default function SignupPage() {
                       placeholder="At least 8 characters"
                       autoComplete="new-password"
                       required
-                      className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25"
                     />
                     <button
                       type="button"
@@ -510,7 +510,7 @@ export default function SignupPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="vexaro-signup-confirm-password" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label htmlFor="vexaro-signup-confirm-password" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
                     Confirm Password
                   </label>
                   <div className="relative">
@@ -523,7 +523,7 @@ export default function SignupPage() {
                       placeholder="Repeat your password"
                       autoComplete="new-password"
                       required
-                      className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25"
                     />
                     <button
                       type="button"
@@ -538,9 +538,9 @@ export default function SignupPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-300">
                     <span>Promo Coupon Code</span>
-                    <span className="text-[11px] font-semibold lowercase tracking-normal text-indigo-400">
+                    <span className="text-[11px] font-semibold lowercase tracking-normal text-[#baff00]">
                       optional
                     </span>
                   </label>
@@ -550,16 +550,16 @@ export default function SignupPage() {
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       placeholder="Optional coupon"
-                      className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 pr-24 font-mono text-base font-bold tracking-wider uppercase text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 sm:text-sm"
+                      className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 pr-24 font-mono text-base font-bold tracking-wider uppercase text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25 sm:text-sm"
                     />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-400">
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-[#baff00]/30 bg-[#baff00]/10 px-2 py-0.5 text-[10px] font-bold text-[#baff00]">
                       🎟️ COUPON
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
                     Referral Code <span className="text-[11px] font-normal lowercase tracking-normal text-slate-500">(optional)</span>
                   </label>
                   <input
@@ -567,7 +567,7 @@ export default function SignupPage() {
                     value={referralCode}
                     onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                     placeholder="e.g. VX9F2A1B"
-                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm uppercase text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm uppercase text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25"
                   />
                 </div>
 
@@ -586,13 +586,13 @@ export default function SignupPage() {
                       <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-red-400/15 pt-2 text-[11px]">
                         <Link
                           href="/login"
-                          className="rounded-lg bg-indigo-600 px-2.5 py-1 font-bold text-white hover:bg-indigo-500"
+                          className="rounded-lg bg-gradient-to-r from-[#baff00] to-lime-400 px-2.5 py-1 font-black text-black hover:from-lime-300 hover:to-lime-400"
                         >
                           Sign In Now →
                         </Link>
                         <Link
                           href="/forgot-password"
-                          className="font-semibold text-slate-300 underline hover:text-indigo-400"
+                          className="font-semibold text-slate-300 underline hover:text-[#baff00]"
                         >
                           Forgot Password?
                         </Link>
@@ -604,7 +604,7 @@ export default function SignupPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-3.5 text-sm font-bold text-white transition hover:from-indigo-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 shadow-lg shadow-indigo-500/25 cursor-pointer"
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#baff00] via-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 px-4 py-3.5 text-sm font-black text-black transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_0_25px_rgba(186,255,0,0.35)] cursor-pointer"
                 >
                   {loading ? "Sending verification code..." : "Send Verification Code"}
                   <span>→</span>
@@ -643,7 +643,7 @@ export default function SignupPage() {
             Already have an account?{" "}
             <Link
               href="/login"
-              className="font-bold text-indigo-400 hover:underline"
+              className="font-bold text-[#baff00] hover:underline"
             >
               Sign In
             </Link>

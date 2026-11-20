@@ -3,10 +3,11 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { RealCaptcha, CaptchaData } from "@/components/real-captcha";
+import { Social3DIcon } from "@/components/social-3d-icon";
 
 function Mark() {
   return (
-    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(99,102,241,0.25)] border border-indigo-500/30 mx-auto">
+    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_28px_rgba(186,255,0,0.35)] border border-[#baff00]/40">
       <img src="/logo.png" alt="VEXARO SMM Member Login" className="h-full w-full object-cover" />
     </div>
   );
@@ -82,67 +83,155 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="vexo-shell min-h-screen w-full max-w-full overflow-x-hidden bg-[#0b0f19] text-white">
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col overflow-x-hidden lg:grid lg:min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-        {/* Brand side */}
-        <section className="relative hidden overflow-hidden border-r border-slate-800 px-10 py-10 lg:flex lg:flex-col lg:justify-between xl:px-16">
-          <div className="vexo-orb absolute -left-32 top-1/4 h-80 w-80 rounded-full bg-indigo-600/10 blur-3xl" />
-          <div className="vexo-orb vexo-orb-delay absolute -right-20 bottom-10 h-72 w-72 rounded-full bg-blue-600/10 blur-3xl" />
-          <div className="relative vexo-fade-up">
-            <div className="flex items-center gap-3"><Mark /><div><p className="text-xl font-black tracking-tight">VEXARO</p><p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">SMM Panel</p></div></div>
-            <div className="mt-24 max-w-xl">
-              <p className="mb-4 inline-flex rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1.5 text-xs font-bold text-indigo-400">Fast &amp; Automated Social Media Growth</p>
-              <h1 className="text-5xl font-black leading-[1.04] tracking-[-0.04em] xl:text-6xl">Grow smarter.<br /><span className="bg-gradient-to-r from-indigo-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">Spend less.</span></h1>
-              <p className="mt-6 max-w-lg text-base leading-7 text-slate-400">Pakistan&apos;s trusted platform to safely accelerate your social media presence. 100% automated delivery, zero passwords required, and verified local payments.</p>
+    <main className="vexo-shell min-h-screen w-full max-w-full overflow-x-hidden bg-[#070b12] text-white selection:bg-[#baff00] selection:text-black">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col overflow-x-hidden lg:grid lg:min-h-screen lg:grid-cols-[1.08fr_0.92fr]">
+        {/* Brand visual showcase side */}
+        <section className="relative hidden overflow-hidden border-r border-slate-800/80 px-10 py-10 lg:flex lg:flex-col lg:justify-between xl:px-16 bg-gradient-to-br from-[#070b12] via-[#09110d] to-[#0a1410]">
+          {/* Ambient lime & emerald glow orbs */}
+          <div className="pointer-events-none absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-[#baff00]/10 blur-[130px]" />
+          <div className="pointer-events-none absolute -right-20 bottom-10 h-80 w-80 rounded-full bg-emerald-500/10 blur-[120px]" />
+
+          {/* Floating decorative 3D platform badges */}
+          <div className="pointer-events-none absolute right-12 top-20 opacity-80 animate-bounce duration-[4000ms]">
+            <Social3DIcon platform="instagram" size={38} glow />
+          </div>
+          <div className="pointer-events-none absolute right-24 top-48 opacity-80 animate-bounce duration-[5000ms]">
+            <Social3DIcon platform="tiktok" size={32} glow />
+          </div>
+          <div className="pointer-events-none absolute right-10 top-72 opacity-80 animate-bounce duration-[4500ms]">
+            <Social3DIcon platform="youtube" size={34} glow />
+          </div>
+
+          <div className="relative z-10 vexo-fade-up">
+            <Link href="/" className="inline-flex items-center gap-3 group">
+              <Mark />
+              <div>
+                <p className="text-xl font-black tracking-tight text-white group-hover:text-[#baff00] transition">VEXARO</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#baff00]">SMM Panel</p>
+              </div>
+            </Link>
+
+            <div className="mt-14 max-w-xl">
+              <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[#baff00]/30 bg-[#baff00]/10 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-[#baff00]">
+                <span className="h-2 w-2 rounded-full bg-[#baff00] animate-pulse" />
+                #1 Direct Wholesale Provider
+              </span>
+              <h1 className="text-5xl font-black leading-[1.06] tracking-[-0.04em] xl:text-6xl text-white">
+                Grow Faster.<br />
+                <span className="bg-gradient-to-r from-[#baff00] via-lime-300 to-emerald-400 bg-clip-text text-transparent">
+                  Pay Wholesale.
+                </span>
+              </h1>
+              <p className="mt-4 max-w-lg text-sm sm:text-base leading-relaxed text-slate-300 font-normal">
+                Direct automated infrastructure for creators &amp; agencies. Instant 0–15 minute starts, zero passwords required, and verified local Pakistani payment gateways.
+              </p>
+            </div>
+
+            {/* Live Order Surge Telemetry Card */}
+            <div className="mt-8 max-w-lg rounded-2xl border border-[#baff00]/25 bg-[#0e1614]/90 p-4 shadow-xl backdrop-blur-md">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="text-[11px] font-mono font-bold text-emerald-400 uppercase">Direct Node #4 Active (38ms)</span>
+                </div>
+                <span className="rounded-full bg-[#baff00]/15 border border-[#baff00]/30 px-2 py-0.5 text-[10px] font-black text-[#baff00]">
+                  LIVE DISPATCH
+                </span>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
+                  <Social3DIcon platform="tiktok" size={20} />
+                  <div>
+                    <p className="font-extrabold text-white">@tok.viral • High Retention Reel Boost</p>
+                    <p className="text-[11px] text-[#baff00] font-mono font-bold">+25,000 Views in progress</p>
+                  </div>
+                </div>
+                <span className="font-mono text-xs font-black text-white bg-slate-800 px-2 py-1 rounded-lg">₨120 ($0.42)</span>
+              </div>
+            </div>
+
+            {/* Real Creator Social Proof Stack */}
+            <div className="mt-8 flex items-center gap-3">
+              <div className="flex -space-x-2.5 overflow-hidden">
+                <img src="/creators/creator-1.jpg" alt="Creator 1" className="inline-block h-10 w-10 rounded-full ring-2 ring-[#070b12] object-cover" />
+                <img src="/creators/creator-2.jpg" alt="Creator 2" className="inline-block h-10 w-10 rounded-full ring-2 ring-[#070b12] object-cover" />
+                <img src="/creators/creator-3.jpg" alt="Creator 3" className="inline-block h-10 w-10 rounded-full ring-2 ring-[#070b12] object-cover" />
+                <img src="/creators/creator-4.jpg" alt="Creator 4" className="inline-block h-10 w-10 rounded-full ring-2 ring-[#070b12] object-cover" />
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#baff00] text-[10px] font-black text-black ring-2 ring-[#070b12] shadow-md">
+                  +48k
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 text-amber-400 text-xs font-black">
+                  <span>★★★★★</span>
+                  <span className="text-white font-extrabold">4.9/5</span>
+                  <span className="text-[#baff00] text-[10px] bg-[#baff00]/15 border border-[#baff00]/30 px-1.5 py-0.5 rounded font-mono font-bold">VERIFIED</span>
+                </div>
+                <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
+                  Trusted by 48,000+ creators &amp; resellers across Pakistan
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="relative grid max-w-2xl grid-cols-3 gap-3 vexo-fade-up vexo-stagger-2">
+          {/* 3 High-Impact Feature Cards */}
+          <div className="relative z-10 grid max-w-2xl grid-cols-3 gap-3 vexo-fade-up pt-8">
             {[
-              ["bolt", "Instant Delivery", "Starts in 0 - 15 minutes"],
-              ["shield", "100% Safe & Secure", "Zero passwords needed"],
-              ["support", "Human WhatsApp Support", "+92 308 8180234"],
+              ["bolt", "Instant Start", "0–15 min automated queue"],
+              ["shield", "Zero Passwords", "100% public link delivery"],
+              ["support", "WhatsApp Support", "24/7 human desk active"],
             ].map(([icon, title, text]) => (
-              <div key={title} className="vexo-card rounded-2xl border border-slate-800 bg-[#111827]/80 p-4 backdrop-blur-sm">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-400"><Icon name={icon as "shield" | "bolt" | "support"} size={17} /></div>
-                <p className="mt-3 text-sm font-black text-white">{title}</p>
-                <p className="mt-1 text-[11px] leading-4 text-slate-400">{text}</p>
+              <div key={title} className="rounded-2xl border border-slate-800 bg-[#0e1614]/80 p-3.5 backdrop-blur-sm hover:border-[#baff00]/40 transition">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#baff00]/15 text-[#baff00]">
+                  <Icon name={icon as "shield" | "bolt" | "support"} size={16} />
+                </div>
+                <p className="mt-2.5 text-xs font-black text-white">{title}</p>
+                <p className="mt-0.5 text-[10px] leading-3.5 text-slate-400">{text}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Login */}
-        <section className="relative flex min-h-screen w-full max-w-full items-center justify-center overflow-x-hidden px-4 py-8 sm:px-8">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-indigo-600/10 blur-3xl" />
-          <div className="relative w-full max-w-[460px] min-w-0 vexo-fade-up">
-            <div className="mb-6 lg:hidden"><Mark /></div>
-            <div className="vexo-login-card w-full max-w-full rounded-3xl border border-slate-800 bg-[#111827] p-5 shadow-2xl shadow-black/50 sm:p-8">
+        {/* Login Form Container */}
+        <section className="relative flex min-h-screen w-full max-w-full items-center justify-center overflow-x-hidden px-4 py-8 sm:px-8 bg-[#070b12]">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#baff00]/10 blur-[130px]" />
+          <div className="pointer-events-none absolute -left-20 bottom-10 h-72 w-72 rounded-full bg-emerald-500/10 blur-[130px]" />
+
+          <div className="relative w-full max-w-[460px] min-w-0 vexo-fade-up z-10">
+            <div className="mb-6 lg:hidden flex justify-center">
+              <Link href="/">
+                <Mark />
+              </Link>
+            </div>
+
+            <div className="w-full max-w-full rounded-3xl border border-slate-700/80 bg-[#111827]/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-8">
               <div>
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <span className="rounded-full bg-indigo-500/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-400">
+                    <span className="rounded-full bg-[#baff00]/15 border border-[#baff00]/30 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#baff00]">
                       Verified SMM Panel
                     </span>
-                    <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Welcome back 👋</h2>
+                    <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl text-white">Welcome back 👋</h2>
                   </div>
-                  <div className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-400 sm:flex"><Icon name="shield" size={20} /></div>
+                  <div className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-[#baff00]/15 border border-[#baff00]/30 text-[#baff00] sm:flex shadow-inner">
+                    <Icon name="shield" size={20} />
+                  </div>
                 </div>
-                <p className="text-xs leading-5 text-slate-400">Sign in to manage your orders, wallet balance, and social media campaigns.</p>
+                <p className="text-xs leading-relaxed text-slate-400">Sign in to manage your orders, wallet balance, and direct wholesale campaigns.</p>
               </div>
 
               {/* Anti-Phishing & Panel Account Security Notice */}
-              <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3.5 text-xs text-emerald-300 flex items-start gap-2.5">
+              <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300 flex items-start gap-2.5">
                 <span className="mt-0.5 shrink-0 text-base">🛡️</span>
-                <div>
-                  <strong className="text-white block">Official VEXARO Account Login</strong>
-                  This login is strictly for your <strong>VEXARO Panel Account</strong>. Never enter your Instagram, TikTok, YouTube, Facebook, Google, or banking passwords here. We only deliver services through public links and will never request your personal social media passwords.
+                <div className="text-[11px] leading-relaxed">
+                  <strong className="text-white block font-bold">Official VEXARO Account Login</strong>
+                  Never enter social media passwords here. We only require public post links for delivery.
                 </div>
               </div>
 
               <form onSubmit={handleSubmit} method="POST" action="/api/auth/login" className="mt-6 space-y-4">
                 <div>
-                  <label htmlFor="vexaro-login-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label htmlFor="vexaro-login-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
                     VEXARO Account Email
                   </label>
                   <input
@@ -154,15 +243,15 @@ export default function LoginPage() {
                     placeholder="Enter your registered email"
                     autoComplete="username"
                     required
-                    className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded-xl border border-slate-800 bg-[#0c121e] px-4 py-3 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25"
                   />
                 </div>
                 <div>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <label htmlFor="vexaro-login-password" className="text-xs font-bold uppercase tracking-wider text-slate-400 shrink-0">
+                    <label htmlFor="vexaro-login-password" className="text-xs font-bold uppercase tracking-wider text-slate-300 shrink-0">
                       VEXARO Panel Password
                     </label>
-                    <Link href="/forgot-password" className="text-xs font-semibold text-indigo-400 hover:underline text-right">
+                    <Link href="/forgot-password" className="text-xs font-bold text-[#baff00] hover:underline text-right">
                       Forgot password?
                     </Link>
                   </div>
@@ -173,10 +262,10 @@ export default function LoginPage() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      placeholder="Enter your VEXARO account password"
+                      placeholder="Enter your VEXARO password"
                       autoComplete="current-password"
                       required
-                      className="w-full rounded-xl border border-slate-800 bg-[#0d131f] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full rounded-xl border border-slate-800 bg-[#0c121e] px-4 py-3 pr-11 text-base sm:text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#baff00] focus:ring-2 focus:ring-[#baff00]/25"
                     />
                     <button
                       type="button"
@@ -189,17 +278,19 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
+
                 {error && (
                   <div className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-xs font-medium text-red-300">
                     <p>{error}</p>
                     <div className="mt-2 flex items-center gap-1.5 border-t border-red-400/15 pt-2 text-[11px] text-slate-300">
                       <span>Forgot your login?</span>
-                      <Link href="/forgot-password" className="font-bold text-indigo-400 hover:underline">
+                      <Link href="/forgot-password" className="font-bold text-[#baff00] hover:underline">
                         Reset password here →
                       </Link>
                     </div>
                   </div>
                 )}
+
                 <RealCaptcha
                   onVerify={(data) => {
                     setCaptchaData(data);
@@ -207,19 +298,33 @@ export default function LoginPage() {
                   }}
                 />
 
-                <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-3.5 text-sm font-bold text-white transition hover:from-indigo-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60 shadow-lg shadow-indigo-500/25 cursor-pointer">
-                  {loading ? "Signing in..." : "Sign In to Account"}<span>→</span>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#baff00] via-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 px-4 py-3.5 text-sm font-black text-black transition-all transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 shadow-[0_0_25px_rgba(186,255,0,0.35)] hover:shadow-[0_0_35px_rgba(186,255,0,0.5)] cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <span className="h-4 w-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                      <span>Signing in...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Sign In to Account</span>
+                      <span>→</span>
+                    </>
+                  )}
                 </button>
               </form>
 
               {/* Supported Payments Guarantee */}
-              <div className="mt-5 rounded-xl border border-slate-800 bg-[#0d131f] p-3 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Official Local Payment Methods</p>
-                <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-300">
-                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-300">SadaPay</span>
-                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-300">Easypaisa</span>
-                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-300">JazzCash</span>
-                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-slate-300">Bank</span>
+              <div className="mt-5 rounded-xl border border-slate-800 bg-[#0c121e] p-3 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Official Local &amp; Crypto Payments</p>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-bold text-slate-300">
+                  <span className="rounded-lg border border-slate-800 bg-slate-850 px-2.5 py-1 text-emerald-400">Easypaisa</span>
+                  <span className="rounded-lg border border-slate-800 bg-slate-850 px-2.5 py-1 text-red-400">JazzCash</span>
+                  <span className="rounded-lg border border-slate-800 bg-slate-850 px-2.5 py-1 text-teal-400">SadaPay</span>
+                  <span className="rounded-lg border border-slate-800 bg-slate-850 px-2.5 py-1 text-[#baff00]">Binance Pay</span>
                 </div>
               </div>
 
@@ -243,14 +348,17 @@ export default function LoginPage() {
                   className="inline-flex flex-wrap items-center justify-center gap-1 text-xs text-slate-400 hover:text-emerald-400 transition"
                 >
                   <span className="inline-flex items-center gap-1">
-                    <Icon name="support" size={13} /> Questions before joining?
+                    <Icon name="support" size={13} /> Questions?
                   </span>
                   <span>WhatsApp Admin: <strong className="text-white font-bold underline">+92 308 8180234</strong></span>
                 </a>
               </div>
 
               <p className="mt-6 text-center text-sm text-slate-400">
-                New to VEXARO? <Link href="/signup" className="font-bold text-indigo-400 hover:underline">Create an account</Link>
+                New to VEXARO?{" "}
+                <Link href="/signup" className="font-black text-[#baff00] hover:underline">
+                  Create an account →
+                </Link>
               </p>
             </div>
 
