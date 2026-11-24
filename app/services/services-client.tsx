@@ -3,6 +3,14 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Social3DIcon } from "@/components/social-3d-icon";
+import CurrencySelectModal from "@/components/currency-select-modal";
+import {
+  FALLBACK_RATES,
+  formatCurrency,
+  getCurrencyInfo,
+  getStoredCurrency,
+  saveSelectedCurrency,
+} from "@/lib/currency";
 
 interface ServiceItem {
   id: string;
@@ -40,25 +48,36 @@ export function ServicesCatalogClient() {
   const [displayCount, setDisplayCount] = useState(60);
   const [platform, setPlatform] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [currency, setCurrency] = useState<"PKR" | "USD">("USD");
-  const [usdRate, setUsdRate] = useState(278);
+  const [currency, setCurrency] = useState<string>("USD");
+  const [rates, setRates] = useState<Record<string, number>>(FALLBACK_RATES);
+  const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Load saved currency preference
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("vexo_currency");
-      if (saved === "PKR" || saved === "USD") {
-        setCurrency(saved);
-      }
-    } catch {}
+    setCurrency(getStoredCurrency("USD"));
   }, []);
 
-  function handleSelectCurrency(c: "PKR" | "USD") {
+  // Sync currency changes across tabs/components
+  useEffect(() => {
+    function handleCurrencyChange(e: Event) {
+      const customEvent = e as CustomEvent<{ currency?: string }>;
+      const newCurrency = customEvent.detail?.currency || localStorage.getItem("vexo_currency");
+      if (newCurrency) {
+        setCurrency(newCurrency);
+      }
+    }
+    window.addEventListener("vexo_currency_changed", handleCurrencyChange);
+    window.addEventListener("storage", handleCurrencyChange);
+    return () => {
+      window.removeEventListener("vexo_currency_changed", handleCurrencyChange);
+      window.removeEventListener("storage", handleCurrencyChange);
+    };
+  }, []);
+
+  function handleSelectCurrency(c: string) {
     setCurrency(c);
-    try {
-      localStorage.setItem("vexo_currency", c);
-    } catch {}
+    saveSelectedCurrency(c);
   }
 
   // Debounce search keystrokes to prevent UI thread lockup on typing
@@ -82,12 +101,18 @@ export function ServicesCatalogClient() {
         if (data.services && Array.isArray(data.services)) {
           setServices(data.services);
         }
-        if (data.usd_to_pkr) {
-          setUsdRate(Number(data.usd_to_pkr));
-        }
       })
       .catch((err) => console.error("Failed to load services:", err))
       .finally(() => setLoading(false));
+
+    fetch("/api/rates", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.rates) {
+          setRates((prev) => ({ ...prev, ...data.rates }));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Unique categories for current platform
@@ -125,11 +150,10 @@ export function ServicesCatalogClient() {
   }, [services, platform, selectedCategory, debouncedSearch]);
 
   function formatPrice(ratePkr: number, rateUsd?: number) {
-    if (currency === "USD") {
-      const usdVal = rateUsd != null && rateUsd > 0 ? Number(rateUsd) : ratePkr / usdRate;
-      return `$${usdVal.toFixed(4)}`;
+    if (currency === "USD" && rateUsd != null && rateUsd > 0) {
+      return `$${Number(rateUsd).toFixed(4)}`;
     }
-    return `₨${Number(ratePkr || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return formatCurrency(ratePkr, currency, rates);
   }
 
   return (
@@ -153,26 +177,34 @@ export function ServicesCatalogClient() {
             <Link href="/terms" className="hover:text-white transition">Terms</Link>
           </nav>
 
-          <div className="flex items-center gap-3">
-            {/* Currency toggle */}
-            <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-xs font-bold">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Currency Selector */}
+            <div className="flex items-center gap-1.5">
+              <div className="hidden md:flex rounded-xl border border-white/10 bg-white/5 p-1 text-xs font-bold">
+                {(["USD", "PKR", "AED", "EUR"] as const).map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => handleSelectCurrency(code)}
+                    className={`rounded-lg px-2.5 py-1 transition cursor-pointer ${
+                      currency === code ? "bg-[#baff00] text-[#07100f]" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+
               <button
                 type="button"
-                onClick={() => handleSelectCurrency("USD")}
-                className={`rounded-lg px-2.5 py-1 transition cursor-pointer ${
-                  currency === "USD" ? "bg-[#baff00] text-[#07100f]" : "text-slate-400 hover:text-white"
-                }`}
+                onClick={() => setCurrencyModalOpen(true)}
+                className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-bold text-slate-200 hover:border-[#baff00]/40 hover:text-white transition cursor-pointer"
+                title="Select Currency"
               >
-                USD ($)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectCurrency("PKR")}
-                className={`rounded-lg px-2.5 py-1 transition cursor-pointer ${
-                  currency === "PKR" ? "bg-[#baff00] text-[#07100f]" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                PKR (₨)
+                <span>{getCurrencyInfo(currency).flag}</span>
+                <span className="font-mono text-[#baff00] font-black">{getCurrencyInfo(currency).symbol}</span>
+                <span className="font-bold text-white">{currency}</span>
+                <span className="text-[9px] text-slate-400">▼</span>
               </button>
             </div>
 
@@ -397,8 +429,8 @@ export function ServicesCatalogClient() {
                           </span>
                           <span className="block text-[10px] text-slate-500">
                             {currency === "PKR"
-                              ? `$${(s.rate_usd != null && s.rate_usd > 0 ? Number(s.rate_usd) : s.rate_pkr / usdRate).toFixed(4)} USD`
-                              : `₨${Number(s.rate_pkr || 0).toFixed(2)} PKR`}
+                              ? `${formatCurrency(s.rate_pkr, "USD", rates)} USD`
+                              : `≈ ₨${Number(s.rate_pkr || 0).toFixed(2)} PKR`}
                           </span>
                         </td>
 
@@ -447,6 +479,17 @@ export function ServicesCatalogClient() {
       <footer className="mt-16 border-t border-white/10 bg-[#070d0d] px-4 py-8 text-center text-xs text-slate-500 sm:px-6">
         <p>© {new Date().getFullYear()} VEXARO SMM Panel. All rights reserved. Automated Wholesale Social Media Provider.</p>
       </footer>
+
+      {/* Global Currency Selection Modal */}
+      {currencyModalOpen && (
+        <CurrencySelectModal
+          isOpen={currencyModalOpen}
+          onClose={() => setCurrencyModalOpen(false)}
+          selectedCurrency={currency}
+          onSelectCurrency={(code) => handleSelectCurrency(code)}
+          rates={rates}
+        />
+      )}
     </div>
   );
 }

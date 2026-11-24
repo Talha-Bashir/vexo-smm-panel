@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatCurrency, FALLBACK_RATES } from "@/lib/currency";
 
 type Service = {
   id: number;
@@ -42,6 +43,8 @@ interface MassOrderPageProps {
   services: Service[];
   walletBalancePkr: number;
   bonusBalancePkr?: number;
+  selectedCurrency?: string;
+  currencyRates?: Record<string, number>;
   onOrdersCreated: () => void;
   navigate: (page: string) => void;
 }
@@ -50,6 +53,8 @@ export function MassOrderPage({
   services,
   walletBalancePkr,
   bonusBalancePkr = 0,
+  selectedCurrency = "USD",
+  currencyRates = FALLBACK_RATES,
   onOrdersCreated,
   navigate,
 }: MassOrderPageProps) {
@@ -183,12 +188,18 @@ export function MassOrderPage({
         <div className="flex flex-wrap items-center gap-3">
           <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-right">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Your Balance</p>
-            <p className="text-lg font-black text-[#baff00]">₨{(walletBalancePkr + bonusBalancePkr).toLocaleString()}</p>
-            {bonusBalancePkr > 0 && (
-              <p className="text-[10px] text-slate-400">
-                (₨{walletBalancePkr.toFixed(2)} real + ₨{bonusBalancePkr.toFixed(2)} bonus)
-              </p>
-            )}
+            <p className="text-lg font-black text-[#baff00]">
+              {selectedCurrency === "PKR"
+                ? `₨${(walletBalancePkr + bonusBalancePkr).toLocaleString()}`
+                : `${formatCurrency(walletBalancePkr + bonusBalancePkr, selectedCurrency, currencyRates)} ${selectedCurrency}`}
+            </p>
+            <p className="text-[10px] text-slate-400">
+              {selectedCurrency !== "PKR"
+                ? `≈ ₨${(walletBalancePkr + bonusBalancePkr).toFixed(2)} PKR`
+                : bonusBalancePkr > 0
+                ? `(₨${walletBalancePkr.toFixed(2)} real + ₨${bonusBalancePkr.toFixed(2)} bonus)`
+                : null}
+            </p>
           </div>
           <button
             onClick={() => navigate("Add Funds")}
@@ -255,7 +266,12 @@ export function MassOrderPage({
             </span>
             {stats.estimatedPkr > 0 && (
               <span>
-                Est. Total: <b className="text-white font-bold">₨{stats.estimatedPkr.toLocaleString()}</b>
+                Est. Total:{" "}
+                <b className="text-white font-bold">
+                  {selectedCurrency === "PKR"
+                    ? `₨${stats.estimatedPkr.toLocaleString()}`
+                    : `${formatCurrency(stats.estimatedPkr, selectedCurrency, currencyRates)} ${selectedCurrency}`}
+                </b>
               </span>
             )}
           </div>
@@ -319,7 +335,10 @@ export function MassOrderPage({
                 </span>
               )}
               <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 font-bold text-slate-300">
-                Total Charged: ₨{batchResult.totalChargedPkr.toLocaleString()}
+                Total Charged:{" "}
+                {selectedCurrency === "PKR"
+                  ? `₨${batchResult.totalChargedPkr.toLocaleString()}`
+                  : `${formatCurrency(batchResult.totalChargedPkr, selectedCurrency, currencyRates)} ${selectedCurrency}`}
               </span>
             </div>
           </div>
@@ -351,7 +370,14 @@ export function MassOrderPage({
                     </td>
                     <td className="py-3.5 px-4 font-black text-white">{item.quantity.toLocaleString()}</td>
                     <td className="py-3.5 px-4 font-bold text-[#baff00]">
-                      {item.chargePkr > 0 ? `₨${item.chargePkr.toLocaleString()}` : "₨0"}
+                      {item.chargePkr > 0
+                        ? formatCurrency(item.chargePkr, selectedCurrency, currencyRates)
+                        : formatCurrency(0, selectedCurrency, currencyRates)}
+                      {selectedCurrency !== "PKR" && item.chargePkr > 0 && (
+                        <span className="block text-[10px] text-slate-400 font-mono font-normal">
+                          ≈ ₨{item.chargePkr.toLocaleString()}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       {item.status === "Success" ? (

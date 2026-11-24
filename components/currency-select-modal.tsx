@@ -2,48 +2,16 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import {
+  ALL_CURRENCIES,
+  POPULAR_CURRENCIES,
+  CurrencyItem,
+  saveSelectedCurrency,
+  getCurrencyRate,
+} from "@/lib/currency";
 
-export interface CurrencyItem {
-  code: string;
-  name: string;
-  symbol: string;
-  flag: string;
-}
-
-export const POPULAR_CURRENCIES = ["USD", "PKR", "AED", "SAR", "INR", "EUR", "GBP"];
-
-export const ALL_CURRENCIES: CurrencyItem[] = [
-  { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
-  { code: "PKR", name: "Pakistani Rupee", symbol: "₨", flag: "🇵🇰" },
-  { code: "AED", name: "UAE Dirham", symbol: "د.إ", flag: "🇦🇪" },
-  { code: "SAR", name: "Saudi Riyal", symbol: "﷼", flag: "🇸🇦" },
-  { code: "INR", name: "Indian Rupee", symbol: "₹", flag: "🇮🇳" },
-  { code: "EUR", name: "Euro", symbol: "€", flag: "🇪🇺" },
-  { code: "GBP", name: "British Pound", symbol: "£", flag: "🇬🇧" },
-  { code: "CAD", name: "Canadian Dollar", symbol: "$", flag: "🇨🇦" },
-  { code: "AUD", name: "Australian Dollar", symbol: "$", flag: "🇦🇺" },
-  { code: "CNY", name: "Chinese Yuan", symbol: "¥", flag: "🇨🇳" },
-  { code: "JPY", name: "Japanese Yen", symbol: "¥", flag: "🇯🇵" },
-  { code: "QAR", name: "Qatari Riyal", symbol: "﷼", flag: "🇶🇦" },
-  { code: "KWD", name: "Kuwaiti Dinar", symbol: "د.ك", flag: "🇰🇼" },
-  { code: "BHD", name: "Bahraini Dinar", symbol: ".د.ب", flag: "🇧🇭" },
-  { code: "OMR", name: "Omani Rial", symbol: "﷼", flag: "🇴🇲" },
-  { code: "TRY", name: "Turkish Lira", symbol: "₺", flag: "🇹🇷" },
-  { code: "MYR", name: "Malaysian Ringgit", symbol: "RM", flag: "🇲🇾" },
-  { code: "SGD", name: "Singapore Dollar", symbol: "$", flag: "🇸🇬" },
-  { code: "THB", name: "Thai Baht", symbol: "฿", flag: "🇹🇭" },
-  { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp", flag: "🇮🇩" },
-  { code: "EGP", name: "Egyptian Pound", symbol: "E£", flag: "🇪🇬" },
-  { code: "ZAR", name: "South African Rand", symbol: "R", flag: "🇿🇦" },
-  { code: "NZD", name: "New Zealand Dollar", symbol: "$", flag: "🇳🇿" },
-  { code: "CHF", name: "Swiss Franc", symbol: "CHF", flag: "🇨🇭" },
-  { code: "SEK", name: "Swedish Krona", symbol: "kr", flag: "🇸🇪" },
-  { code: "NOK", name: "Norwegian Krone", symbol: "kr", flag: "🇳🇴" },
-  { code: "DKK", name: "Danish Krone", symbol: "kr", flag: "🇩🇰" },
-  { code: "RUB", name: "Russian Ruble", symbol: "₽", flag: "🇷🇺" },
-  { code: "KRW", name: "South Korean Won", symbol: "₩", flag: "🇰🇷" },
-  { code: "BRL", name: "Brazilian Real", symbol: "R$", flag: "🇧🇷" },
-];
+export type { CurrencyItem };
+export { ALL_CURRENCIES, POPULAR_CURRENCIES };
 
 interface CurrencySelectModalProps {
   isOpen: boolean;
@@ -106,10 +74,8 @@ export default function CurrencySelectModal({
   if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const handleSelect = (code: string) => {
+    saveSelectedCurrency(code);
     onSelectCurrency(code);
-    try {
-      localStorage.setItem("vexo_currency", code);
-    } catch {}
     onClose();
   };
 
@@ -217,7 +183,7 @@ export default function CurrencySelectModal({
           ) : (
             filteredCurrencies.map((item) => {
               const isSelected = selectedCurrency === item.code;
-              const rate = rates[item.code];
+              const rate = getCurrencyRate(item.code, rates);
 
               return (
                 <button

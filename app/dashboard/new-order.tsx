@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Social3DIcon from "@/components/social-3d-icon";
+import { formatCurrency, getCurrencyInfo } from "@/lib/currency";
 
 export type Service = {
   id: number;
@@ -1054,16 +1055,20 @@ export default function NewOrder({
               </span>
               {bonusBalancePkr > 0 && (
                 <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300">
-                  +₨{bonusBalancePkr.toFixed(2)} Bonus
+                  +{selectedCurrency === "PKR" ? `₨${bonusBalancePkr.toFixed(2)}` : formatCurrency(bonusBalancePkr, selectedCurrency, currencyRates)} Bonus
                 </span>
               )}
             </div>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
-                ₨{Number(walletBalancePkr || 0).toFixed(2)}
+                {selectedCurrency === "PKR"
+                  ? `₨${Number(walletBalancePkr || 0).toFixed(2)}`
+                  : `${formatCurrency(walletBalancePkr || 0, selectedCurrency, currencyRates)} ${selectedCurrency}`}
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                (~${((walletBalancePkr || 0) / (currencyRates?.USD && currencyRates.USD > 1 ? currencyRates.USD : 278)).toFixed(2)} USD)
+                {selectedCurrency === "PKR"
+                  ? `(~${formatCurrency(walletBalancePkr || 0, "USD", currencyRates)} USD)`
+                  : `(≈ ₨${Number(walletBalancePkr || 0).toFixed(2)} PKR)`}
               </span>
             </div>
           </div>
@@ -1087,7 +1092,7 @@ export default function NewOrder({
           <div className="flex items-center gap-2.5">
             <span className="text-emerald-400 font-bold">ℹ</span>
             <p>
-              You have <strong className="text-white">₨{bonusBalancePkr.toFixed(2)}</strong> promotional credit available. It will be automatically applied to eligible orders.
+              You have <strong className="text-white">{selectedCurrency !== "PKR" ? `${formatCurrency(bonusBalancePkr, selectedCurrency, currencyRates)} (~₨${bonusBalancePkr.toFixed(2)})` : `₨${bonusBalancePkr.toFixed(2)}`}</strong> promotional credit available. It will be automatically applied to eligible orders.
             </p>
           </div>
           <button
@@ -1239,7 +1244,14 @@ export default function NewOrder({
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="text-xs font-bold text-[#baff00]">₨{Number(s.price).toFixed(2)}</span>
+                      <span className="text-xs font-bold text-[#baff00]">
+                        {formatCurrency(Number(s.price), selectedCurrency, currencyRates)}
+                      </span>
+                      {selectedCurrency !== "PKR" && (
+                        <span className="text-[10px] text-slate-400 block font-mono">
+                          ≈ ₨{Number(s.price).toFixed(2)}
+                        </span>
+                      )}
                     </div>
                   </button>
                 ))
@@ -1445,10 +1457,11 @@ export default function NewOrder({
 
                       <div className="text-right shrink-0">
                         <span className="text-xs sm:text-sm font-black text-[#baff00]">
-                          ₨{Number(s.price).toFixed(2)}
+                          {formatCurrency(Number(s.price), selectedCurrency, currencyRates)}
                         </span>
                         <span className="text-[10px] text-slate-400 block">
                           /{isPkg ? "pkg" : "1k"}
+                          {selectedCurrency !== "PKR" && ` (₨${Number(s.price).toFixed(2)})`}
                         </span>
                       </div>
                     </div>
@@ -1592,8 +1605,17 @@ export default function NewOrder({
           <label className="text-xs sm:text-sm font-bold text-slate-200">
             Charge
           </label>
-          <div className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm sm:text-base font-bold font-mono text-[#baff00]">
-            = PKR {charge.toFixed(2)}
+          <div className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm sm:text-base font-bold font-mono text-[#baff00] flex items-center justify-between">
+            <span>
+              = {selectedCurrency === "PKR"
+                ? `PKR ${charge.toFixed(2)}`
+                : `${formatCurrency(charge, selectedCurrency, currencyRates)} ${selectedCurrency}`}
+            </span>
+            {selectedCurrency !== "PKR" && (
+              <span className="text-xs font-semibold text-slate-400 font-mono">
+                ≈ ₨{charge.toFixed(2)} PKR
+              </span>
+            )}
           </div>
         </div>
 
@@ -1630,7 +1652,7 @@ export default function NewOrder({
               onClick={() => navigate("Add Funds")}
               className="w-full rounded-xl py-2.5 text-xs font-bold bg-amber-400/15 border border-amber-400/30 text-amber-300 hover:bg-amber-400/25 transition text-center cursor-pointer"
             >
-              Add Funds to Wallet (₨{(charge - totalAvailable).toFixed(2)} needed)
+              Add Funds to Wallet ({selectedCurrency !== "PKR" ? `${formatCurrency(charge - totalAvailable, selectedCurrency, currencyRates)} / ` : ""}₨{(charge - totalAvailable).toFixed(2)} needed)
             </button>
           )}
         </div>

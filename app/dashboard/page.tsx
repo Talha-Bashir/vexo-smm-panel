@@ -9,6 +9,12 @@ import BonusCelebrationModal from "@/components/bonus-celebration-modal";
 import RedeemCouponModal from "@/components/redeem-coupon-modal";
 import CurrencySelectModal from "@/components/currency-select-modal";
 import { Social3DIcon } from "@/components/social-3d-icon";
+import {
+  FALLBACK_RATES,
+  formatCurrency,
+  getStoredCurrency,
+  saveSelectedCurrency,
+} from "@/lib/currency";
 
 type RizviService = {
   service: number;
@@ -486,21 +492,14 @@ function currencyInfo(code: string): readonly [string, string, string, string] {
 }
 
 function formatWalletBalance(code: string, rates: Record<string, number>, walletBalancePkr: number) {
-  if (code === "PKR") return `₨${walletBalancePkr.toFixed(2)}`;
-  const pkrPerUnit = rates[code];
-  if (!Number.isFinite(pkrPerUnit) || pkrPerUnit <= 0) return "—";
-  const value = walletBalancePkr / pkrPerUnit;
-  return `${currencyInfo(code)[2]}${value.toFixed(value < 1 ? 4 : 2)}`;
+  return formatCurrency(walletBalancePkr, code, rates);
 }
 
 function formatServicePrice(service: Service, code: string, rates: Record<string, number>) {
-  if (code === "PKR") {
-    return `₨${Number(service.price).toFixed(2)}`;
-  }
   if (code === "USD" && service.rate_usd != null && service.rate_usd > 0) {
     return `$${Number(service.rate_usd).toFixed(4)}`;
   }
-  return formatWalletBalance(code, rates, Number(service.price));
+  return formatCurrency(Number(service.price), code, rates);
 }
 
 export default function Home() {
@@ -541,7 +540,7 @@ export default function Home() {
   const [liveForexUsdRate, setLiveForexUsdRate] = useState(278.0);
   const [deposits, setDeposits] = useState<VexoDeposit[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
-  const [currencyRates, setCurrencyRates] = useState<Record<string, number>>({});
+  const [currencyRates, setCurrencyRates] = useState<Record<string, number>>(FALLBACK_RATES);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [announcements, setAnnouncements] = useState<VexoAnnouncement[]>([]);
@@ -749,22 +748,27 @@ export default function Home() {
     loadUser();
   }, []);
   useEffect(() => {
-    try {
-      const savedCurrency = localStorage.getItem("vexo_currency");
-      if (savedCurrency && CURRENCY_OPTIONS.some((item) => item[0] === savedCurrency)) {
-        setSelectedCurrency(savedCurrency);
-      }
-    } catch (error) {
-      console.error("VEXO CURRENCY LOAD ERROR:", error);
-    }
+    setSelectedCurrency(getStoredCurrency("USD"));
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("vexo_currency", selectedCurrency);
-    } catch (error) {
-      console.error("VEXO CURRENCY SAVE ERROR:", error);
+    function handleCurrencyChange(e: Event) {
+      const customEvent = e as CustomEvent<{ currency?: string }>;
+      const newCurrency = customEvent.detail?.currency || localStorage.getItem("vexo_currency");
+      if (newCurrency && CURRENCY_OPTIONS.some((item) => item[0] === newCurrency)) {
+        setSelectedCurrency(newCurrency);
+      }
     }
+    window.addEventListener("vexo_currency_changed", handleCurrencyChange);
+    window.addEventListener("storage", handleCurrencyChange);
+    return () => {
+      window.removeEventListener("vexo_currency_changed", handleCurrencyChange);
+      window.removeEventListener("storage", handleCurrencyChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    saveSelectedCurrency(selectedCurrency);
   }, [selectedCurrency]);
 
   useEffect(() => {
@@ -772,7 +776,9 @@ export default function Home() {
       try {
         const response = await fetch("/api/rates", { cache: "no-store" });
         const data = await response.json();
-        if (response.ok && data.success) setCurrencyRates(data.rates || {});
+        if (response.ok && data.success && data.rates) {
+          setCurrencyRates((prev) => ({ ...prev, ...data.rates }));
+        }
       } catch (error) {
         console.error("VEXO CURRENCY RATES ERROR:", error);
       }
@@ -2054,6 +2060,8 @@ export default function Home() {
               services={services}
               walletBalancePkr={walletBalancePkr}
               bonusBalancePkr={bonusBalancePkr}
+              selectedCurrency={selectedCurrency}
+              currencyRates={currencyRates}
               onOrdersCreated={() => {
                 loadOrders();
                 loadWallet();
@@ -2067,6 +2075,8 @@ export default function Home() {
               orders={orders}
               onOrdersUpdated={handleOrdersUpdated}
               onBuyAgain={handleBuyAgain}
+              selectedCurrency={selectedCurrency}
+              currencyRates={currencyRates}
             />
           )}
 
@@ -2505,7 +2515,8 @@ function Dashboard({
         />
         <Stat
           title="Total Spent"
-          value={`₨${totalSpent.toFixed(2)}`}
+          value={formatWalletBalance(selectedCurrency, currencyRates, totalSpent)}
+          subtitle={selectedCurrency !== "PKR" ? `≈ ₨${totalSpent.toFixed(2)}` : undefined}
           icon="star"
         />
       </div>
@@ -2673,7 +2684,14 @@ function Dashboard({
                         <StatusPill status={order.status} />
                       </td>
                       <td className="py-3.5 pl-4 text-right font-black text-[#baff00] whitespace-nowrap">
-                        ₨{Number(order.charge).toFixed(2)}
+                        <div>
+                          <span>{formatWalletBalance(selectedCurrency, currencyRates, Number(order.charge))}</span>
+                          {selectedCurrency !== "PKR" && (
+                            <span className="text-[10px] text-slate-400 block font-mono font-normal">
+                              ≈ ₨{Number(order.charge).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -2841,7 +2859,7 @@ function Dashboard({
               icon={service.icon}
               platform={service.platform}
               service={service.name}
-              price={Number(service.price).toFixed(2)}
+              price={formatServicePrice(service, selectedCurrency, currencyRates)}
               onClick={() => onOrderService(service.id)}
             />
           ))}
@@ -3655,10 +3673,14 @@ function OrdersPage({
   orders,
   onOrdersUpdated,
   onBuyAgain,
+  selectedCurrency = "USD",
+  currencyRates = FALLBACK_RATES,
 }: {
   orders: VexoOrder[];
   onOrdersUpdated: (orders: VexoOrder[]) => void;
   onBuyAgain: (order: VexoOrder) => void;
+  selectedCurrency?: string;
+  currencyRates?: Record<string, number>;
 }) {
   const [activeSubTab, setActiveSubTab] = useState<OrderSubTab>("All Orders");
   const [refreshing, setRefreshing] = useState(false);
@@ -4025,7 +4047,14 @@ function OrdersPage({
                     </div>
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-500">Charge</span>
-                      <p className="font-bold text-[#baff00] mt-0.5">₨{order.charge.toFixed(2)}</p>
+                      <p className="font-bold text-[#baff00] mt-0.5">
+                        {formatCurrency(order.charge, selectedCurrency, currencyRates)}
+                        {selectedCurrency !== "PKR" && (
+                          <span className="text-[10px] text-slate-400 block font-mono font-normal">
+                            ≈ ₨{order.charge.toFixed(2)}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-500">Start Count</span>
@@ -4175,7 +4204,14 @@ function OrdersPage({
                       </div>
                       <div>
                         <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Charge</p>
-                        <p className="mt-1 font-bold text-[#baff00] text-sm">₨{order.charge.toFixed(2)}</p>
+                        <p className="mt-1 font-bold text-[#baff00] text-sm">
+                          {formatCurrency(order.charge, selectedCurrency, currencyRates)}
+                          {selectedCurrency !== "PKR" && (
+                            <span className="text-[10px] text-slate-400 block font-mono font-normal">
+                              ≈ ₨{order.charge.toFixed(2)}
+                            </span>
+                          )}
+                        </p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Start Count</p>
@@ -4777,10 +4813,14 @@ function AddFundsPage({
             </div>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
-                ₨{Number(walletBalancePkr || 0).toFixed(2)}
+                {selectedCurrency === "PKR"
+                  ? `₨${Number(walletBalancePkr || 0).toFixed(2)}`
+                  : `${formatCurrency(walletBalancePkr || 0, selectedCurrency, rates)} ${selectedCurrency}`}
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                (~${((walletBalancePkr || 0) / (rates?.USD && rates.USD > 1 ? rates.USD : 278)).toFixed(2)} USD)
+                {selectedCurrency === "PKR"
+                  ? `(~${formatCurrency(walletBalancePkr || 0, "USD", rates)} USD)`
+                  : `(≈ ₨${Number(walletBalancePkr || 0).toFixed(2)} PKR)`}
               </span>
             </div>
           </div>
@@ -5970,10 +6010,12 @@ function ComingSoon({ page }: { page: string }) {
 function Stat({
   title,
   value,
+  subtitle,
   icon,
 }: {
   title: string;
   value: string;
+  subtitle?: string;
   icon: string;
 }) {
   return (
@@ -5985,6 +6027,11 @@ function Stat({
         <p className="mt-1 text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
           {value}
         </p>
+        {subtitle && (
+          <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+            {subtitle}
+          </p>
+        )}
       </div>
 
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 group-hover:border-[#baff00]/50 group-hover:text-[#baff00] transition-all">
@@ -6057,7 +6104,9 @@ function Popular({
             Starting from
           </p>
           <p className="text-base font-black text-[#baff00]">
-            ₨{Number(price).toFixed(2)}
+            {price.startsWith("₨") || price.startsWith("$") || price.startsWith("€") || price.startsWith("£") || price.startsWith("د") || price.startsWith("﷼") || price.startsWith("₹")
+              ? price
+              : `₨${Number(price).toFixed(2)}`}
           </p>
         </div>
 
